@@ -58,8 +58,6 @@ direkt installierbar. `build-apk.cmd debug` baut stattdessen die Debug-Variante.
 
 ## Auf dem Handy installieren
 
-Die fertige APK liegt schon bereit: `Desktop\Trainings app\PTapp-1.0.apk`.
-
 1. `app-release.apk` aufs Handy kopieren (USB, Cloud, Messenger an sich selbst).
 2. Datei am Handy öffnen.
 3. Android fragt nach der Erlaubnis, Apps aus dieser Quelle zu installieren —
@@ -82,7 +80,7 @@ zweiten Fenster bei jeder Änderung neu.
 ## Werkzeuge
 
 Auf diesem Rechner waren weder Java noch das Android-SDK vorhanden. Beides liegt
-jetzt unter `C:\Users\Froze\android-toolchain`:
+jetzt unter `%USERPROFILE%\android-toolchain`:
 
 - `jdk21\` — Java 21 (Temurin), nur für dieses Projekt
 - `sdk\` — Android-SDK (Plattform 35, Build-Tools 35.0.0, Plattform-Tools)
@@ -114,7 +112,8 @@ nicht mit. Sichtbar ist die Kennung nur in den Android-Einstellungen.
 ## Signaturschlüssel
 
 `android\dachboden-release.keystore` mit den Zugangsdaten in
-`android\keystore.properties`.
+`android\keystore.properties`. Beide sind bewusst **nicht** im Repository —
+sie liegen nur lokal. Ohne sie baut `build-apk.cmd` eine unsignierte APK.
 
 **Beide Dateien sichern.** Gehen sie verloren, lässt sich eine spätere Version
 der App nicht mehr über die installierte drüber-installieren — man müsste die
