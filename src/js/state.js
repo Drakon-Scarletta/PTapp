@@ -350,6 +350,73 @@ export function movePlanItem(planId, exId, dir) {
   persist();
 }
 
+// ---- Statistik ----
+export function totalSessions() {
+  return Object.values(S.log).filter(e => e && e.done).length;
+}
+// Wie viele Wochen in Folge das Wochenziel erreicht wurde, die laufende Woche
+// zählt nur mit, wenn sie schon voll ist.
+export function weekStreak() {
+  let n = 0;
+  const m = monday(today);
+  for (let back = 0; back < 260; back++) {
+    const start = new Date(m); start.setDate(m.getDate() - back * 7);
+    const key = iso(start);
+    const ziel = S.nights[key] ? 2 : 4;
+    let done = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const e = S.log[iso(d)];
+      if (e && e.done) done++;
+    }
+    if (done >= ziel) n++;
+    else if (back > 0) break;
+    else if (done < ziel) break;
+  }
+  return n;
+}
+// Einheiten je Woche, jüngste zuletzt.
+export function lastWeeks(count) {
+  const m = monday(today);
+  const out = [];
+  for (let back = count - 1; back >= 0; back--) {
+    const start = new Date(m); start.setDate(m.getDate() - back * 7);
+    let done = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const e = S.log[iso(d)];
+      if (e && e.done) done++;
+    }
+    out.push({ start: iso(start), done, target: S.nights[iso(start)] ? 2 : 4 });
+  }
+  return out;
+}
+export function perPlanCounts() {
+  const out = new Map();
+  Object.values(S.log).forEach(e => {
+    if (!e || !e.done) return;
+    out.set(e.k, (out.get(e.k) || 0) + 1);
+  });
+  return out;
+}
+export function lastSessions(count) {
+  return Object.keys(S.log)
+    .filter(d => S.log[d] && S.log[d].done)
+    .sort()
+    .slice(-count)
+    .reverse()
+    .map(d => ({ date: d, plan: planOf(S.log[d].k) }));
+}
+
+// ---- Chat mit dem virtuellen Trainer ----
+const CHAT_MAX = 40;
+export function addChat(role, text) {
+  S.chat.push({ role, text, at: Date.now() });
+  if (S.chat.length > CHAT_MAX) S.chat = S.chat.slice(-CHAT_MAX);
+  return persist();
+}
+export function clearChat() { S.chat = []; return persist(); }
+
 // ---- Von der KI erzeugte Pläne übernehmen ----
 export function applyGenerated(result) {
   let created = 0;
@@ -362,7 +429,8 @@ export function applyGenerated(result) {
     const ex = {
       id: newId('ex', S.exercises.map(e => e.id)),
       name: g.name,
-      equip: eq
+      equip: eq,
+      src: 'ai'
     };
     if (g.hint) ex.hint = g.hint;
     S.exercises.push(ex);
@@ -381,6 +449,7 @@ export function applyGenerated(result) {
       name: g.name || t('common.new'),
       focus: g.focus || '',
       night: !!g.night,
+      src: 'ai',
       items
     });
   });

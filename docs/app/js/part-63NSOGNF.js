@@ -1,10 +1,10 @@
 import {
-  checkMemorySyncInterval
-} from "./part-UZ3PHKCF.js";
-import {
   getLang,
   providerOf
-} from "./part-S6UH4G2A.js";
+} from "./part-2D3AZZ4A.js";
+import {
+  checkMemorySyncInterval
+} from "./part-UZ3PHKCF.js";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,
@@ -13447,6 +13447,46 @@ async function viaOpenAI(opts, equipIds) {
   if (!content) throw new Error("empty answer");
   return JSON.parse(content);
 }
+var COACH = [
+  "You are the training coach inside a workout tracking app.",
+  "Answer briefly and practically - a few sentences, no long essays, no markdown headings.",
+  "You know the equipment, the plans and the recent sessions of the person you are talking to;",
+  "refer to them when it helps and never suggest equipment they do not have.",
+  "If they ask for a whole new plan, tell them the app can build one under Plans.",
+  "Answer in the language of the question."
+].join(" ");
+async function chat(opts) {
+  const system = COACH + "\n\n" + opts.context;
+  const messages = opts.messages.map((m) => ({
+    role: m.role === "coach" ? "assistant" : "user",
+    content: m.text
+  }));
+  if (opts.provider === "openai") {
+    const res2 = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${opts.key}` },
+      body: JSON.stringify({
+        model: opts.model || providerOf("openai").defaultModel,
+        messages: [{ role: "system", content: system }, ...messages]
+      })
+    });
+    const data = await readJson(res2);
+    if (!res2.ok) throw new Error(errText(data, res2.status));
+    const text2 = data.choices && data.choices[0] && data.choices[0].message.content;
+    if (!text2) throw new Error("empty answer");
+    return text2.trim();
+  }
+  const client = anthropicClient(opts.key);
+  const res = await client.messages.create({
+    model: opts.model || providerOf("anthropic").defaultModel,
+    max_tokens: 2e3,
+    system,
+    messages
+  });
+  const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+  if (!text) throw new Error(`unexpected answer (${res.stop_reason})`);
+  return text;
+}
 async function listModels(provider, key) {
   if (provider === "anthropic") {
     const client = anthropicClient(key);
@@ -13472,6 +13512,7 @@ function errText(data, status) {
   return "HTTP " + status;
 }
 export {
+  chat,
   generatePlan,
   listModels
 };

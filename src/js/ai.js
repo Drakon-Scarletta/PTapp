@@ -154,6 +154,51 @@ async function viaOpenAI(opts, equipIds) {
   return JSON.parse(content);
 }
 
+// ---- Chat mit dem virtuellen Trainer ----
+const COACH = [
+  'You are the training coach inside a workout tracking app.',
+  'Answer briefly and practically - a few sentences, no long essays, no markdown headings.',
+  'You know the equipment, the plans and the recent sessions of the person you are talking to;',
+  'refer to them when it helps and never suggest equipment they do not have.',
+  'If they ask for a whole new plan, tell them the app can build one under Plans.',
+  'Answer in the language of the question.'
+].join(' ');
+
+export async function chat(opts) {
+  const system = COACH + '\n\n' + opts.context;
+  const messages = opts.messages.map(m => ({
+    role: m.role === 'coach' ? 'assistant' : 'user',
+    content: m.text
+  }));
+
+  if (opts.provider === 'openai') {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.key}` },
+      body: JSON.stringify({
+        model: opts.model || providerOf('openai').defaultModel,
+        messages: [{ role: 'system', content: system }, ...messages]
+      })
+    });
+    const data = await readJson(res);
+    if (!res.ok) throw new Error(errText(data, res.status));
+    const text = data.choices && data.choices[0] && data.choices[0].message.content;
+    if (!text) throw new Error('empty answer');
+    return text.trim();
+  }
+
+  const client = anthropicClient(opts.key);
+  const res = await client.messages.create({
+    model: opts.model || providerOf('anthropic').defaultModel,
+    max_tokens: 2000,
+    system,
+    messages
+  });
+  const text = res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  if (!text) throw new Error(`unexpected answer (${res.stop_reason})`);
+  return text;
+}
+
 // ---- Modelle auflisten ----
 export async function listModels(provider, key) {
   if (provider === 'anthropic') {

@@ -5,14 +5,21 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import * as st from './state.js';
 import { t, locale } from './i18n.js';
 import { APP_NAME } from './store.js';
+import * as home from './views/home.js';
 import * as plan from './views/plan.js';
 import * as log from './views/log.js';
 import * as options from './views/options.js';
 import { toast, esc } from './ui.js';
 
-const VIEWS = { plan, log, options };
-const LABEL = { plan: 'nav.plan', log: 'nav.log', options: 'nav.options' };
-let view = 'plan';
+const VIEWS = { home, plan, log, options };
+// Die Reiter; die Optionen hängen am Menüknopf und stehen nicht dazwischen.
+const TABS = [
+  ['home', 'nav.home'],
+  ['plan', 'nav.plan'],
+  ['log', 'nav.log']
+];
+let view = 'home';
+let lastTab = 'home';          // wohin der Zurück-Pfeil aus dem Menü führt
 const mount = document.getElementById('app');
 
 function head() {
@@ -20,10 +27,11 @@ function head() {
     esc(st.today.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })) +
     '</div></div>' +
     '<div class="tp-nav">' +
-      Object.keys(VIEWS).map(v =>
+      TABS.map(([v, key]) =>
         '<button data-view="' + v + '" class="' + (v === view ? 'sel' : '') + '">' +
-        esc(t(LABEL[v])) + '</button>'
-      ).join('') +
+        esc(t(key)) + '</button>').join('') +
+      '<button data-view="options" class="burger' + (view === 'options' ? ' sel' : '') + '" ' +
+        'aria-label="' + esc(t('nav.menu')) + '"><span></span><span></span><span></span></button>' +
     '</div>';
 }
 
@@ -43,20 +51,24 @@ async function setView(v) {
     if (v === 'log') { log.resetSelection(); render(); }
     return;
   }
+  if (view !== 'options') lastTab = view;
   view = v;
   if (v === 'log') log.resetSelection();
+  if (v === 'home') home.reset();
   if (v === 'options') { options.resetSub(); await options.refresh(); }
   render();
 }
 
 document.addEventListener('rerender', render);
+document.addEventListener('goview', ev => setView(ev.detail));
+document.addEventListener('goback', () => setView(lastTab));
 st.onChange(render);
 
-// Android: Zurück führt erst in die Trainingsansicht, dann aus der App.
+// Android: Zurück führt erst auf die Startseite, dann aus der App.
 async function wireNative() {
   if (!Capacitor.isNativePlatform()) return;
   await CapApp.addListener('backButton', () => {
-    if (view !== 'plan') setView('plan');
+    if (view !== 'home') setView('home');
     else CapApp.exitApp();
   });
   await CapApp.addListener('appStateChange', ({ isActive }) => {

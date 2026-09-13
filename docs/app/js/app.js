@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-S6UH4G2A.js";
+} from "./part-2D3AZZ4A.js";
 import {
   Directory,
   Encoding
@@ -194,8 +194,8 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.6";
-var STATE_VERSION = 3;
+var APP_VERSION = "1.7";
+var STATE_VERSION = 4;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
   return {
@@ -209,7 +209,8 @@ function freshState() {
     equipment: SEED_EQUIPMENT.map((e) => ({ ...e })),
     exercises: SEED_EXERCISES.map((e) => ({ ...e, bands: e.bands ? [...e.bands] : void 0 })),
     plans: SEED_PLANS.map((p) => ({ ...p, items: p.items.map((i) => ({ ...i })) })),
-    ai: { provider: "anthropic", model: "", keys: { anthropic: "", openai: "" } }
+    ai: { provider: "anthropic", model: "", keys: { anthropic: "", openai: "" } },
+    chat: []
   };
 }
 async function loadState() {
@@ -246,6 +247,7 @@ function migrate(raw) {
   if (!s2.ai) s2.ai = { provider: "anthropic", model: "", keys: { anthropic: "", openai: "" } };
   if (!s2.ai.keys) s2.ai.keys = { anthropic: "", openai: "" };
   if (!s2.lang) s2.lang = detectLang();
+  if (!Array.isArray(s2.chat)) s2.chat = [];
   s2.v = STATE_VERSION;
   return s2;
 }
@@ -701,6 +703,68 @@ function movePlanItem(planId, exId, dir) {
   p.items.splice(j, 0, item);
   persist();
 }
+function totalSessions() {
+  return Object.values(S.log).filter((e) => e && e.done).length;
+}
+function weekStreak() {
+  let n = 0;
+  const m = monday(today);
+  for (let back = 0; back < 260; back++) {
+    const start2 = new Date(m);
+    start2.setDate(m.getDate() - back * 7);
+    const key = iso(start2);
+    const ziel = S.nights[key] ? 2 : 4;
+    let done = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start2);
+      d.setDate(start2.getDate() + i);
+      const e = S.log[iso(d)];
+      if (e && e.done) done++;
+    }
+    if (done >= ziel) n++;
+    else if (back > 0) break;
+    else if (done < ziel) break;
+  }
+  return n;
+}
+function lastWeeks(count) {
+  const m = monday(today);
+  const out = [];
+  for (let back = count - 1; back >= 0; back--) {
+    const start2 = new Date(m);
+    start2.setDate(m.getDate() - back * 7);
+    let done = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start2);
+      d.setDate(start2.getDate() + i);
+      const e = S.log[iso(d)];
+      if (e && e.done) done++;
+    }
+    out.push({ start: iso(start2), done, target: S.nights[iso(start2)] ? 2 : 4 });
+  }
+  return out;
+}
+function perPlanCounts() {
+  const out = /* @__PURE__ */ new Map();
+  Object.values(S.log).forEach((e) => {
+    if (!e || !e.done) return;
+    out.set(e.k, (out.get(e.k) || 0) + 1);
+  });
+  return out;
+}
+function lastSessions(count) {
+  return Object.keys(S.log).filter((d) => S.log[d] && S.log[d].done).sort().slice(-count).reverse().map((d) => ({ date: d, plan: planOf(S.log[d].k) }));
+}
+var CHAT_MAX = 40;
+function addChat(role, text) {
+  S.chat.push({ role, text, at: Date.now() });
+  if (S.chat.length > CHAT_MAX) S.chat = S.chat.slice(-CHAT_MAX);
+  return persist();
+}
+function clearChat() {
+  S.chat = [];
+  return persist();
+}
 function applyGenerated(result2) {
   let created = 0;
   const byName = new Map(S.exercises.map((e) => [nameOf(e).toLowerCase(), e.id]));
@@ -711,7 +775,8 @@ function applyGenerated(result2) {
     const ex = {
       id: newId("ex", S.exercises.map((e) => e.id)),
       name: g.name,
-      equip: eq
+      equip: eq,
+      src: "ai"
     };
     if (g.hint) ex.hint = g.hint;
     S.exercises.push(ex);
@@ -727,6 +792,7 @@ function applyGenerated(result2) {
       name: g.name || t("common.new"),
       focus: g.focus || "",
       night: !!g.night,
+      src: "ai",
       items
     });
   });
@@ -734,10 +800,11 @@ function applyGenerated(result2) {
   return created;
 }
 
-// src/js/views/plan.js
-var plan_exports = {};
-__export(plan_exports, {
-  render: () => render
+// src/js/views/home.js
+var home_exports = {};
+__export(home_exports, {
+  render: () => render,
+  reset: () => reset
 });
 
 // node_modules/@capacitor/haptics/dist/esm/index.js
@@ -796,7 +863,101 @@ function checkIn(id, label, checked) {
   return '<label class="chk"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + "><span>" + esc(label) + "</span></label>";
 }
 
+// src/js/views/home.js
+var rerender = () => document.dispatchEvent(new CustomEvent("rerender"));
+var busy = false;
+var draft = "";
+function reset() {
+  busy = false;
+}
+var connected = () => !!(S.ai.keys[S.ai.provider] || "").trim();
+function stats() {
+  const done = weekCount(), ziel = weekTarget();
+  const wochen = lastWeeks(8);
+  const hoch = Math.max(4, ...wochen.map((w) => w.done));
+  const balken = wochen.map((w) => '<div class="bar-col" title="' + esc(w.start) + '"><div class="bar-v' + (w.done >= w.target ? " full" : "") + '" style="height:' + Math.round(w.done / hoch * 100) + '%"></div></div>').join("");
+  const letzte = lastSessions(1)[0];
+  const datum = letzte ? new Date(letzte.date.split("-")[0], letzte.date.split("-")[1] - 1, letzte.date.split("-")[2]).toLocaleDateString(locale(), { day: "numeric", month: "long" }) : null;
+  return '<h3 class="sec first">' + esc(t("home.stats")) + '</h3><div class="stat-row"><div class="stat"><b>' + done + "/" + ziel + "</b>" + esc(t("home.thisWeek")) + '</div><div class="stat"><b>' + weekStreak() + "</b>" + esc(t("home.streak")) + '</div><div class="stat"><b>' + totalSessions() + "</b>" + esc(t("home.total")) + '</div></div><div class="bars" aria-hidden="true">' + balken + '</div><p class="intro">' + esc(t("home.lastWeeks")) + " \xB7 " + esc(letzte ? t("home.last", { plan: nameOf(letzte.plan), date: datum }) : t("home.never")) + "</p>";
+}
+function plans() {
+  if (!S.plans.length) return '<p class="intro">' + esc(t("home.noPlans")) + "</p>";
+  const sug = suggested();
+  const counts = perPlanCounts();
+  return S.plans.map((p) => '<button class="nav-row' + (p.id === sug ? " due" : "") + '" data-start="' + esc(p.id) + '"><span class="nav-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + (p.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "") + '</span><span class="nav-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + (counts.get(p.id) || 0) + '\xD7</span><span class="nav-c">\u203A</span></button>').join("");
+}
+function coach() {
+  if (!connected()) {
+    return '<h3 class="sec">' + esc(t("home.coach")) + '</h3><p class="intro">' + esc(t("home.coachOff")) + "</p>";
+  }
+  const verlauf = S.chat.length ? '<div class="chat">' + S.chat.map((m) => '<div class="msg ' + (m.role === "coach" ? "from-coach" : "from-me") + '"><div class="msg-w">' + esc(m.role === "coach" ? t("home.coach") : t("home.you")) + '</div><div class="msg-t">' + esc(m.text) + "</div></div>").join("") + "</div>" : '<p class="intro">' + esc(t("home.coachSub")) + "</p>";
+  return '<h3 class="sec">' + esc(t("home.coach")) + "</h3>" + verlauf + (busy ? '<p class="intro">' + esc(t("home.thinking")) + "</p>" : "") + '<div class="add-row"><input class="in" id="c-msg" type="text" autocomplete="off" placeholder="' + esc(t("home.ask")) + '" value="' + esc(draft) + '"' + (busy ? " disabled" : "") + '><button class="mini" id="c-send"' + (busy ? " disabled" : "") + ">" + esc(t("home.send")) + '</button></div><p class="fld-h">' + esc(t("home.costHint")) + "</p>" + (S.chat.length ? '<button class="mini" id="c-clear">' + esc(t("home.clearChat")) + "</button>" : "");
+}
+function context() {
+  const geraete = S.equipment.map((e) => nameOf(e)).join(", ");
+  const plaene = S.plans.map(
+    (p) => nameOf(p) + " (" + p.items.map((i) => nameOf(exOf(i.ex)) + " " + (i.reps || "")).join("; ") + ")"
+  ).join(" | ");
+  const letzte = lastSessions(8).map((s2) => s2.date + " " + nameOf(s2.plan)).join(", ");
+  return [
+    "Equipment: " + (geraete || "none"),
+    "Plans: " + (plaene || "none"),
+    "Recent sessions: " + (letzte || "none"),
+    "This week: " + weekCount() + " of " + weekTarget() + " sessions."
+  ].join("\n");
+}
+async function send() {
+  const text = val("c-msg");
+  if (!text) return;
+  draft = "";
+  busy = true;
+  await addChat("me", text);
+  try {
+    const mod = await import("./part-63NSOGNF.js");
+    const antwort = await mod.chat({
+      provider: S.ai.provider,
+      key: (S.ai.keys[S.ai.provider] || "").trim(),
+      model: S.ai.model || providerOf(S.ai.provider).defaultModel,
+      context: context(),
+      messages: S.chat
+    });
+    busy = false;
+    await addChat("coach", antwort);
+  } catch (e) {
+    busy = false;
+    toast(t("ai.failed", { msg: e.message }), true);
+    rerender();
+  }
+}
+function render(head2, mount2) {
+  mount2.innerHTML = head2() + stats() + '<h3 class="sec">' + esc(t("home.pickPlan")) + '</h3><p class="intro">' + esc(t("home.pickPlanSub")) + "</p>" + plans() + coach();
+  on("[data-start]", (ev) => {
+    selectPlan(ev.currentTarget.dataset.start);
+    document.dispatchEvent(new CustomEvent("goview", { detail: "plan" }));
+  });
+  const feld = byId("c-msg");
+  if (feld) {
+    feld.addEventListener("input", () => {
+      draft = feld.value;
+    });
+    feld.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") send();
+    });
+    byId("c-send").addEventListener("click", send);
+    const chat = document.querySelector(".chat");
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  }
+  const clear = byId("c-clear");
+  if (clear) clear.addEventListener("click", () => {
+    if (confirmBox(t("home.clearChatAsk"))) clearChat();
+  });
+}
+
 // src/js/views/plan.js
+var plan_exports = {};
+__export(plan_exports, {
+  render: () => render2
+});
 function weekStrip() {
   const m = monday(today);
   let h = "";
@@ -820,7 +981,7 @@ function exerciseRow(item, e) {
   const right = w.body ? '<div class="tp-bw">' + esc(w.sub) + "</div>" : '<div class="tp-kg"><button data-kg="' + item.ex + '" data-dir="-1" aria-label="' + esc(t("plan.less")) + '">\u2212</button><div class="val">' + esc(w.main) + "<small> " + esc(w.unit) + "</small>" + (w.sub ? '<div class="sub"><i class="dot ' + (bd || "n") + '"></i>' + esc(w.sub) + "</div>" : '<div class="sub"><i class="dot ' + (bd || "n") + '"></i></div>') + '</div><button data-kg="' + item.ex + '" data-dir="1" aria-label="' + esc(t("plan.more")) + '">+</button></div>';
   return '<div class="tp-ex' + (ok ? " ok" : "") + (n > 0 && !ok ? " part" : "") + '" data-ex="' + item.ex + '" role="button" tabindex="0" aria-label="' + esc(nameOf(ex)) + ", " + esc(t("plan.sets", { done: n, total: goal })) + '"><div class="tp-box">' + (ok ? "\u2713" : n + "<em>/" + goal + "</em>") + '</div><div><div class="nm">' + esc(nameOf(ex)) + '</div><div class="rp">' + esc(item.reps || "") + (item.side ? " " + esc(sideLabel(item.side)) : "") + "</div>" + (hint ? '<div class="hint">' + esc(hint) + "</div>" : "") + "</div>" + right + "</div>";
 }
-function render(head2, mount2) {
+function render2(head2, mount2) {
   const planId = activePlan();
   const plan = planOf(planId);
   const e = entry();
@@ -857,7 +1018,7 @@ function render(head2, mount2) {
 // src/js/views/log.js
 var log_exports = {};
 __export(log_exports, {
-  render: () => render2,
+  render: () => render3,
   resetSelection: () => resetSelection
 });
 var month = new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1);
@@ -884,7 +1045,7 @@ function dayDetail() {
   }).join("");
   return '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan ? plan.short : "?") + '</div><div><div class="nm">' + esc(longDate(dd)) + '</div><div class="fo">' + esc(nameOf(plan)) + " \xB7 " + esc(de.done ? t("log.done") : t("log.notDone")) + "</div></div></div>" + lines + "</div></div>";
 }
-function render2(head2, mount2) {
+function render3(head2, mount2) {
   const y = month.getFullYear(), m = month.getMonth();
   const lead = (new Date(y, m, 1).getDay() + 6) % 7;
   const days = new Date(y, m + 1, 0).getDate();
@@ -924,7 +1085,7 @@ var options_exports = {};
 __export(options_exports, {
   backBar: () => backBar2,
   refresh: () => refresh,
-  render: () => render5,
+  render: () => render7,
   resetSub: () => resetSub
 });
 
@@ -1162,15 +1323,194 @@ function catalogEntry(key) {
 }
 var catalogSize = CATEGORIES.reduce((n, c) => n + c.items.length, 0);
 
+// src/js/ex-catalog.js
+var EX_CATEGORIES = [
+  {
+    id: "chest",
+    de: "Brust",
+    en: "Chest",
+    items: [
+      { key: "benchPress", de: "Bankdr\xFCcken", en: "Bench press", eq: "barbell" },
+      { key: "inclineBenchPress", de: "Schr\xE4gbankdr\xFCcken", en: "Incline bench press", eq: "barbell" },
+      { key: "closeGripBench", de: "Enges Bankdr\xFCcken", en: "Close-grip bench press", eq: "barbell" },
+      { key: "dumbbellPress", de: "Kurzhantel-Bankdr\xFCcken", en: "Dumbbell bench press", eq: "dumbbells" },
+      { key: "inclineDumbbellPress", de: "Schr\xE4gbankdr\xFCcken mit Kurzhanteln", en: "Incline dumbbell press", eq: "dumbbells" },
+      { key: "dumbbellFly", de: "Fliegende mit Kurzhanteln", en: "Dumbbell fly", eq: "dumbbells" },
+      { key: "chestPressEx", de: "Brustpresse", en: "Chest press", eq: "chestPress" },
+      { key: "verticalChestPressEx", de: "Vertical Chest Press", en: "Vertical chest press", eq: "verticalChestPress" },
+      { key: "pecDeckFly", de: "Butterfly", en: "Pec deck fly", eq: "pecDeck" },
+      { key: "cableCrossoverEx", de: "Kabelkreuzheben", en: "Cable crossover", eq: "cableCrossover" },
+      { key: "pushup", de: "Liegest\xFCtze", en: "Push-up", eq: "floor" },
+      { key: "dips", de: "Dips", en: "Dips", eq: "dipBars" },
+      { key: "assistedDipsEx", de: "Dips mit Gegengewicht", en: "Assisted dips", eq: "assistedDip" },
+      { key: "smithBenchPress", de: "Bankdr\xFCcken an der Multipresse", en: "Smith machine bench press", eq: "smithMachine" }
+    ]
+  },
+  {
+    id: "back",
+    de: "R\xFCcken",
+    en: "Back",
+    items: [
+      { key: "latPulldownEx", de: "Latziehen", en: "Lat pulldown", eq: "latPulldown" },
+      { key: "latPulldownNarrow", de: "Latziehen eng", en: "Close-grip lat pulldown", eq: "latPulldown" },
+      { key: "pullup", de: "Klimmzug", en: "Pull-up", eq: "pullupBar" },
+      { key: "chinup", de: "Klimmzug im Untergriff", en: "Chin-up", eq: "pullupBar" },
+      { key: "assistedPullupEx", de: "Klimmzug mit Gegengewicht", en: "Assisted pull-up", eq: "assistedPullup" },
+      { key: "seatedRowEx", de: "Rudern sitzend am Kabel", en: "Seated cable row", eq: "seatedRow" },
+      { key: "lowRowEx", de: "Ruderzug an der Maschine", en: "Machine row", eq: "lowRowMachine" },
+      { key: "barbellRow", de: "Langhantelrudern", en: "Barbell row", eq: "barbell" },
+      { key: "dumbbellRow", de: "Kurzhantelrudern", en: "Dumbbell row", eq: "dumbbells" },
+      { key: "tBarRowEx", de: "T-Bar-Rudern", en: "T-bar row", eq: "tBarRow" },
+      { key: "invertedRow", de: "Rudern am Schlingentrainer", en: "Inverted row", eq: "suspensionTrainer" },
+      { key: "facePullEx", de: "Face Pull", en: "Face pull", eq: "facePull" },
+      { key: "pulloverEx", de: "Pullover", en: "Pullover", eq: "pulloverMachine" },
+      { key: "deadlift", de: "Kreuzheben", en: "Deadlift", eq: "barbell" },
+      { key: "rackPull", de: "Rack Pull", en: "Rack pull", eq: "powerRack" },
+      { key: "shrug", de: "Schulterheben", en: "Shrug", eq: "dumbbells" },
+      { key: "backExtensionEx", de: "R\xFCckenstrecken", en: "Back extension", eq: "backExtension" }
+    ]
+  },
+  {
+    id: "legs",
+    de: "Beine und Ges\xE4\xDF",
+    en: "Legs and glutes",
+    items: [
+      { key: "squat", de: "Kniebeuge", en: "Squat", eq: "barbell" },
+      { key: "frontSquat", de: "Frontkniebeuge", en: "Front squat", eq: "barbell" },
+      { key: "gobletSquat", de: "Goblet Squat", en: "Goblet squat", eq: "kettlebell" },
+      { key: "smithSquat", de: "Kniebeuge an der Multipresse", en: "Smith machine squat", eq: "smithMachine" },
+      { key: "legPressEx", de: "Beinpresse", en: "Leg press", eq: "legPress" },
+      { key: "hackSquatEx", de: "Hackenschmidt-Kniebeuge", en: "Hack squat", eq: "hackSquat" },
+      { key: "legExtensionEx", de: "Beinstrecken", en: "Leg extension", eq: "legExtension" },
+      { key: "legCurlLyingEx", de: "Beinbeugen liegend", en: "Lying leg curl", eq: "legCurlLying" },
+      { key: "legCurlSeatedEx", de: "Beinbeugen sitzend", en: "Seated leg curl", eq: "legCurlSeated" },
+      { key: "romanianDeadlift", de: "Rum\xE4nisches Kreuzheben", en: "Romanian deadlift", eq: "barbell" },
+      { key: "bulgarianSplitSquat", de: "Bulgarische Kniebeuge", en: "Bulgarian split squat", eq: "dumbbells" },
+      { key: "lunge", de: "Ausfallschritt", en: "Lunge", eq: "dumbbells" },
+      { key: "walkingLunge", de: "Gehender Ausfallschritt", en: "Walking lunge", eq: "dumbbells" },
+      { key: "stepUp", de: "Aufsteigen auf den Kasten", en: "Step-up", eq: "plyoBox" },
+      { key: "wallSit", de: "Wandsitzen", en: "Wall sit", eq: "floor" },
+      { key: "calfRaiseSeatedEx", de: "Wadenheben sitzend", en: "Seated calf raise", eq: "calfRaiseSeated" },
+      { key: "calfRaiseStandingEx", de: "Wadenheben stehend", en: "Standing calf raise", eq: "calfRaiseStanding" },
+      { key: "calfRaiseStep", de: "Wadenheben auf der Stufe", en: "Calf raise on a step", eq: "stepPlatform" },
+      { key: "hipThrustEx", de: "Hip Thrust an der Maschine", en: "Machine hip thrust", eq: "hipThrustMachine" },
+      { key: "barbellHipThrust", de: "Hip Thrust mit Langhantel", en: "Barbell hip thrust", eq: "barbell" },
+      { key: "gluteBridge", de: "Beckenheben", en: "Glute bridge", eq: "mat" },
+      { key: "hipAbductionEx", de: "Abduktoren", en: "Hip abduction", eq: "hipAbduction" },
+      { key: "hipAdductionEx", de: "Adduktoren", en: "Hip adduction", eq: "hipAdduction" },
+      { key: "cableKickbackEx", de: "Kickback am Kabel", en: "Cable kickback", eq: "cableKickback" }
+    ]
+  },
+  {
+    id: "shoulders",
+    de: "Schultern",
+    en: "Shoulders",
+    items: [
+      { key: "overheadPress", de: "Schulterdr\xFCcken mit Langhantel", en: "Overhead press", eq: "barbell" },
+      { key: "dumbbellShoulderPress", de: "Schulterdr\xFCcken mit Kurzhanteln", en: "Dumbbell shoulder press", eq: "dumbbells" },
+      { key: "shoulderPressMachineEx", de: "Schulterpresse", en: "Machine shoulder press", eq: "shoulderPressMachine" },
+      { key: "arnoldPress", de: "Arnold Press", en: "Arnold press", eq: "dumbbells" },
+      { key: "lateralRaise", de: "Seitheben", en: "Lateral raise", eq: "dumbbells" },
+      { key: "lateralRaiseCable", de: "Seitheben am Kabel", en: "Cable lateral raise", eq: "cableTower" },
+      { key: "lateralRaiseMachineEx", de: "Seitheben an der Maschine", en: "Machine lateral raise", eq: "lateralRaiseMachine" },
+      { key: "frontRaise", de: "Frontheben", en: "Front raise", eq: "dumbbells" },
+      { key: "reverseFlyEx", de: "Butterfly reverse", en: "Reverse fly", eq: "reverseFly" },
+      { key: "reverseFlyDumbbell", de: "Reverse Fly mit Kurzhanteln", en: "Dumbbell reverse fly", eq: "dumbbells" },
+      { key: "uprightRow", de: "Aufrechtes Rudern", en: "Upright row", eq: "ezBar" },
+      { key: "pikePushup", de: "Pike-Liegest\xFCtz", en: "Pike push-up", eq: "floor" }
+    ]
+  },
+  {
+    id: "arms",
+    de: "Arme",
+    en: "Arms",
+    items: [
+      { key: "bicepsCurlDumbbell", de: "Bizepscurl mit Kurzhanteln", en: "Dumbbell curl", eq: "dumbbells" },
+      { key: "bicepsCurlBarbell", de: "Bizepscurl mit SZ-Stange", en: "EZ bar curl", eq: "ezBar" },
+      { key: "hammerCurl", de: "Hammercurl", en: "Hammer curl", eq: "dumbbells" },
+      { key: "preacherCurl", de: "Scottcurl", en: "Preacher curl", eq: "preacherBench" },
+      { key: "cableCurlEx", de: "Bizepscurl am Kabel", en: "Cable curl", eq: "cableCurl" },
+      { key: "concentrationCurl", de: "Konzentrationscurl", en: "Concentration curl", eq: "dumbbells" },
+      { key: "bicepsMachineEx", de: "Bizeps an der Maschine", en: "Machine biceps curl", eq: "bicepsCurlMachine" },
+      { key: "tricepsPushdownEx", de: "Trizepsdr\xFCcken am Kabel", en: "Triceps pushdown", eq: "tricepsPushdown" },
+      { key: "overheadTricepsExtension", de: "Trizepsdr\xFCcken \xFCber Kopf", en: "Overhead triceps extension", eq: "dumbbells" },
+      { key: "skullcrusher", de: "Stirndr\xFCcken", en: "Skullcrusher", eq: "ezBar" },
+      { key: "tricepsKickback", de: "Trizeps-Kickback", en: "Triceps kickback", eq: "dumbbells" },
+      { key: "tricepsDips", de: "Trizeps-Dips", en: "Triceps dips", eq: "dipBars" },
+      { key: "tricepsMachineEx", de: "Trizeps an der Maschine", en: "Machine triceps extension", eq: "tricepsMachine" },
+      { key: "wristCurl", de: "Handgelenkcurl", en: "Wrist curl", eq: "dumbbells" },
+      { key: "farmersCarry", de: "Farmer\u2019s Walk", en: "Farmer's carry", eq: "dumbbells" }
+    ]
+  },
+  {
+    id: "core",
+    de: "Rumpf",
+    en: "Core",
+    items: [
+      { key: "crunch", de: "Crunch", en: "Crunch", eq: "mat" },
+      { key: "bicycleCrunch", de: "Fahrrad-Crunch", en: "Bicycle crunch", eq: "mat" },
+      { key: "cableAbCrunchEx", de: "Bauchcrunch am Kabel", en: "Cable ab crunch", eq: "cableAbCrunch" },
+      { key: "abCrunchMachineEx", de: "Bauchmaschine", en: "Machine ab crunch", eq: "abCrunchMachine" },
+      { key: "plankEx", de: "Plank", en: "Plank", eq: "mat" },
+      { key: "sidePlank", de: "Seitlicher Plank", en: "Side plank", eq: "mat" },
+      { key: "deadBug", de: "Dead Bug", en: "Dead bug", eq: "mat" },
+      { key: "hollowHold", de: "Hollow Hold", en: "Hollow hold", eq: "mat" },
+      { key: "legRaiseHanging", de: "H\xE4ngendes Beinheben", en: "Hanging leg raise", eq: "pullupBar" },
+      { key: "legRaiseCaptain", de: "Beinheben an der Station", en: "Captain\u2019s chair leg raise", eq: "captainsChair" },
+      { key: "russianTwist", de: "Russian Twist", en: "Russian twist", eq: "medicineBall" },
+      { key: "woodchopEx", de: "Holzhacker am Kabel", en: "Cable woodchop", eq: "cableWoodchop" },
+      { key: "rotaryTorsoEx", de: "Rumpfrotation", en: "Rotary torso", eq: "rotaryTorso" },
+      { key: "abWheelRollout", de: "Bauchroller", en: "Ab wheel rollout", eq: "abWheel" },
+      { key: "romanChairExtension", de: "R\xFCckenstrecken am r\xF6mischen Stuhl", en: "Roman chair extension", eq: "romanChair" },
+      { key: "mountainClimber", de: "Bergsteiger", en: "Mountain climber", eq: "floor" }
+    ]
+  },
+  {
+    id: "fullbody",
+    de: "Ganzk\xF6rper und Ausdauer",
+    en: "Full body and cardio",
+    items: [
+      { key: "burpee", de: "Burpee", en: "Burpee", eq: "floor" },
+      { key: "kettlebellSwing", de: "Kettlebell Swing", en: "Kettlebell swing", eq: "kettlebell" },
+      { key: "thruster", de: "Thruster", en: "Thruster", eq: "barbell" },
+      { key: "powerClean", de: "Umsetzen", en: "Power clean", eq: "barbell" },
+      { key: "boxJump", de: "Kastensprung", en: "Box jump", eq: "plyoBox" },
+      { key: "jumpRopeEx", de: "Seilspringen", en: "Jump rope", eq: "jumpRope" },
+      { key: "rowErg", de: "Rudern am Ergometer", en: "Rowing machine", eq: "rowingMachine" },
+      { key: "bikeErg", de: "Radfahren", en: "Exercise bike", eq: "bike" },
+      { key: "spinBikeEx", de: "Indoor Cycling", en: "Indoor cycling", eq: "spinBike" },
+      { key: "treadmillRun", de: "Laufen am Band", en: "Treadmill run", eq: "treadmill" },
+      { key: "treadmillWalk", de: "Gehen am Band", en: "Treadmill walk", eq: "treadmill" },
+      { key: "ellipticalEx", de: "Crosstrainer", en: "Elliptical", eq: "elliptical" },
+      { key: "stairClimberEx", de: "Stepper", en: "Stair climber", eq: "stairClimber" },
+      { key: "skiErgEx", de: "Ski-Ergometer", en: "Ski erg", eq: "skiErg" },
+      { key: "airBikeEx", de: "Air Bike", en: "Air bike", eq: "airBike" }
+    ]
+  }
+];
+var exCatalogSize = EX_CATEGORIES.reduce((n, c) => n + c.items.length, 0);
+function exCatalogEntry(key) {
+  for (const c of EX_CATEGORIES) {
+    const hit = c.items.find((i) => i.key === key);
+    if (hit) return hit;
+  }
+  return null;
+}
+var exName = (o) => o[getLang()] || o.de;
+var exSearchText = (o) => (o.de + " " + o.en).toLowerCase();
+
 // src/js/views/editors.js
-var rerender = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender2 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var editing = null;
 var picked = null;
 var bundle = null;
+var pickedEx = null;
+var onlyMine = true;
 function resetEditing() {
   editing = null;
   picked = null;
   bundle = null;
+  pickedEx = null;
 }
 function sideOptions() {
   return [
@@ -1195,6 +1535,7 @@ function wireBack(to) {
     editing = null;
     picked = null;
     bundle = null;
+    pickedEx = null;
     to();
   });
 }
@@ -1210,11 +1551,11 @@ function equipment(mount2, head2, goHub) {
   wireBack(goHub);
   byId("add").addEventListener("click", () => {
     editing = "new";
-    rerender();
+    rerender2();
   });
   on("[data-edit]", (ev) => {
     editing = ev.currentTarget.dataset.edit;
-    rerender();
+    rerender2();
   });
   on("[data-del]", (ev) => {
     const eq = equipOf(ev.currentTarget.dataset.del);
@@ -1243,7 +1584,7 @@ function bundleForm(mount2, head2, goHub) {
   mount2.innerHTML = head2() + backBar(catName(b)) + '<p class="intro">' + esc(t("equip.bundleHint")) + "</p>" + rows + '<button class="set-btn go" id="addsel">' + esc(t("equip.bundleAdd", { n: b.items.length })) + "</button>";
   byId("back").addEventListener("click", () => {
     bundle = null;
-    rerender();
+    rerender2();
   });
   const zaehlen = () => [...document.querySelectorAll("[data-part]")].filter((c) => c.checked);
   const nachzaehlen = () => byId("addsel").textContent = t("equip.bundleAdd", { n: zaehlen().length });
@@ -1282,18 +1623,18 @@ function equipmentPicker(mount2, head2, goHub) {
   const quick = BUNDLES.map((b) => '<button class="nav-row" data-bundle="' + esc(b.key) + '"><span class="nav-n">' + esc(catName(b)) + '</span><span class="nav-s">' + esc(catSub(b)) + " \xB7 " + esc(t("equip.bundleCount", { n: b.items.length })) + '</span><span class="nav-c">\u203A</span></button>').join("");
   const groups = CATEGORIES.map((c) => '<div class="cat" data-cat="' + c.id + '"><h3 class="cat-h">' + esc(catName(c)) + "</h3>" + c.items.map((i) => '<button class="cat-i" data-pickeq="' + esc(i.key) + '" data-find="' + esc(searchText(i)) + '">' + esc(catName(i)) + "</button>").join("") + "</div>").join("");
   mount2.innerHTML = head2() + backBar(t("equip.pick")) + '<h3 class="sec first">' + esc(t("equip.bundles")) + '</h3><p class="intro">' + esc(t("equip.bundlesHint")) + "</p>" + quick + '<h3 class="sec">' + esc(t("equip.single")) + '</h3><p class="intro">' + esc(t("equip.pickHint")) + '</p><input class="in" id="f-search" type="search" autocomplete="off" placeholder="' + esc(t("equip.search")) + '"><p class="intro" id="hits">' + esc(t("equip.fromCatalog", { n: catalogSize })) + '</p><div id="cats">' + groups + '</div><p class="intro" id="nomatch" hidden>' + esc(t("equip.noMatch")) + '</p><button class="set-btn" id="own">+ ' + esc(t("equip.custom")) + "</button>";
-  wireBack(rerender);
+  wireBack(rerender2);
   byId("own").addEventListener("click", () => {
     picked = "custom";
-    rerender();
+    rerender2();
   });
   on("[data-bundle]", (ev) => {
     bundle = ev.currentTarget.dataset.bundle;
-    rerender();
+    rerender2();
   });
   on("[data-pickeq]", (ev) => {
     picked = ev.currentTarget.dataset.pickeq;
-    rerender();
+    rerender2();
   });
   const search = byId("f-search");
   search.addEventListener("input", () => {
@@ -1333,7 +1674,7 @@ function equipmentForm(mount2, head2, goHub) {
   };
   extra();
   byId("f-kind").addEventListener("change", extra);
-  wireBack(rerender);
+  wireBack(rerender2);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -1350,22 +1691,27 @@ function equipmentForm(mount2, head2, goHub) {
     picked = null;
   });
 }
+function aiMark(obj) {
+  return obj && obj.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "";
+}
 function exercises(mount2, head2, goHub) {
   if (editing) return exerciseForm(mount2, head2, goHub);
-  const rows = visibleExercises().map((ex) => {
+  const liste = visibleExercises();
+  const vonKi = liste.some((e) => e.src === "ai");
+  const rows = liste.map((ex) => {
     const eq = equipOf(ex.equip);
     const inPlans = exerciseUsage(ex.id);
-    return '<div class="lst"><div class="lst-m"><div class="lst-n">' + esc(nameOf(ex)) + '</div><div class="lst-s">' + esc(nameOf(eq)) + " \xB7 " + esc(inPlans ? t(inPlans === 1 ? "ex.inPlans1" : "ex.inPlans", { n: inPlans }) : t("ex.notInPlan")) + '</div></div><div class="row-act"><button class="mini" data-edit="' + ex.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + ex.id + '">' + esc(t("common.delete")) + "</button></div></div>";
+    return '<div class="lst"><div class="lst-m"><div class="lst-n">' + esc(nameOf(ex)) + aiMark(ex) + '</div><div class="lst-s">' + esc(nameOf(eq)) + " \xB7 " + esc(inPlans ? t(inPlans === 1 ? "ex.inPlans1" : "ex.inPlans", { n: inPlans }) : t("ex.notInPlan")) + '</div></div><div class="row-act"><button class="mini" data-edit="' + ex.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + ex.id + '">' + esc(t("common.delete")) + "</button></div></div>";
   }).join("");
-  mount2.innerHTML = head2() + backBar(t("ex.title")) + '<p class="intro">' + esc(t("ex.intro")) + "</p>" + rows + '<button class="set-btn" id="add">+ ' + esc(t("ex.add")) + "</button>";
+  mount2.innerHTML = head2() + backBar(t("ex.title")) + '<p class="intro">' + esc(t("ex.intro")) + "</p>" + rows + (vonKi ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + '<button class="set-btn" id="add">+ ' + esc(t("ex.add")) + "</button>";
   wireBack(goHub);
   byId("add").addEventListener("click", () => {
     editing = "new";
-    rerender();
+    rerender2();
   });
   on("[data-edit]", (ev) => {
     editing = ev.currentTarget.dataset.edit;
-    rerender();
+    rerender2();
   });
   on("[data-del]", (ev) => {
     const ex = exOf(ev.currentTarget.dataset.del);
@@ -1374,20 +1720,74 @@ function exercises(mount2, head2, goHub) {
     deleteExercise(ex.id);
   });
 }
+function exercisePicker(mount2, head2, goHub) {
+  const meine = new Set(S.equipment.map((e) => nameOf(e).toLowerCase()));
+  const passt = (i) => {
+    const eq = catalogEntry(i.eq);
+    return eq ? meine.has(catName(eq).toLowerCase()) : false;
+  };
+  const groups = EX_CATEGORIES.map((c) => '<div class="cat" data-cat="' + c.id + '"><h3 class="cat-h">' + esc(exName(c)) + "</h3>" + c.items.map((i) => {
+    const eq = catalogEntry(i.eq);
+    return '<button class="cat-i" data-pickex="' + esc(i.key) + '" data-mine="' + (passt(i) ? "1" : "0") + '" data-find="' + esc(exSearchText(i)) + '">' + esc(exName(i)) + '<span class="cat-eq">' + esc(eq ? catName(eq) : "") + "</span></button>";
+  }).join("") + "</div>").join("");
+  mount2.innerHTML = head2() + backBar(t("ex.pick")) + '<p class="intro">' + esc(t("ex.pickHint")) + '</p><label class="chk"><input type="checkbox" id="f-mine"' + (onlyMine ? " checked" : "") + "><span>" + esc(t("ex.onlyMine")) + '</span></label><input class="in" id="f-search" type="search" autocomplete="off" placeholder="' + esc(t("ex.search")) + '"><p class="intro" id="hits"></p><div id="cats">' + groups + '</div><p class="intro" id="nomatch" hidden>' + esc(t("ex.noMatch")) + '</p><button class="set-btn" id="own">+ ' + esc(t("ex.custom")) + "</button>";
+  wireBack(rerender2);
+  byId("own").addEventListener("click", () => {
+    pickedEx = "custom";
+    rerender2();
+  });
+  on("[data-pickex]", (ev) => {
+    pickedEx = ev.currentTarget.dataset.pickex;
+    rerender2();
+  });
+  const search = byId("f-search");
+  const mine = byId("f-mine");
+  const filter = () => {
+    const q = search.value.trim().toLowerCase();
+    const nurMeine = mine.checked;
+    let shown = 0;
+    document.querySelectorAll(".cat").forEach((cat) => {
+      let inCat = 0;
+      cat.querySelectorAll(".cat-i").forEach((b) => {
+        const hit = (!q || b.dataset.find.includes(q)) && (!nurMeine || b.dataset.mine === "1");
+        b.hidden = !hit;
+        if (hit) inCat++;
+      });
+      cat.hidden = inCat === 0;
+      shown += inCat;
+    });
+    byId("nomatch").hidden = shown > 0;
+    byId("hits").textContent = t("ex.fromCatalog", { n: shown });
+  };
+  filter();
+  search.addEventListener("input", filter);
+  mine.addEventListener("change", () => {
+    onlyMine = mine.checked;
+    filter();
+  });
+}
 function exerciseForm(mount2, head2, goHub) {
-  const ex = editing === "new" ? { equip: S.equipment[0] && S.equipment[0].id } : exOf(editing);
+  if (editing === "new" && !pickedEx) return exercisePicker(mount2, head2, goHub);
+  const ausKatalog = pickedEx && pickedEx !== "custom" ? exCatalogEntry(pickedEx) : null;
+  const geraetTyp = ausKatalog ? catalogEntry(ausKatalog.eq) : null;
+  const vorhanden = geraetTyp ? S.equipment.find((e) => nameOf(e).toLowerCase() === catName(geraetTyp).toLowerCase()) : null;
+  const ex = editing === "new" ? {
+    equip: vorhanden ? vorhanden.id : S.equipment[0] && S.equipment[0].id,
+    name: ausKatalog ? exName(ausKatalog) : ""
+  } : exOf(editing);
   if (!ex) {
     editing = null;
     return exercises(mount2, head2, goHub);
   }
   const eqOpts = S.equipment.map((e) => ({ id: e.id, label: nameOf(e) }));
   const bands = ex.bands || [];
-  mount2.innerHTML = head2() + backBar(editing === "new" ? t("ex.add") : nameOf(ex)) + field(t("ex.name"), textIn("f-name", editing === "new" ? "" : nameOf(ex))) + field(t("ex.equip"), selectIn("f-equip", eqOpts, ex.equip)) + field(
+  const fehlendesGeraet = geraetTyp && !vorhanden ? geraetTyp : null;
+  mount2.innerHTML = head2() + backBar(editing === "new" ? t("ex.add") : nameOf(ex)) + field(t("ex.name"), textIn("f-name", editing === "new" ? ex.name || "" : nameOf(ex))) + (fehlendesGeraet ? '<p class="intro">' + esc(t("ex.needsEquip", { name: catName(fehlendesGeraet) })) + '</p><label class="chk"><input type="checkbox" id="f-addeq" checked><span>' + esc(t("ex.addEquipToo")) + "</span></label>" : "") + field(t("ex.equip"), selectIn("f-equip", eqOpts, ex.equip)) + field(
     t("ex.bands"),
     '<span class="two">' + numIn("f-b1", bands[0] == null ? "" : bands[0], "0.5", 0) + numIn("f-b2", bands[1] == null ? "" : bands[1], "0.5", 0) + "</span>",
     t("ex.bandsSub")
   ) + '<button class="set-btn" id="save">' + esc(t("common.save")) + "</button>";
-  wireBack(rerender);
+  wireBack(rerender2);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -1395,25 +1795,42 @@ function exerciseForm(mount2, head2, goHub) {
       return;
     }
     const b1 = parseFloat(val("f-b1")), b2 = parseFloat(val("f-b2"));
-    const data2 = { name, equip: byId("f-equip").value };
+    let equip = byId("f-equip").value;
+    const mitAnlegen = byId("f-addeq");
+    if (fehlendesGeraet && mitAnlegen && mitAnlegen.checked) {
+      const daten = { name: catName(fehlendesGeraet), kind: fehlendesGeraet.kind };
+      if (fehlendesGeraet.kind === "plates") daten.plate = S.pw;
+      if (fehlendesGeraet.kind === "weight") daten.step = fehlendesGeraet.step || 2.5;
+      equip = addEquipment(daten).id;
+    }
+    const data2 = { name, equip };
     data2.bands = isFinite(b1) && isFinite(b2) ? [b1, b2] : void 0;
     if (editing === "new") addExercise(data2);
     else updateExercise(editing, data2);
     editing = null;
+    pickedEx = null;
   });
 }
-function plans(mount2, head2, goHub) {
+function plans2(mount2, head2, goHub, openPlanner) {
   if (editing) return planForm(mount2, head2, goHub);
-  const rows = S.plans.map((p) => '<div class="lst"><div class="lst-m"><div class="lst-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + '</div><div class="lst-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + p.items.length + '</div></div><div class="row-act"><button class="mini" data-edit="' + p.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + p.id + '">' + esc(t("common.delete")) + "</button></div></div>").join("");
-  mount2.innerHTML = head2() + backBar(t("pl.title")) + '<p class="intro">' + esc(t("pl.intro")) + "</p>" + rows + '<button class="set-btn" id="add">+ ' + esc(t("pl.add")) + "</button>";
+  const rows = S.plans.map((p) => '<div class="lst"><div class="lst-m"><div class="lst-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + aiMark(p) + '</div><div class="lst-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + p.items.length + '</div></div><div class="row-act"><button class="mini" data-edit="' + p.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + p.id + '">' + esc(t("common.delete")) + "</button></div></div>").join("");
+  const verbunden = !!(S.ai.keys[S.ai.provider] || "").trim();
+  mount2.innerHTML = head2() + backBar(t("pl.title")) + '<p class="intro">' + esc(t("pl.intro")) + "</p>" + rows + (S.plans.some((p) => p.src === "ai") ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + '<button class="set-btn" id="add">+ ' + esc(t("pl.add")) + '</button><button class="nav-row" id="ai"><span class="nav-n">\u2726 ' + esc(t("pl.aiCreate")) + '</span><span class="nav-s">' + esc(verbunden ? t("pl.aiCreateSub") : t("pl.aiNeedsKey")) + '</span><span class="nav-c">\u203A</span></button>';
   wireBack(goHub);
+  byId("ai").addEventListener("click", () => {
+    if (!verbunden) {
+      toast(t("pl.aiNeedsKey"), true);
+      return;
+    }
+    openPlanner();
+  });
   byId("add").addEventListener("click", () => {
     const p = addPlan({ name: t("common.new"), focus: "" });
     editing = p.id;
   });
   on("[data-edit]", (ev) => {
     editing = ev.currentTarget.dataset.edit;
-    rerender();
+    rerender2();
   });
   on("[data-del]", (ev) => {
     const p = planOf(ev.currentTarget.dataset.del);
@@ -1426,7 +1843,7 @@ function planForm(mount2, head2, goHub) {
   const p = planOf(editing);
   if (!p) {
     editing = null;
-    return plans(mount2, head2, goHub);
+    return plans2(mount2, head2, goHub);
   }
   const items = p.items.map((i) => {
     const ex = exOf(i.ex);
@@ -1434,7 +1851,7 @@ function planForm(mount2, head2, goHub) {
   }).join("");
   const free = visibleExercises().filter((e) => !p.items.some((i) => i.ex === e.id));
   mount2.innerHTML = head2() + backBar(nameOf(p)) + field(t("pl.name"), textIn("f-name", nameOf(p))) + field(t("pl.short"), textIn("f-short", p.short || ""), t("pl.shortSub")) + field(t("pl.focus"), textIn("f-focus", focusOf(p))) + checkIn("f-night", t("pl.night"), !!p.night) + '<p class="fld-h">' + esc(t("pl.nightSub")) + '</p><button class="set-btn" id="save">' + esc(t("common.save")) + '</button><h3 class="sec">' + esc(t("pl.items")) + "</h3>" + (items || '<p class="intro">' + esc(t("pl.empty")) + "</p>") + (free.length ? '<div class="add-row">' + selectIn("f-add", free.map((e) => ({ id: e.id, label: nameOf(e) })), free[0].id) + '<button class="mini" id="additem">+ ' + esc(t("pl.addItem")) + "</button></div>" : '<p class="intro">' + esc(visibleExercises().length ? "" : t("pl.noExercises")) + "</p>");
-  wireBack(rerender);
+  wireBack(rerender2);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -1554,42 +1971,16 @@ var Clipboard = registerPlugin("Clipboard", {
 });
 
 // src/js/views/aiview.js
-var rerender2 = () => document.dispatchEvent(new CustomEvent("rerender"));
-var busy = false;
+var rerender3 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var verifying = false;
 var connecting = false;
-var result = null;
 var models = [];
-var form = { goal: "muscle", days: 3, level: "some", notes: "" };
-function reset() {
-  result = null;
-  busy = false;
+function reset2() {
   verifying = false;
   connecting = false;
 }
-var goalOptions = () => [
-  { id: "strength", label: t("ai.goalStrength") },
-  { id: "muscle", label: t("ai.goalMuscle") },
-  { id: "fitness", label: t("ai.goalFitness") },
-  { id: "lose", label: t("ai.goalLose") }
-];
-var levelOptions = () => [
-  { id: "new", label: t("ai.levelNew") },
-  { id: "some", label: t("ai.levelSome") },
-  { id: "pro", label: t("ai.levelPro") }
-];
-var kindLabel = (eq) => eq.kind === "plates" ? t("equip.kindPlates") : eq.kind === "weight" ? t("equip.kindWeight") : t("equip.kindBody");
 var keyOf = () => (S.ai.keys[S.ai.provider] || "").trim();
 var verifiedAt = () => (S.ai.verified || {})[S.ai.provider] || 0;
-function readForm() {
-  if (!byId("f-goal")) return;
-  form = {
-    goal: byId("f-goal").value,
-    days: parseInt(byId("f-days").value, 10) || 3,
-    level: byId("f-level").value,
-    notes: val("f-notes")
-  };
-}
 function connectionBlock(prov) {
   const key = keyOf();
   const when = verifiedAt();
@@ -1632,9 +2023,9 @@ async function runVerify() {
     return;
   }
   verifying = true;
-  rerender2();
+  rerender3();
   try {
-    const mod = await import("./part-N7USLMFD.js");
+    const mod = await import("./part-63NSOGNF.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -1645,25 +2036,19 @@ async function runVerify() {
   } catch (e) {
     verifying = false;
     toast(t("ai.failed", { msg: e.message }), true);
-    rerender2();
+    rerender3();
   }
 }
-function preview() {
-  const ex = (result.exercises || []).map((e) => "<li>" + esc(e.name) + ' <span class="lst-s">\u2014 ' + esc(nameOf(equipOf(e.equipment))) + "</span></li>").join("");
-  const plans2 = (result.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
-  return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plans2 + (ex ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result.exercises || []).length })) + '</p><ul class="plain">' + ex + "</ul>" : "") + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>";
-}
-function render3(mount2, head2, backBar3, goHub) {
+function render4(mount2, head2, backBar3, goHub) {
   const prov = providerOf(S.ai.provider);
-  const connected = !!keyOf();
+  const connected2 = !!keyOf();
   const modelOpts = models.length ? models.map((m) => ({ id: m.id, label: m.label })) : [{ id: S.ai.model || prov.defaultModel, label: S.ai.model || prov.defaultModel }];
-  mount2.innerHTML = head2() + backBar3(t("ai.title")) + '<p class="intro">' + esc(t("ai.intro")) + "</p>" + (isNative() ? "" : '<p class="intro">' + esc(t("ai.webKeyNote")) + "</p>") + field(t("ai.provider"), selectIn("f-prov", PROVIDERS.map((p) => ({ id: p.id, label: p.label })), S.ai.provider)) + connectionBlock(prov) + (connected ? field(
+  mount2.innerHTML = head2() + backBar3(t("ai.title")) + '<p class="intro">' + esc(t("ai.intro")) + "</p>" + (isNative() ? "" : '<p class="intro">' + esc(t("ai.webKeyNote")) + "</p>") + field(t("ai.provider"), selectIn("f-prov", PROVIDERS.map((p) => ({ id: p.id, label: p.label })), S.ai.provider)) + connectionBlock(prov) + (connected2 ? field(
     t("ai.model"),
     '<span class="two">' + selectIn("f-model", modelOpts, S.ai.model || prov.defaultModel) + textIn("f-modelfree", S.ai.model || prov.defaultModel) + "</span>"
-  ) + '<h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>" + field(t("ai.goal"), selectIn("f-goal", goalOptions(), form.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form.level)) + field(t("ai.notes"), textIn("f-notes", form.notes)) + '<button class="set-btn' + (busy ? "" : " go") + '" id="gen"' + (busy ? " disabled" : "") + ">" + esc(busy ? t("ai.working") : t("ai.generate")) + "</button>" + (result ? preview() : "") : "");
+  ) : "");
   byId("back").addEventListener("click", goHub);
   byId("f-prov").addEventListener("change", (ev) => {
-    readForm();
     models = [];
     connecting = false;
     S.ai.provider = ev.target.value;
@@ -1673,7 +2058,7 @@ function render3(mount2, head2, backBar3, goHub) {
   const connect = byId("connect");
   if (connect) connect.addEventListener("click", async () => {
     connecting = true;
-    rerender2();
+    rerender3();
     try {
       await Browser.open({ url: prov.keyUrl });
     } catch (e) {
@@ -1702,7 +2087,7 @@ function render3(mount2, head2, backBar3, goHub) {
     await touch();
     toast(t("ai.disconnected"));
   });
-  if (!connected) return;
+  if (!connected2) return;
   byId("f-model").addEventListener("change", (ev) => {
     byId("f-modelfree").value = ev.target.value;
     S.ai.model = ev.target.value;
@@ -1712,45 +2097,6 @@ function render3(mount2, head2, backBar3, goHub) {
     S.ai.model = ev.target.value.trim();
     touch();
   });
-  byId("gen").addEventListener("click", async () => {
-    readForm();
-    if (!S.equipment.length) {
-      toast(t("ai.needEquip"), true);
-      return;
-    }
-    busy = true;
-    result = null;
-    rerender2();
-    try {
-      const mod = await import("./part-N7USLMFD.js");
-      result = await mod.generatePlan({
-        provider: S.ai.provider,
-        key: keyOf(),
-        model: val("f-modelfree") || S.ai.model,
-        goal: goalOptions().find((o) => o.id === form.goal).label,
-        level: levelOptions().find((o) => o.id === form.level).label,
-        days: form.days,
-        notes: form.notes,
-        equipment: S.equipment.map((e) => ({ id: e.id, name: nameOf(e), kindLabel: kindLabel(e) }))
-      });
-    } catch (e) {
-      toast(t("ai.failed", { msg: e.message }), true);
-    }
-    busy = false;
-    rerender2();
-  });
-  if (result) {
-    byId("accept").addEventListener("click", () => {
-      const n = applyGenerated(result);
-      result = null;
-      toast(t("ai.accepted") + (n ? " " + t("ai.newExercises", { n }) : ""));
-    });
-    byId("discard").addEventListener("click", () => {
-      result = null;
-      rerender2();
-    });
-  }
-  on("#f-goal, #f-days, #f-level, #f-notes", readForm, "change");
 }
 
 // src/js/update.js
@@ -1820,13 +2166,13 @@ async function cleanup(name) {
 }
 
 // src/js/views/updateview.js
-var rerender3 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender4 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var state = "idle";
 var latest = null;
 var installed = null;
 var percent = 0;
 var apkPath = null;
-function reset2() {
+function reset3() {
   if (state === "loading") return;
   state = "idle";
   latest = null;
@@ -1840,7 +2186,7 @@ function notesOf(info) {
   if (!info || !info.notes) return "";
   return info.notes[getLang()] || info.notes.de || info.notes.en || "";
 }
-function render4(mount2, head2, backBar3, goHub) {
+function render5(mount2, head2, backBar3, goHub) {
   const body = canUpdate() ? nativeBody() : '<p class="intro">' + esc(t("upd.webSelfUpdates")) + "</p>";
   mount2.innerHTML = head2() + backBar3(t("upd.title")) + '<p class="intro">' + esc(t("upd.installed", {
     version: installed ? installed.name : APP_VERSION
@@ -1871,7 +2217,7 @@ function wire() {
 }
 async function runCheck() {
   state = "checking";
-  rerender3();
+  rerender4();
   try {
     const res = await check();
     installed = res.cur;
@@ -1881,18 +2227,18 @@ async function runCheck() {
     state = "idle";
     toast(t("upd.failed", { msg: e.message }), true);
   }
-  rerender3();
+  rerender4();
 }
 async function runDownload() {
   state = "loading";
   percent = 0;
-  rerender3();
+  rerender4();
   try {
     await cleanup(latest.apk);
     apkPath = await download(latest, (p) => {
       if (p !== percent) {
         percent = p;
-        rerender3();
+        rerender4();
       }
     });
     state = "ready";
@@ -1900,7 +2246,7 @@ async function runDownload() {
     state = "found";
     toast(t("upd.failed", { msg: e.message }), true);
   }
-  rerender3();
+  rerender4();
 }
 async function runInstall() {
   try {
@@ -1911,15 +2257,96 @@ async function runInstall() {
   }
 }
 
+// src/js/views/planner.js
+var rerender5 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var busy2 = false;
+var result = null;
+var form = { goal: "muscle", days: 3, level: "some", notes: "" };
+function reset4() {
+  busy2 = false;
+  result = null;
+}
+var goalOptions = () => [
+  { id: "strength", label: t("ai.goalStrength") },
+  { id: "muscle", label: t("ai.goalMuscle") },
+  { id: "fitness", label: t("ai.goalFitness") },
+  { id: "lose", label: t("ai.goalLose") }
+];
+var levelOptions = () => [
+  { id: "new", label: t("ai.levelNew") },
+  { id: "some", label: t("ai.levelSome") },
+  { id: "pro", label: t("ai.levelPro") }
+];
+var kindLabel = (eq) => eq.kind === "plates" ? t("equip.kindPlates") : eq.kind === "weight" ? t("equip.kindWeight") : t("equip.kindBody");
+function readForm() {
+  if (!byId("f-goal")) return;
+  form = {
+    goal: byId("f-goal").value,
+    days: parseInt(byId("f-days").value, 10) || 3,
+    level: byId("f-level").value,
+    notes: val("f-notes")
+  };
+}
+function preview() {
+  const neue = (result.exercises || []).map((e) => "<li>" + esc(e.name) + ' <span class="lst-s">\u2014 ' + esc(nameOf(equipOf(e.equipment))) + "</span></li>").join("");
+  const plaene = (result.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
+  return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plaene + (neue ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result.exercises || []).length })) + '</p><ul class="plain">' + neue + "</ul>" : "") + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>";
+}
+function render6(mount2, head2, backBar3, goBack) {
+  mount2.innerHTML = head2() + backBar3(t("pl.aiTitle")) + '<p class="intro">' + esc(t("ai.intro")) + '</p><h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>" + field(t("ai.goal"), selectIn("f-goal", goalOptions(), form.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form.level)) + field(t("ai.notes"), textIn("f-notes", form.notes)) + '<button class="set-btn' + (busy2 ? "" : " go") + '" id="gen"' + (busy2 ? " disabled" : "") + ">" + esc(busy2 ? t("ai.working") : t("ai.generate")) + "</button>" + (result ? preview() : "");
+  byId("back").addEventListener("click", goBack);
+  byId("gen").addEventListener("click", async () => {
+    readForm();
+    if (!S.equipment.length) {
+      toast(t("ai.needEquip"), true);
+      return;
+    }
+    busy2 = true;
+    result = null;
+    rerender5();
+    try {
+      const mod = await import("./part-63NSOGNF.js");
+      result = await mod.generatePlan({
+        provider: S.ai.provider,
+        key: (S.ai.keys[S.ai.provider] || "").trim(),
+        model: S.ai.model || providerOf(S.ai.provider).defaultModel,
+        goal: goalOptions().find((o) => o.id === form.goal).label,
+        level: levelOptions().find((o) => o.id === form.level).label,
+        days: form.days,
+        notes: form.notes,
+        equipment: S.equipment.map((e) => ({ id: e.id, name: nameOf(e), kindLabel: kindLabel(e) }))
+      });
+    } catch (e) {
+      toast(t("ai.failed", { msg: e.message }), true);
+    }
+    busy2 = false;
+    rerender5();
+  });
+  if (result) {
+    byId("accept").addEventListener("click", () => {
+      const n = applyGenerated(result);
+      result = null;
+      toast(t("ai.accepted") + (n ? " " + t("ai.newExercises", { n }) : ""));
+      goBack();
+    });
+    byId("discard").addEventListener("click", () => {
+      result = null;
+      rerender5();
+    });
+  }
+  on("#f-goal, #f-days, #f-level, #f-notes", readForm, "change");
+}
+
 // src/js/views/options.js
-var rerender4 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender6 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var sub = null;
 var backups = [];
 function resetSub() {
   sub = null;
   resetEditing();
-  reset();
   reset2();
+  reset3();
+  reset4();
 }
 async function refresh() {
   backups = await listBackups();
@@ -1927,25 +2354,27 @@ async function refresh() {
 function go(next) {
   sub = next;
   resetEditing();
-  if (next !== "ai") reset();
-  if (next !== "update") reset2();
-  rerender4();
+  if (next !== "ai") reset2();
+  if (next !== "update") reset3();
+  if (next !== "planner") reset4();
+  rerender6();
 }
 function backBar2(title) {
   return '<div class="sub-bar"><button class="mini" id="back">\u2039 ' + esc(t("common.back")) + "</button><h2>" + esc(title) + "</h2></div>";
 }
-function render5(head2, mount2) {
+function render7(head2, mount2) {
   const goHub = () => go(null);
   if (sub === "equipment") return equipment(mount2, head2, goHub);
   if (sub === "exercises") return exercises(mount2, head2, goHub);
-  if (sub === "plans") return plans(mount2, head2, goHub);
-  if (sub === "ai") return render3(mount2, head2, backBar2, goHub);
-  if (sub === "update") return render4(mount2, head2, backBar2, goHub);
+  if (sub === "plans") return plans2(mount2, head2, goHub, () => go("planner"));
+  if (sub === "planner") return render6(mount2, head2, backBar2, () => go("plans"));
+  if (sub === "ai") return render4(mount2, head2, backBar2, goHub);
+  if (sub === "update") return render5(mount2, head2, backBar2, goHub);
   if (sub === "lang") return language(mount2, head2, goHub);
   if (sub === "data") return data(mount2, head2, goHub);
   return hub(mount2, head2);
 }
-function stats() {
+function stats2() {
   const done = Object.values(S.log).filter((e) => e && e.done);
   const first = Object.keys(S.log).sort()[0];
   return { total: done.length, first };
@@ -1954,11 +2383,15 @@ function entry2(id, title, subtitle) {
   return '<button class="nav-row" data-go="' + id + '"><span class="nav-n">' + esc(title) + '</span><span class="nav-s">' + esc(subtitle) + '</span><span class="nav-c">\u203A</span></button>';
 }
 function hub(mount2, head2) {
-  const s2 = stats();
+  const s2 = stats2();
   const lang = LANGS.find((l) => l.id === S.lang);
-  mount2.innerHTML = head2() + '<div class="set-sec"><h2>' + esc(t("opt.overview")) + '</h2><div class="set-stat"><div><b>' + s2.total + "</b>" + esc(t("opt.totalUnits")) + "</div></div>" + (s2.first ? "<p>" + esc(t("opt.firstEntry", {
+  mount2.innerHTML = head2() + backBar2(t("nav.menu")) + '<div class="set-sec"><h2>' + esc(t("opt.overview")) + '</h2><div class="set-stat"><div><b>' + s2.total + "</b>" + esc(t("opt.totalUnits")) + "</div></div>" + (s2.first ? "<p>" + esc(t("opt.firstEntry", {
     date: longDate(new Date(s2.first.split("-")[0], s2.first.split("-")[1] - 1, s2.first.split("-")[2]))
   })) + "</p>" : "") + "</div>" + entry2("ai", t("opt.ai"), t("opt.aiSub")) + entry2("lang", t("opt.language"), lang ? lang.label : S.lang) + entry2("equipment", t("opt.equipment"), t("opt.equipmentSub", { n: S.equipment.length })) + entry2("exercises", t("opt.exercises"), t("opt.exercisesSub", { n: visibleExercises().length })) + entry2("plans", t("opt.plans"), t("opt.plansSub", { n: S.plans.length })) + entry2("data", t("opt.data"), t("opt.dataSub")) + entry2("update", t("upd.title"), t("upd.titleSub")) + '<div class="tp-note">' + esc(t("opt.about", { app: APP_NAME, version: APP_VERSION })) + "</div>";
+  byId("back").addEventListener(
+    "click",
+    () => document.dispatchEvent(new CustomEvent("goback"))
+  );
   on("[data-go]", (ev) => go(ev.currentTarget.dataset.go));
 }
 function language(mount2, head2, goHub) {
@@ -1974,7 +2407,7 @@ function data(mount2, head2, goHub) {
       const r = await exportBackup(S);
       toast(t("data.saved", { name: r.name }));
       await refresh();
-      rerender4();
+      rerender6();
     } catch (e) {
       toast(t("data.saveFailed", { msg: e.message }), true);
     }
@@ -2010,16 +2443,19 @@ function data(mount2, head2, goHub) {
 }
 
 // src/js/app.js
-var VIEWS = { plan: plan_exports, log: log_exports, options: options_exports };
-var LABEL = { plan: "nav.plan", log: "nav.log", options: "nav.options" };
-var view = "plan";
+var VIEWS = { home: home_exports, plan: plan_exports, log: log_exports, options: options_exports };
+var TABS = [
+  ["home", "nav.home"],
+  ["plan", "nav.plan"],
+  ["log", "nav.log"]
+];
+var view = "home";
+var lastTab = "home";
 var mount = document.getElementById("app");
 function head() {
-  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-date">' + esc(today.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })) + '</div></div><div class="tp-nav">' + Object.keys(VIEWS).map(
-    (v) => '<button data-view="' + v + '" class="' + (v === view ? "sel" : "") + '">' + esc(t(LABEL[v])) + "</button>"
-  ).join("") + "</div>";
+  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-date">' + esc(today.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })) + '</div></div><div class="tp-nav">' + TABS.map(([v, key]) => '<button data-view="' + v + '" class="' + (v === view ? "sel" : "") + '">' + esc(t(key)) + "</button>").join("") + '<button data-view="options" class="burger' + (view === "options" ? " sel" : "") + '" aria-label="' + esc(t("nav.menu")) + '"><span></span><span></span><span></span></button></div>';
 }
-function render6() {
+function render8() {
   const scroll = window.scrollY;
   VIEWS[view].render(head, mount);
   document.querySelectorAll("[data-view]").forEach((b) => {
@@ -2031,32 +2467,36 @@ async function setView(v) {
   if (v === view) {
     if (v === "options") {
       resetSub();
-      render6();
+      render8();
     }
     if (v === "log") {
       resetSelection();
-      render6();
+      render8();
     }
     return;
   }
+  if (view !== "options") lastTab = view;
   view = v;
   if (v === "log") resetSelection();
+  if (v === "home") reset();
   if (v === "options") {
     resetSub();
     await refresh();
   }
-  render6();
+  render8();
 }
-document.addEventListener("rerender", render6);
-onChange(render6);
+document.addEventListener("rerender", render8);
+document.addEventListener("goview", (ev) => setView(ev.detail));
+document.addEventListener("goback", () => setView(lastTab));
+onChange(render8);
 async function wireNative() {
   if (!Capacitor.isNativePlatform()) return;
   await App.addListener("backButton", () => {
-    if (view !== "plan") setView("plan");
+    if (view !== "home") setView("home");
     else App.exitApp();
   });
   await App.addListener("appStateChange", ({ isActive }) => {
-    if (isActive && refreshDay()) render6();
+    if (isActive && refreshDay()) render8();
   });
   try {
     await StatusBar.setBackgroundColor({ color: "#16140F" });
@@ -2071,7 +2511,7 @@ function wireServiceWorker() {
   });
 }
 setInterval(() => {
-  if (refreshDay()) render6();
+  if (refreshDay()) render8();
 }, 6e4);
 (async function start() {
   try {
@@ -2081,5 +2521,5 @@ setInterval(() => {
   }
   await wireNative();
   wireServiceWorker();
-  render6();
+  render8();
 })();

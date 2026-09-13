@@ -7,22 +7,29 @@ installierbare APK.
 
 ## Was die App kann
 
+- **Start**: Überblick (Woche, Serie, Gesamtzahl, die letzten acht Wochen als
+  Balken), Planwahl mit einem Tipp ins Training, und — sobald die KI verbunden
+  ist — ein Chat mit dem virtuellen Trainer, der Geräte, Pläne und die letzten
+  Einheiten kennt.
 - **Training**: Sätze je Übung antippen (0 → 1 → 2 → 3 → wieder 0), Gewicht
   einstellen, Ampel für leicht / mittel / schwer. Wochenleiste, Zielanzahl je
   Woche, Vorschlag der nächsten Einheit, Umschalter für Nachtschichtwochen.
 - **Verlauf**: Monatskalender, Tag antippen zeigt Übungen und Gewichte von damals.
-- **Optionen**:
+- **Menü** (der Knopf mit den drei Strichen):
   - Sprache Deutsch oder Englisch.
   - **Geräte** per Schnellauswahl gleich im Satz anlegen (Studio, Kraftstation,
     Power Rack …) oder einzeln aus einem Katalog von 83 Gerätetypen in neun
     Kategorien wählen, mit Suchfeld über beide Sprachen — oder frei benennen.
     Gewicht wird in Platten, in Kilogramm oder gar nicht gezählt; Plattengewicht
     und Schrittweite gehören zum einzelnen Gerät.
-  - **Übungen** selbst anlegen, einem Gerät zuordnen, Ampelbereiche setzen.
+  - **Übungen** aus einem Katalog von 113 bekannten Übungen wählen, nach
+    Muskelgruppe geordnet und auf die eigenen Geräte filterbar — fehlt das
+    passende Gerät, wird es auf Wunsch gleich mit angelegt. Oder frei benennen.
   - **Pläne** selbst zusammenstellen: Übungen, Sätze, Wiederholungen,
-    Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender.
-  - **KI-Trainingsplan**: aus den eigenen Geräten einen Plan erzeugen lassen
-    (siehe unten).
+    Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender —
+    oder von der KI erstellen lassen.
+  - **KI**: Anbieter, Zugang und Modell — reine Verwaltung. Gearbeitet wird
+    damit auf der Startseite (Chat) und unter Pläne (Plan erstellen lassen).
   - **Daten**: sichern, wiederherstellen, alles löschen.
   - **Aktualisierung**: neue Fassung suchen, laden und installieren.
 - Läuft vollständig offline, auch die Schriften liegen in der App. Nur KI und
@@ -37,7 +44,6 @@ Start angelegt und ist danach genauso bearbeitbar wie alles Selbstgemachte.
 dachboden/
   src/js/              Quellcode
     data.js            Startbestand: Geräte, Übungen, Pläne
-    catalog.js         Katalog der Gerätetypen  <- hier Geräte ergänzen
     i18n.js            alle Texte auf Deutsch und Englisch
     store.js           Speichern, Laden, Migration, Sicherungen
     state.js           Zustand und Regeln, kennt kein DOM
@@ -46,8 +52,10 @@ dachboden/
     ai-meta.js         Anbieterliste, ohne schwere Abhängigkeiten
     update.js          Versionsabgleich, Download, Installationsaufruf
     app.js             Einstieg, Ansichtswechsel, Zurück-Taste
-    views/             plan.js, log.js, options.js, editors.js,
-                       aiview.js, updateview.js
+    catalog.js         Gerätetypen und Kombigeräte
+    ex-catalog.js      Übungskatalog nach Muskelgruppe
+    views/             home.js, plan.js, log.js, options.js, editors.js,
+                       aiview.js, planner.js, updateview.js
   www/                 was die App wirklich lädt
     index.html
     css/app.css        Gestaltung
@@ -162,6 +170,20 @@ Hantelbank-Set, Körpergewicht. Ein Bündel ist nur eine Liste von
 Katalogschlüsseln; beim Öffnen sind alle Teile angehakt, was der eigene Aufbau
 nicht hat, wird abgewählt. Bereits vorhandene Geräte erkennt die App am Namen,
 zeigt sie abgehakt und legt sie nicht doppelt an.
+
+## Herkunft von Übungen und Plänen
+
+Was der virtuelle Trainer angelegt hat, trägt `src: 'ai'` und wird in den
+Listen mit ✦ markiert; alles andere bleibt ohne Zeichen. Die eingebauten
+Start-Übungen zählen dabei wie selbst angelegte.
+
+## Der virtuelle Trainer
+
+Der Chat auf der Startseite schickt bei jeder Frage einen kurzen Abriss mit:
+Geräteliste, Pläne mit ihren Übungen, die letzten acht Einheiten und den Stand
+der laufenden Woche. Damit kann er zur Sache antworten, statt allgemein zu
+bleiben. Der Gesprächsverlauf liegt im App-Speicher, die letzten vierzig
+Nachrichten, und lässt sich löschen.
 
 ## Aktualisierung aus der App heraus
 

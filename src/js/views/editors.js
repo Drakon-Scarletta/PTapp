@@ -2,6 +2,7 @@
 import * as st from '../state.js';
 import { t } from '../i18n.js';
 import { CATEGORIES, BUNDLES, bundleOf, catName, catSub, searchText, catalogEntry, catalogSize } from '../catalog.js';
+import { EX_CATEGORIES, exCatalogEntry, exName, exSearchText } from '../ex-catalog.js';
 import { esc, on, byId, val, toast, confirmBox, field, textIn, numIn, selectIn, checkIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -10,7 +11,9 @@ const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 let editing = null;
 let picked = null;           // Katalogschluessel, 'custom' oder null
 let bundle = null;           // gewaehltes Kombigeraet
-export function resetEditing() { editing = null; picked = null; bundle = null; }
+let pickedEx = null;         // Uebungskatalog: Schluessel, 'custom' oder null
+let onlyMine = true;         // Uebungen auf die eigenen Geraete beschraenken
+export function resetEditing() { editing = null; picked = null; bundle = null; pickedEx = null; }
 
 function sideOptions() {
   return [
@@ -34,7 +37,9 @@ function backBar(title) {
     '<h2>' + esc(title) + '</h2></div>';
 }
 function wireBack(to) {
-  byId('back').addEventListener('click', () => { editing = null; picked = null; bundle = null; to(); });
+  byId('back').addEventListener('click', () => {
+    editing = null; picked = null; bundle = null; pickedEx = null; to();
+  });
 }
 
 // ---------- Geräte ----------
@@ -229,15 +234,24 @@ function equipmentForm(mount, head, goHub) {
   });
 }
 
+// Zeichen für alles, was der virtuelle Trainer angelegt hat.
+export function aiMark(obj) {
+  return obj && obj.src === 'ai'
+    ? ' <span class="ai-mark" title="' + esc(t('ex.aiMade')) + '">✦</span>'
+    : '';
+}
+
 // ---------- Übungen ----------
 export function exercises(mount, head, goHub) {
   if (editing) return exerciseForm(mount, head, goHub);
 
-  const rows = st.visibleExercises().map(ex => {
+  const liste = st.visibleExercises();
+  const vonKi = liste.some(e => e.src === 'ai');
+  const rows = liste.map(ex => {
     const eq = st.equipOf(ex.equip);
     const inPlans = st.exerciseUsage(ex.id);
     return '<div class="lst"><div class="lst-m">' +
-      '<div class="lst-n">' + esc(st.nameOf(ex)) + '</div>' +
+      '<div class="lst-n">' + esc(st.nameOf(ex)) + aiMark(ex) + '</div>' +
       '<div class="lst-s">' + esc(st.nameOf(eq)) + ' · ' +
       esc(inPlans ? t(inPlans === 1 ? 'ex.inPlans1' : 'ex.inPlans', { n: inPlans }) : t('ex.notInPlan')) + '</div></div>' +
       '<div class="row-act">' +
@@ -248,6 +262,7 @@ export function exercises(mount, head, goHub) {
 
   mount.innerHTML = head() + backBar(t('ex.title')) +
     '<p class="intro">' + esc(t('ex.intro')) + '</p>' + rows +
+    (vonKi ? '<p class="fld-h">✦ ' + esc(t('ex.legend')) + '</p>' : '') +
     '<button class="set-btn" id="add">+ ' + esc(t('ex.add')) + '</button>';
 
   wireBack(goHub);
@@ -261,14 +276,96 @@ export function exercises(mount, head, goHub) {
   });
 }
 
+// Auswahl aus dem Übungskatalog, vor dem Formular.
+function exercisePicker(mount, head, goHub) {
+  const meine = new Set(st.S.equipment.map(e => st.nameOf(e).toLowerCase()));
+  // Ein Katalogeintrag passt, wenn das zugehörige Gerät bei mir steht.
+  const passt = i => {
+    const eq = catalogEntry(i.eq);
+    return eq ? meine.has(catName(eq).toLowerCase()) : false;
+  };
+
+  const groups = EX_CATEGORIES.map(c =>
+    '<div class="cat" data-cat="' + c.id + '">' +
+      '<h3 class="cat-h">' + esc(exName(c)) + '</h3>' +
+      c.items.map(i => {
+        const eq = catalogEntry(i.eq);
+        return '<button class="cat-i" data-pickex="' + esc(i.key) + '" ' +
+          'data-mine="' + (passt(i) ? '1' : '0') + '" ' +
+          'data-find="' + esc(exSearchText(i)) + '">' + esc(exName(i)) +
+          '<span class="cat-eq">' + esc(eq ? catName(eq) : '') + '</span></button>';
+      }).join('') +
+    '</div>').join('');
+
+  mount.innerHTML = head() + backBar(t('ex.pick')) +
+    '<p class="intro">' + esc(t('ex.pickHint')) + '</p>' +
+    '<label class="chk"><input type="checkbox" id="f-mine"' + (onlyMine ? ' checked' : '') + '>' +
+      '<span>' + esc(t('ex.onlyMine')) + '</span></label>' +
+    '<input class="in" id="f-search" type="search" autocomplete="off" ' +
+      'placeholder="' + esc(t('ex.search')) + '">' +
+    '<p class="intro" id="hits"></p>' +
+    '<div id="cats">' + groups + '</div>' +
+    '<p class="intro" id="nomatch" hidden>' + esc(t('ex.noMatch')) + '</p>' +
+    '<button class="set-btn" id="own">+ ' + esc(t('ex.custom')) + '</button>';
+
+  wireBack(rerender);
+  byId('own').addEventListener('click', () => { pickedEx = 'custom'; rerender(); });
+  on('[data-pickex]', ev => { pickedEx = ev.currentTarget.dataset.pickex; rerender(); });
+
+  const search = byId('f-search');
+  const mine = byId('f-mine');
+  const filter = () => {
+    const q = search.value.trim().toLowerCase();
+    const nurMeine = mine.checked;
+    let shown = 0;
+    document.querySelectorAll('.cat').forEach(cat => {
+      let inCat = 0;
+      cat.querySelectorAll('.cat-i').forEach(b => {
+        const hit = (!q || b.dataset.find.includes(q)) && (!nurMeine || b.dataset.mine === '1');
+        b.hidden = !hit;
+        if (hit) inCat++;
+      });
+      cat.hidden = inCat === 0;
+      shown += inCat;
+    });
+    byId('nomatch').hidden = shown > 0;
+    byId('hits').textContent = t('ex.fromCatalog', { n: shown });
+  };
+  filter();
+  search.addEventListener('input', filter);
+  mine.addEventListener('change', () => { onlyMine = mine.checked; filter(); });
+}
+
 function exerciseForm(mount, head, goHub) {
-  const ex = editing === 'new' ? { equip: st.S.equipment[0] && st.S.equipment[0].id } : st.exOf(editing);
+  if (editing === 'new' && !pickedEx) return exercisePicker(mount, head, goHub);
+
+  const ausKatalog = pickedEx && pickedEx !== 'custom' ? exCatalogEntry(pickedEx) : null;
+  const geraetTyp = ausKatalog ? catalogEntry(ausKatalog.eq) : null;
+  // Passendes Gerät suchen; fehlt es, kann es beim Speichern mit angelegt werden.
+  const vorhanden = geraetTyp
+    ? st.S.equipment.find(e => st.nameOf(e).toLowerCase() === catName(geraetTyp).toLowerCase())
+    : null;
+
+  const ex = editing === 'new'
+    ? {
+        equip: vorhanden ? vorhanden.id : (st.S.equipment[0] && st.S.equipment[0].id),
+        name: ausKatalog ? exName(ausKatalog) : ''
+      }
+    : st.exOf(editing);
   if (!ex) { editing = null; return exercises(mount, head, goHub); }
   const eqOpts = st.S.equipment.map(e => ({ id: e.id, label: st.nameOf(e) }));
   const bands = ex.bands || [];
 
+  // Fehlt das Gerät aus dem Katalog, wird es auf Wunsch gleich mit angelegt.
+  const fehlendesGeraet = geraetTyp && !vorhanden ? geraetTyp : null;
+
   mount.innerHTML = head() + backBar(editing === 'new' ? t('ex.add') : st.nameOf(ex)) +
-    field(t('ex.name'), textIn('f-name', editing === 'new' ? '' : st.nameOf(ex))) +
+    field(t('ex.name'), textIn('f-name', editing === 'new' ? (ex.name || '') : st.nameOf(ex))) +
+    (fehlendesGeraet
+      ? '<p class="intro">' + esc(t('ex.needsEquip', { name: catName(fehlendesGeraet) })) + '</p>' +
+        '<label class="chk"><input type="checkbox" id="f-addeq" checked><span>' +
+        esc(t('ex.addEquipToo')) + '</span></label>'
+      : '') +
     field(t('ex.equip'), selectIn('f-equip', eqOpts, ex.equip)) +
     field(t('ex.bands'),
       '<span class="two">' + numIn('f-b1', bands[0] == null ? '' : bands[0], '0.5', 0) +
@@ -281,31 +378,54 @@ function exerciseForm(mount, head, goHub) {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }
     const b1 = parseFloat(val('f-b1')), b2 = parseFloat(val('f-b2'));
-    const data = { name, equip: byId('f-equip').value };
+
+    let equip = byId('f-equip').value;
+    const mitAnlegen = byId('f-addeq');
+    if (fehlendesGeraet && mitAnlegen && mitAnlegen.checked) {
+      const daten = { name: catName(fehlendesGeraet), kind: fehlendesGeraet.kind };
+      if (fehlendesGeraet.kind === 'plates') daten.plate = st.S.pw;
+      if (fehlendesGeraet.kind === 'weight') daten.step = fehlendesGeraet.step || 2.5;
+      equip = st.addEquipment(daten).id;
+    }
+
+    const data = { name, equip };
     data.bands = (isFinite(b1) && isFinite(b2)) ? [b1, b2] : undefined;
     if (editing === 'new') st.addExercise(data); else st.updateExercise(editing, data);
     editing = null;
+    pickedEx = null;
   });
 }
 
 // ---------- Pläne ----------
-export function plans(mount, head, goHub) {
+export function plans(mount, head, goHub, openPlanner) {
   if (editing) return planForm(mount, head, goHub);
 
   const rows = st.S.plans.map(p =>
     '<div class="lst"><div class="lst-m">' +
-    '<div class="lst-n"><span class="tag">' + esc(p.short || '?') + '</span> ' + esc(st.nameOf(p)) + '</div>' +
+    '<div class="lst-n"><span class="tag">' + esc(p.short || '?') + '</span> ' +
+      esc(st.nameOf(p)) + aiMark(p) + '</div>' +
     '<div class="lst-s">' + esc(st.focusOf(p) || '—') + ' · ' + p.items.length + '</div></div>' +
     '<div class="row-act">' +
     '<button class="mini" data-edit="' + p.id + '">' + esc(t('common.edit')) + '</button>' +
     '<button class="mini warn" data-del="' + p.id + '">' + esc(t('common.delete')) + '</button>' +
     '</div></div>').join('');
 
+  const verbunden = !!(st.S.ai.keys[st.S.ai.provider] || '').trim();
+
   mount.innerHTML = head() + backBar(t('pl.title')) +
     '<p class="intro">' + esc(t('pl.intro')) + '</p>' + rows +
-    '<button class="set-btn" id="add">+ ' + esc(t('pl.add')) + '</button>';
+    (st.S.plans.some(p => p.src === 'ai') ? '<p class="fld-h">✦ ' + esc(t('ex.legend')) + '</p>' : '') +
+    '<button class="set-btn" id="add">+ ' + esc(t('pl.add')) + '</button>' +
+    '<button class="nav-row" id="ai">' +
+      '<span class="nav-n">✦ ' + esc(t('pl.aiCreate')) + '</span>' +
+      '<span class="nav-s">' + esc(verbunden ? t('pl.aiCreateSub') : t('pl.aiNeedsKey')) + '</span>' +
+      '<span class="nav-c">›</span></button>';
 
   wireBack(goHub);
+  byId('ai').addEventListener('click', () => {
+    if (!verbunden) { toast(t('pl.aiNeedsKey'), true); return; }
+    openPlanner();
+  });
   byId('add').addEventListener('click', () => {
     const p = st.addPlan({ name: t('common.new'), focus: '' });
     editing = p.id;

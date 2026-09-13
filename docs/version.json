@@ -1,10 +1,10 @@
 {
-  "versionCode": 7,
-  "versionName": "1.6",
-  "apk": "PTapp-1.6.apk",
-  "size": 6664448,
+  "versionCode": 8,
+  "versionName": "1.7",
+  "apk": "PTapp-1.7.apk",
+  "size": 6671778,
   "notes": {
-    "de": "Schnellauswahl für Kombigeräte: Studio, Kraftstation, Power Rack und mehr legen alle Geräte auf einmal an — abwählen, was der eigene Aufbau nicht hat.",
-    "en": "Quick picks for combined setups: gym, multi-gym, power rack and more add all pieces at once — untick whatever yours does not have."
+    "de": "Neue Startseite mit Statistik, Planwahl und Trainer-Chat. Optionen liegen jetzt hinter dem Menüknopf. Übungskatalog mit 113 Übungen, Planerstellung durch die KI zog zu den Plänen um.",
+    "en": "New home screen with stats, plan picker and coach chat. Options moved behind the menu button. Exercise catalogue with 113 entries, AI plan building moved to Plans."
   }
 }

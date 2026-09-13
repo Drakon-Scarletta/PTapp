@@ -10,8 +10,8 @@ import { detectLang } from './i18n.js';
 const KEY = 'training:v2';   // Schlüsselname bleibt, der Inhalt ist versioniert
 const FOLDER = 'PTapp';
 export const APP_NAME = 'PTapp';
-export const APP_VERSION = '1.6';
-const STATE_VERSION = 3;
+export const APP_VERSION = '1.7';
+const STATE_VERSION = 4;
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -27,7 +27,8 @@ export function freshState() {
     equipment: SEED_EQUIPMENT.map(e => ({ ...e })),
     exercises: SEED_EXERCISES.map(e => ({ ...e, bands: e.bands ? [...e.bands] : undefined })),
     plans: SEED_PLANS.map(p => ({ ...p, items: p.items.map(i => ({ ...i })) })),
-    ai: { provider: 'anthropic', model: '', keys: { anthropic: '', openai: '' } }
+    ai: { provider: 'anthropic', model: '', keys: { anthropic: '', openai: '' } },
+    chat: []
   };
 }
 
@@ -73,6 +74,7 @@ function migrate(raw) {
   if (!s.ai) s.ai = { provider: 'anthropic', model: '', keys: { anthropic: '', openai: '' } };
   if (!s.ai.keys) s.ai.keys = { anthropic: '', openai: '' };
   if (!s.lang) s.lang = detectLang();
+  if (!Array.isArray(s.chat)) s.chat = [];
 
   s.v = STATE_VERSION;
   return s;

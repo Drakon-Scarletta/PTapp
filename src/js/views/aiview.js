@@ -1,54 +1,23 @@
-// Plan von der KI erstellen lassen: verbinden, Eingaben, Aufruf, Vorschau.
+// KI-Verwaltung: Anbieter, Zugang, Modell. Gearbeitet wird damit anderswo —
+// Pläne erstellen unter Pläne, Fragen an den Trainer auf der Startseite.
 import { Browser } from '@capacitor/browser';
 import { Clipboard } from '@capacitor/clipboard';
 import * as st from '../state.js';
 import { t, locale } from '../i18n.js';
 import { isNative } from '../store.js';
 import { PROVIDERS, providerOf } from '../ai-meta.js';
-import { esc, on, byId, val, toast, confirmBox, field, textIn, selectIn } from '../ui.js';
+import { esc, byId, val, toast, confirmBox, field, textIn, selectIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
-let busy = false;
 let verifying = false;
 let connecting = false;       // Anleitung nach dem Öffnen der Anbieterseite
-let result = null;
 let models = [];
-let form = { goal: 'muscle', days: 3, level: 'some', notes: '' };
 
-export function reset() {
-  result = null;
-  busy = false;
-  verifying = false;
-  connecting = false;
-}
-
-const goalOptions = () => [
-  { id: 'strength', label: t('ai.goalStrength') },
-  { id: 'muscle', label: t('ai.goalMuscle') },
-  { id: 'fitness', label: t('ai.goalFitness') },
-  { id: 'lose', label: t('ai.goalLose') }
-];
-const levelOptions = () => [
-  { id: 'new', label: t('ai.levelNew') },
-  { id: 'some', label: t('ai.levelSome') },
-  { id: 'pro', label: t('ai.levelPro') }
-];
-const kindLabel = eq => eq.kind === 'plates' ? t('equip.kindPlates')
-  : eq.kind === 'weight' ? t('equip.kindWeight') : t('equip.kindBody');
+export function reset() { verifying = false; connecting = false; }
 
 const keyOf = () => (st.S.ai.keys[st.S.ai.provider] || '').trim();
 const verifiedAt = () => (st.S.ai.verified || {})[st.S.ai.provider] || 0;
-
-function readForm() {
-  if (!byId('f-goal')) return;
-  form = {
-    goal: byId('f-goal').value,
-    days: parseInt(byId('f-days').value, 10) || 3,
-    level: byId('f-level').value,
-    notes: val('f-notes')
-  };
-}
 
 // ---- Verbindung ----
 function connectionBlock(prov) {
@@ -139,29 +108,6 @@ async function runVerify() {
   }
 }
 
-// ---- Vorschau ----
-function preview() {
-  const ex = (result.exercises || []).map(e =>
-    '<li>' + esc(e.name) + ' <span class="lst-s">— ' +
-    esc(st.nameOf(st.equipOf(e.equipment))) + '</span></li>').join('');
-  const plans = (result.plans || []).map(p =>
-    '<div class="tp-card"><div class="tp-card-in">' +
-    '<div class="tp-title"><div class="big">' + esc((p.name || '?').slice(0, 1)) + '</div>' +
-    '<div><div class="nm">' + esc(p.name || '') + '</div>' +
-    '<div class="fo">' + esc(p.focus || '') + '</div></div></div>' +
-    (p.items || []).map(i =>
-      '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '×</span>' +
-      '<span class="dt-n">' + esc(i.exercise) + '</span>' +
-      '<span class="dt-w">' + esc(i.reps || '') + '</span></div>').join('') +
-    '</div></div>').join('');
-
-  return '<h3 class="sec">' + esc(t('ai.result')) + '</h3>' + plans +
-    (ex ? '<p class="intro">' + esc(t('ai.newExercises', { n: (result.exercises || []).length })) +
-      '</p><ul class="plain">' + ex + '</ul>' : '') +
-    '<button class="set-btn go" id="accept">' + esc(t('ai.accept')) + '</button>' +
-    '<button class="set-btn" id="discard">' + esc(t('ai.discard')) + '</button>';
-}
-
 // ---- Seite ----
 export function render(mount, head, backBar, goHub) {
   const prov = providerOf(st.S.ai.provider);
@@ -180,26 +126,12 @@ export function render(mount, head, backBar, goHub) {
     (connected
       ? field(t('ai.model'),
           '<span class="two">' + selectIn('f-model', modelOpts, st.S.ai.model || prov.defaultModel) +
-          textIn('f-modelfree', st.S.ai.model || prov.defaultModel) + '</span>') +
-
-        '<h3 class="sec">' + esc(t('ai.equipUsed')) + '</h3>' +
-        '<ul class="plain">' + st.S.equipment.map(e =>
-          '<li>' + esc(st.nameOf(e)) + ' <span class="lst-s">— ' + esc(kindLabel(e)) + '</span></li>').join('') + '</ul>' +
-
-        field(t('ai.goal'), selectIn('f-goal', goalOptions(), form.goal)) +
-        field(t('ai.days'), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') +
-        field(t('ai.level'), selectIn('f-level', levelOptions(), form.level)) +
-        field(t('ai.notes'), textIn('f-notes', form.notes)) +
-
-        '<button class="set-btn' + (busy ? '' : ' go') + '" id="gen"' + (busy ? ' disabled' : '') + '>' +
-          esc(busy ? t('ai.working') : t('ai.generate')) + '</button>' +
-        (result ? preview() : '')
+          textIn('f-modelfree', st.S.ai.model || prov.defaultModel) + '</span>')
       : '');
 
   byId('back').addEventListener('click', goHub);
 
   byId('f-prov').addEventListener('change', ev => {
-    readForm();
     models = [];
     connecting = false;
     st.S.ai.provider = ev.target.value;
@@ -255,40 +187,4 @@ export function render(mount, head, backBar, goHub) {
     st.S.ai.model = ev.target.value.trim();
     st.touch();
   });
-
-  byId('gen').addEventListener('click', async () => {
-    readForm();
-    if (!st.S.equipment.length) { toast(t('ai.needEquip'), true); return; }
-    busy = true;
-    result = null;
-    rerender();
-    try {
-      const mod = await import('../ai.js');
-      result = await mod.generatePlan({
-        provider: st.S.ai.provider,
-        key: keyOf(),
-        model: val('f-modelfree') || st.S.ai.model,
-        goal: goalOptions().find(o => o.id === form.goal).label,
-        level: levelOptions().find(o => o.id === form.level).label,
-        days: form.days,
-        notes: form.notes,
-        equipment: st.S.equipment.map(e => ({ id: e.id, name: st.nameOf(e), kindLabel: kindLabel(e) }))
-      });
-    } catch (e) {
-      toast(t('ai.failed', { msg: e.message }), true);
-    }
-    busy = false;
-    rerender();
-  });
-
-  if (result) {
-    byId('accept').addEventListener('click', () => {
-      const n = st.applyGenerated(result);
-      result = null;
-      toast(t('ai.accepted') + (n ? ' ' + t('ai.newExercises', { n }) : ''));
-    });
-    byId('discard').addEventListener('click', () => { result = null; rerender(); });
-  }
-
-  on('#f-goal, #f-days, #f-level, #f-notes', readForm, 'change');
 }

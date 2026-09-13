@@ -7,13 +7,14 @@ import { esc, on, byId, toast, confirmBox, selectIn, field } from '../ui.js';
 import * as editors from './editors.js';
 import * as aiview from './aiview.js';
 import * as updateview from './updateview.js';
+import * as planner from './planner.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
 let sub = null;
 let backups = [];
 
-export function resetSub() { sub = null; editors.resetEditing(); aiview.reset(); updateview.reset(); }
+export function resetSub() { sub = null; editors.resetEditing(); aiview.reset(); updateview.reset(); planner.reset(); }
 
 export async function refresh() {
   backups = await listBackups();
@@ -24,6 +25,7 @@ function go(next) {
   editors.resetEditing();
   if (next !== 'ai') aiview.reset();
   if (next !== 'update') updateview.reset();
+  if (next !== 'planner') planner.reset();
   rerender();
 }
 
@@ -36,7 +38,8 @@ export function render(head, mount) {
   const goHub = () => go(null);
   if (sub === 'equipment') return editors.equipment(mount, head, goHub);
   if (sub === 'exercises') return editors.exercises(mount, head, goHub);
-  if (sub === 'plans') return editors.plans(mount, head, goHub);
+  if (sub === 'plans') return editors.plans(mount, head, goHub, () => go('planner'));
+  if (sub === 'planner') return planner.render(mount, head, backBar, () => go('plans'));
   if (sub === 'ai') return aiview.render(mount, head, backBar, goHub);
   if (sub === 'update') return updateview.render(mount, head, backBar, goHub);
   if (sub === 'lang') return language(mount, head, goHub);
@@ -61,7 +64,7 @@ function hub(mount, head) {
   const s = stats();
   const lang = LANGS.find(l => l.id === st.S.lang);
 
-  mount.innerHTML = head() +
+  mount.innerHTML = head() + backBar(t('nav.menu')) +
     '<div class="set-sec"><h2>' + esc(t('opt.overview')) + '</h2>' +
       '<div class="set-stat"><div><b>' + s.total + '</b>' + esc(t('opt.totalUnits')) + '</div></div>' +
       (s.first ? '<p>' + esc(t('opt.firstEntry', {
@@ -79,6 +82,8 @@ function hub(mount, head) {
 
     '<div class="tp-note">' + esc(t('opt.about', { app: APP_NAME, version: APP_VERSION })) + '</div>';
 
+  byId('back').addEventListener('click',
+    () => document.dispatchEvent(new CustomEvent('goback')));
   on('[data-go]', ev => go(ev.currentTarget.dataset.go));
 }
 
