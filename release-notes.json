@@ -1,4 +1,8 @@
 {
+  "1.4": {
+    "de": "Ausklappbare Erklärung auf der KI-Seite: was beim Verbinden passiert, warum Guthaben nötig ist und was ein Plan kostet.",
+    "en": "Expandable explanation on the AI page: what connecting does, why credits are needed and what a plan costs."
+  },
   "1.3": {
     "de": "KI verbinden: Anbieterseite öffnen, Schlüssel einfügen, Verbindung wird sofort geprüft.",
     "en": "Connecting to an AI: open the provider page, paste the key, the connection is checked right away."

@@ -60,7 +60,7 @@ function connectionBlock(prov) {
       '<div class="conn-s bad">● ' + esc(t('ai.notConnected')) + '</div>' +
       '<p class="intro">' + esc(t('ai.noOauth', { host: prov.keyHost })) + '</p>' +
       '<button class="set-btn go" id="connect">' + esc(t('ai.connect')) + '</button>' +
-      (connecting ? steps(prov) : '') +
+      (connecting ? steps(prov) : '') + help() +
       '</div>';
   }
 
@@ -75,8 +75,18 @@ function connectionBlock(prov) {
       '<button class="mini" id="connect">' + esc(t('ai.replaceKey')) + '</button>' +
       '<button class="mini warn" id="disconnect">' + esc(t('ai.disconnect')) + '</button>' +
     '</div>' +
-    (connecting ? steps(prov) : '') +
+    (connecting ? steps(prov) : '') + help() +
     '</div>';
+}
+
+// Ausklappbare Erklärung. <details> bringt das Auf- und Zuklappen von Haus aus
+// mit, das braucht kein eigenes Zutun.
+function help() {
+  const part = n =>
+    '<h4>' + esc(t('ai.helpH' + n)) + '</h4><p>' + esc(t('ai.helpP' + n)) + '</p>';
+  return '<details class="help"><summary>' + esc(t('ai.helpOpen')) + '</summary>' +
+    [1, 2, 3, 4, 5, 6].map(part).join('') +
+    '</details>';
 }
 
 function steps(prov) {

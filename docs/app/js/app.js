@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-GGZ4CHZB.js";
+} from "./part-L65V33IK.js";
 import {
   Directory,
   Encoding
@@ -194,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.3";
+var APP_VERSION = "1.4";
 var STATE_VERSION = 3;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -1260,9 +1260,13 @@ function connectionBlock(prov) {
   const key = keyOf();
   const when = verifiedAt();
   if (!key) {
-    return '<div class="conn"><div class="conn-s bad">\u25CF ' + esc(t("ai.notConnected")) + '</div><p class="intro">' + esc(t("ai.noOauth", { host: prov.keyHost })) + '</p><button class="set-btn go" id="connect">' + esc(t("ai.connect")) + "</button>" + (connecting ? steps(prov) : "") + "</div>";
+    return '<div class="conn"><div class="conn-s bad">\u25CF ' + esc(t("ai.notConnected")) + '</div><p class="intro">' + esc(t("ai.noOauth", { host: prov.keyHost })) + '</p><button class="set-btn go" id="connect">' + esc(t("ai.connect")) + "</button>" + (connecting ? steps(prov) : "") + help() + "</div>";
   }
-  return '<div class="conn"><div class="conn-s' + (when ? " ok" : "") + '">\u25CF ' + esc(when ? t("ai.connectedAt", { date: new Date(when).toLocaleDateString(locale()) }) : t("ai.connectedUnchecked")) + '</div><div class="conn-k">' + esc(mask(key)) + '</div><div class="row-act"><button class="mini" id="verify"' + (verifying ? " disabled" : "") + ">" + esc(verifying ? t("ai.verifying") : t("ai.verify")) + '</button><button class="mini" id="connect">' + esc(t("ai.replaceKey")) + '</button><button class="mini warn" id="disconnect">' + esc(t("ai.disconnect")) + "</button></div>" + (connecting ? steps(prov) : "") + "</div>";
+  return '<div class="conn"><div class="conn-s' + (when ? " ok" : "") + '">\u25CF ' + esc(when ? t("ai.connectedAt", { date: new Date(when).toLocaleDateString(locale()) }) : t("ai.connectedUnchecked")) + '</div><div class="conn-k">' + esc(mask(key)) + '</div><div class="row-act"><button class="mini" id="verify"' + (verifying ? " disabled" : "") + ">" + esc(verifying ? t("ai.verifying") : t("ai.verify")) + '</button><button class="mini" id="connect">' + esc(t("ai.replaceKey")) + '</button><button class="mini warn" id="disconnect">' + esc(t("ai.disconnect")) + "</button></div>" + (connecting ? steps(prov) : "") + help() + "</div>";
+}
+function help() {
+  const part = (n) => "<h4>" + esc(t("ai.helpH" + n)) + "</h4><p>" + esc(t("ai.helpP" + n)) + "</p>";
+  return '<details class="help"><summary>' + esc(t("ai.helpOpen")) + "</summary>" + [1, 2, 3, 4, 5, 6].map(part).join("") + "</details>";
 }
 function steps(prov) {
   return '<ol class="steps"><li>' + esc(t("ai.step1", { host: prov.keyHost })) + "</li><li>" + esc(t("ai.step2")) + "</li><li>" + esc(t("ai.step3")) + '</li></ol><button class="set-btn go" id="paste">' + esc(t("ai.paste")) + "</button>" + field(t("ai.orType"), '<input class="in" id="f-key" type="password" autocomplete="off" value="">') + '<button class="set-btn" id="savekey">' + esc(t("common.save")) + "</button>";
@@ -1296,7 +1300,7 @@ async function runVerify() {
   verifying = true;
   rerender2();
   try {
-    const mod = await import("./part-RWKYTIVU.js");
+    const mod = await import("./part-7G3NK6ZJ.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -1384,7 +1388,7 @@ function render3(mount2, head2, backBar3, goHub) {
     result = null;
     rerender2();
     try {
-      const mod = await import("./part-RWKYTIVU.js");
+      const mod = await import("./part-7G3NK6ZJ.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: keyOf(),

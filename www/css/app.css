@@ -414,3 +414,25 @@ select.in { appearance: none; background-image: none; }
 .conn .set-btn { margin-bottom: 0; }
 .steps { margin: 14px 0 12px; padding-left: 20px; font-size: 14px; color: #C9C2B1; }
 .steps li { margin-bottom: 6px; }
+
+/* ---- Ausklappbare Erklärung ---- */
+.help {
+  margin-top: 12px;
+  border-top: 1px solid var(--timber-line);
+  padding-top: 10px;
+}
+.help summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: 'Barlow Condensed'; font-size: 15px; font-weight: 600;
+  color: var(--signal);
+  padding: 4px 0;
+}
+.help summary::-webkit-details-marker { display: none; }
+.help summary::before { content: '▸ '; display: inline-block; width: 14px; }
+.help[open] summary::before { content: '▾ '; }
+.help h4 {
+  font-family: 'Barlow Condensed'; font-size: 15px; font-weight: 700;
+  color: var(--decal); margin: 14px 0 2px;
+}
+.help p { font-size: 13.5px; color: #C9C2B1; margin: 0; line-height: 1.5; }
