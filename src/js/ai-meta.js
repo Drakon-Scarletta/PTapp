@@ -8,6 +8,8 @@ export const PROVIDERS = [
     // Seite, auf der man sich anmeldet und einen Schlüssel erzeugt.
     keyUrl: 'https://console.anthropic.com/settings/keys',
     keyHost: 'console.anthropic.com',
+    billingUrl: 'https://console.anthropic.com/settings/billing',
+    billingHost: 'console.anthropic.com',
     keyPrefix: 'sk-ant-'
   },
   {
@@ -16,6 +18,8 @@ export const PROVIDERS = [
     defaultModel: 'gpt-4o-mini',
     keyUrl: 'https://platform.openai.com/api-keys',
     keyHost: 'platform.openai.com',
+    billingUrl: 'https://platform.openai.com/settings/organization/billing/overview',
+    billingHost: 'platform.openai.com',
     keyPrefix: 'sk-'
   }
 ];

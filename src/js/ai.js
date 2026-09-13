@@ -87,9 +87,11 @@ function userPrompt(opts) {
 export async function generatePlan(opts) {
   const equipIds = opts.equipment.map(e => e.id);
   if (!equipIds.length) throw new Error('no equipment');
-  return opts.provider === 'openai'
-    ? viaOpenAI(opts, equipIds)
-    : viaAnthropic(opts, equipIds);
+  try {
+    return await (opts.provider === 'openai'
+      ? viaOpenAI(opts, equipIds)
+      : viaAnthropic(opts, equipIds));
+  } catch (e) { throw tagged(e); }
 }
 
 // ---- Anthropic ----
@@ -213,6 +215,10 @@ const COACH = [
 ].join(' ');
 
 export async function chat(opts) {
+  try { return await chatInner(opts); } catch (e) { throw tagged(e); }
+}
+
+async function chatInner(opts) {
   const system = COACH + '\n\n' + opts.context;
   const messages = opts.messages.map(m => ({
     role: m.role === 'coach' ? 'assistant' : 'user',
@@ -255,6 +261,10 @@ export async function chat(opts) {
 
 // ---- Modelle auflisten ----
 export async function listModels(provider, key) {
+  try { return await listInner(provider, key); } catch (e) { throw tagged(e); }
+}
+
+async function listInner(provider, key) {
   if (provider === 'anthropic') {
     const client = anthropicClient(key);
     const page = await viaSdkOrRaw(
@@ -275,6 +285,16 @@ export async function listModels(provider, key) {
     .filter(id => /^(gpt|o\d)/.test(id) && !/audio|realtime|transcribe|tts|image|embedding|moderation/.test(id))
     .sort()
     .map(id => ({ id, label: id }));
+}
+
+// Ein leeres Guthaben ist kein gewoehnlicher Fehler - die App bietet dafuer
+// den Weg zur Aufladeseite an. Beide Anbieter melden es unterschiedlich.
+function tagged(e) {
+  const text = (e && e.message ? e.message : '') + ' ' + JSON.stringify((e && e.error) || '');
+  if (/credit balance is too low|insufficient_quota|exceeded your current quota|billing_not_active/i.test(text)) {
+    e.kind = 'credits';
+  }
+  return e;
 }
 
 async function readJson(res) {

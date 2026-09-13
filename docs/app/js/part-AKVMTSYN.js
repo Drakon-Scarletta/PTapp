@@ -219,6 +219,10 @@ var DE = {
   "upd.needPermission": "Android muss dieser App erst erlauben, Apps zu installieren. Die Einstellung ist jetzt offen \u2014 erlauben, zur\xFCck, nochmal auf Installieren tippen.",
   "upd.webSelfUpdates": "Die Fassung im Browser holt sich Neuerungen beim \xD6ffnen von selbst.",
   "upd.failed": "Fehlgeschlagen: {msg}",
+  "credits.title": "Guthaben reicht nicht",
+  "credits.text": "Der Anbieter lehnt die Anfrage ab, weil auf deinem Konto zu wenig Guthaben liegt. Auf {host} kannst du aufladen \u2014 danach funktioniert es sofort wieder, ohne dass du hier etwas \xE4ndern musst.",
+  "credits.buy": "Guthaben aufladen",
+  "credits.close": "Schlie\xDFen",
   "data.title": "Daten",
   "data.backupNative": "Legt eine JSON-Datei unter Dokumente/{app} an und \xF6ffnet das Teilen-Men\xFC.",
   "data.backupWeb": "L\xE4dt eine JSON-Datei herunter.",
@@ -497,6 +501,10 @@ var EN = {
   "upd.needPermission": "Android has to allow this app to install apps first. The setting is open now \u2014 allow it, go back, tap Install again.",
   "upd.webSelfUpdates": "The browser version picks up changes by itself when you open it.",
   "upd.failed": "Failed: {msg}",
+  "credits.title": "Not enough credit",
+  "credits.text": "The provider turned the request down because your balance is too low. You can top it up on {host} \u2014 after that it works again right away, with nothing to change here.",
+  "credits.buy": "Top up credit",
+  "credits.close": "Close",
   "data.title": "Data",
   "data.backupNative": "Writes a JSON file to Documents/{app} and opens the share menu.",
   "data.backupWeb": "Downloads a JSON file.",
@@ -607,6 +615,8 @@ var PROVIDERS = [
     // Seite, auf der man sich anmeldet und einen Schlüssel erzeugt.
     keyUrl: "https://console.anthropic.com/settings/keys",
     keyHost: "console.anthropic.com",
+    billingUrl: "https://console.anthropic.com/settings/billing",
+    billingHost: "console.anthropic.com",
     keyPrefix: "sk-ant-"
   },
   {
@@ -615,6 +625,8 @@ var PROVIDERS = [
     defaultModel: "gpt-4o-mini",
     keyUrl: "https://platform.openai.com/api-keys",
     keyHost: "platform.openai.com",
+    billingUrl: "https://platform.openai.com/settings/organization/billing/overview",
+    billingHost: "platform.openai.com",
     keyPrefix: "sk-"
   }
 ];

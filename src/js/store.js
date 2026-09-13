@@ -10,7 +10,7 @@ import { detectLang } from './i18n.js';
 const KEY = 'training:v2';   // Schlüsselname bleibt, der Inhalt ist versioniert
 const FOLDER = 'PTapp';
 export const APP_NAME = 'PTapp';
-export const APP_VERSION = '1.8';
+export const APP_VERSION = '1.9';
 const STATE_VERSION = 4;
 
 export const isNative = () => Capacitor.isNativePlatform();

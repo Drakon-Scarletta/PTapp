@@ -3,6 +3,7 @@
 import * as st from '../state.js';
 import { t } from '../i18n.js';
 import { providerOf } from '../ai-meta.js';
+import { showAiError } from './credits.js';
 import { esc, on, byId, val, toast, field, textIn, selectIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -97,7 +98,7 @@ export function render(mount, head, backBar, goBack) {
         equipment: st.S.equipment.map(e => ({ id: e.id, name: st.nameOf(e), kindLabel: kindLabel(e) }))
       });
     } catch (e) {
-      toast(t('ai.failed', { msg: e.message }), true);
+      showAiError(e, st.S.ai.provider);
     }
     busy = false;
     rerender();

@@ -6,6 +6,7 @@ import * as st from '../state.js';
 import { t, locale } from '../i18n.js';
 import { isNative } from '../store.js';
 import { PROVIDERS, providerOf } from '../ai-meta.js';
+import { showAiError } from './credits.js';
 import { esc, byId, val, toast, confirmBox, field, textIn, selectIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -103,7 +104,7 @@ async function runVerify() {
     toast(t('ai.verifyOk', { n: models.length }));
   } catch (e) {
     verifying = false;
-    toast(t('ai.failed', { msg: e.message }), true);
+    showAiError(e, st.S.ai.provider);
     rerender();
   }
 }

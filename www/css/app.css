@@ -519,3 +519,25 @@ h3.sec.first { margin-top: 8px; padding-top: 0; border-top: 0; }
 
 /* Gerät hinter dem Übungsnamen im Katalog */
 .cat-eq { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+/* ---- Eigenes Fenster für Entscheidungen ---- */
+.overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.62);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.dlg {
+  background: var(--ink-2); color: var(--decal);
+  border: 1px solid var(--timber-line); border-left: 4px solid var(--signal);
+  border-radius: 3px; padding: 18px 17px 15px;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 10px 30px rgba(0,0,0,.55);
+}
+.dlg h3 {
+  font-family: 'Barlow Condensed'; font-size: 21px; font-weight: 700;
+  margin: 0 0 8px;
+}
+.dlg p { font-size: 14px; line-height: 1.5; color: #C9C2B1; margin: 0 0 16px; }
+.dlg-a { display: flex; flex-direction: column-reverse; gap: 8px; }
+.dlg-a .set-btn { margin: 0; }

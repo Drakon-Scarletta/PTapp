@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-2D3AZZ4A.js";
+} from "./part-AKVMTSYN.js";
 import {
   Directory,
   Encoding
@@ -194,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.8";
+var APP_VERSION = "1.9";
 var STATE_VERSION = 4;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -807,6 +807,11 @@ __export(home_exports, {
   reset: () => reset
 });
 
+// node_modules/@capacitor/browser/dist/esm/index.js
+var Browser = registerPlugin("Browser", {
+  web: () => import("./part-CJEYMYTV.js").then((m) => new m.BrowserWeb())
+});
+
 // node_modules/@capacitor/haptics/dist/esm/index.js
 var Haptics = registerPlugin("Haptics", {
   web: () => import("./part-JEYNSYVW.js").then((m) => new m.HapticsWeb())
@@ -847,6 +852,34 @@ async function haptic(style = "light") {
 function confirmBox(text) {
   return window.confirm(text);
 }
+function dialog({ title, text, actions }) {
+  const alt = document.querySelector(".overlay");
+  if (alt) alt.remove();
+  const el = document.createElement("div");
+  el.className = "overlay";
+  el.innerHTML = '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><h3>' + esc(title) + "</h3><p>" + esc(text) + '</p><div class="dlg-a">' + actions.map((a, i) => '<button class="set-btn' + (a.primary ? " go" : "") + '" data-act="' + i + '">' + esc(a.label) + "</button>").join("") + "</div></div>";
+  const close = () => {
+    el.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (ev) => {
+    if (ev.key === "Escape") close();
+  };
+  el.addEventListener("click", (ev) => {
+    if (ev.target === el) close();
+  });
+  el.querySelectorAll("[data-act]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const a = actions[Number(b.dataset.act)];
+      close();
+      if (a.run) a.run();
+    });
+  });
+  document.body.appendChild(el);
+  document.addEventListener("keydown", onKey);
+  const erster = el.querySelector(".set-btn.go") || el.querySelector(".set-btn");
+  if (erster) erster.focus();
+}
 function field(label, inner, hint) {
   return '<label class="fld"><span class="fld-l">' + esc(label) + "</span>" + inner + (hint ? '<span class="fld-h">' + esc(hint) + "</span>" : "") + "</label>";
 }
@@ -861,6 +894,36 @@ function selectIn(id, options, value) {
 }
 function checkIn(id, label, checked) {
   return '<label class="chk"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + "><span>" + esc(label) + "</span></label>";
+}
+
+// src/js/views/credits.js
+function isCreditProblem(e) {
+  return !!(e && e.kind === "credits");
+}
+function creditsDialog(providerId) {
+  const prov = providerOf(providerId);
+  dialog({
+    title: t("credits.title"),
+    text: t("credits.text", { host: prov.billingHost }),
+    actions: [
+      { label: t("credits.close") },
+      {
+        label: t("credits.buy"),
+        primary: true,
+        run: async () => {
+          try {
+            await Browser.open({ url: prov.billingUrl });
+          } catch (e) {
+            window.open(prov.billingUrl, "_blank");
+          }
+        }
+      }
+    ]
+  });
+}
+function showAiError(e, providerId) {
+  if (isCreditProblem(e)) creditsDialog(providerId);
+  else toast(t("ai.failed", { msg: e.message }), true);
 }
 
 // src/js/views/home.js
@@ -913,7 +976,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-BDKPNQKA.js");
+    const mod = await import("./part-B3QHQ7ZB.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -925,7 +988,7 @@ async function send() {
     await addChat("coach", antwort);
   } catch (e) {
     busy = false;
-    toast(t("ai.failed", { msg: e.message }), true);
+    showAiError(e, S.ai.provider);
     rerender();
   }
 }
@@ -1884,11 +1947,6 @@ function planForm(mount2, head2, goHub) {
   ), "change");
 }
 
-// node_modules/@capacitor/browser/dist/esm/index.js
-var Browser = registerPlugin("Browser", {
-  web: () => import("./part-CJEYMYTV.js").then((m) => new m.BrowserWeb())
-});
-
 // node_modules/@capacitor/clipboard/dist/esm/web.js
 var ClipboardWeb = class extends WebPlugin {
   async write(options) {
@@ -2025,7 +2083,7 @@ async function runVerify() {
   verifying = true;
   rerender3();
   try {
-    const mod = await import("./part-BDKPNQKA.js");
+    const mod = await import("./part-B3QHQ7ZB.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2035,7 +2093,7 @@ async function runVerify() {
     toast(t("ai.verifyOk", { n: models.length }));
   } catch (e) {
     verifying = false;
-    toast(t("ai.failed", { msg: e.message }), true);
+    showAiError(e, S.ai.provider);
     rerender3();
   }
 }
@@ -2305,7 +2363,7 @@ function render6(mount2, head2, backBar3, goBack) {
     result = null;
     rerender5();
     try {
-      const mod = await import("./part-BDKPNQKA.js");
+      const mod = await import("./part-B3QHQ7ZB.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2317,7 +2375,7 @@ function render6(mount2, head2, backBar3, goBack) {
         equipment: S.equipment.map((e) => ({ id: e.id, name: nameOf(e), kindLabel: kindLabel(e) }))
       });
     } catch (e) {
-      toast(t("ai.failed", { msg: e.message }), true);
+      showAiError(e, S.ai.provider);
     }
     busy2 = false;
     rerender5();

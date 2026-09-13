@@ -1,10 +1,10 @@
 import {
-  getLang,
-  providerOf
-} from "./part-2D3AZZ4A.js";
-import {
   checkMemorySyncInterval
 } from "./part-UZ3PHKCF.js";
+import {
+  getLang,
+  providerOf
+} from "./part-AKVMTSYN.js";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,
@@ -13389,7 +13389,11 @@ function userPrompt(opts) {
 async function generatePlan(opts) {
   const equipIds = opts.equipment.map((e) => e.id);
   if (!equipIds.length) throw new Error("no equipment");
-  return opts.provider === "openai" ? viaOpenAI(opts, equipIds) : viaAnthropic(opts, equipIds);
+  try {
+    return await (opts.provider === "openai" ? viaOpenAI(opts, equipIds) : viaAnthropic(opts, equipIds));
+  } catch (e) {
+    throw tagged(e);
+  }
 }
 function anthropicClient(key) {
   return new Anthropic({
@@ -13494,6 +13498,13 @@ var COACH = [
   "Answer in the language of the question."
 ].join(" ");
 async function chat(opts) {
+  try {
+    return await chatInner(opts);
+  } catch (e) {
+    throw tagged(e);
+  }
+}
+async function chatInner(opts) {
   const system = COACH + "\n\n" + opts.context;
   const messages = opts.messages.map((m) => ({
     role: m.role === "coach" ? "assistant" : "user",
@@ -13533,6 +13544,13 @@ async function chat(opts) {
   return text;
 }
 async function listModels(provider, key) {
+  try {
+    return await listInner(provider, key);
+  } catch (e) {
+    throw tagged(e);
+  }
+}
+async function listInner(provider, key) {
   if (provider === "anthropic") {
     const client = anthropicClient(key);
     const page = await viaSdkOrRaw(
@@ -13550,6 +13568,13 @@ async function listModels(provider, key) {
   const data = await readJson(res);
   if (!res.ok) throw new Error(errText(data, res.status));
   return (data.data || []).map((m) => m.id).filter((id) => /^(gpt|o\d)/.test(id) && !/audio|realtime|transcribe|tts|image|embedding|moderation/.test(id)).sort().map((id) => ({ id, label: id }));
+}
+function tagged(e) {
+  const text = (e && e.message ? e.message : "") + " " + JSON.stringify(e && e.error || "");
+  if (/credit balance is too low|insufficient_quota|exceeded your current quota|billing_not_active/i.test(text)) {
+    e.kind = "credits";
+  }
+  return e;
 }
 async function readJson(res) {
   try {

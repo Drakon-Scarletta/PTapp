@@ -2,6 +2,7 @@
 import * as st from '../state.js';
 import { t, locale } from '../i18n.js';
 import { providerOf } from '../ai-meta.js';
+import { showAiError } from './credits.js';
 import { esc, on, byId, val, toast, confirmBox } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -117,7 +118,7 @@ async function send() {
     await st.addChat('coach', antwort);
   } catch (e) {
     busy = false;
-    toast(t('ai.failed', { msg: e.message }), true);
+    showAiError(e, st.S.ai.provider);
     rerender();
   }
 }

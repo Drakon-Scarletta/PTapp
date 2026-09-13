@@ -235,6 +235,11 @@ const DE = {
   'upd.webSelfUpdates': 'Die Fassung im Browser holt sich Neuerungen beim Öffnen von selbst.',
   'upd.failed': 'Fehlgeschlagen: {msg}',
 
+  'credits.title': 'Guthaben reicht nicht',
+  'credits.text': 'Der Anbieter lehnt die Anfrage ab, weil auf deinem Konto zu wenig Guthaben liegt. Auf {host} kannst du aufladen — danach funktioniert es sofort wieder, ohne dass du hier etwas ändern musst.',
+  'credits.buy': 'Guthaben aufladen',
+  'credits.close': 'Schließen',
+
   'data.title': 'Daten',
   'data.backupNative': 'Legt eine JSON-Datei unter Dokumente/{app} an und öffnet das Teilen-Menü.',
   'data.backupWeb': 'Lädt eine JSON-Datei herunter.',
@@ -529,6 +534,11 @@ const EN = {
   'upd.needPermission': 'Android has to allow this app to install apps first. The setting is open now — allow it, go back, tap Install again.',
   'upd.webSelfUpdates': 'The browser version picks up changes by itself when you open it.',
   'upd.failed': 'Failed: {msg}',
+
+  'credits.title': 'Not enough credit',
+  'credits.text': 'The provider turned the request down because your balance is too low. You can top it up on {host} — after that it works again right away, with nothing to change here.',
+  'credits.buy': 'Top up credit',
+  'credits.close': 'Close',
 
   'data.title': 'Data',
   'data.backupNative': 'Writes a JSON file to Documents/{app} and opens the share menu.',

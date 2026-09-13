@@ -1,10 +1,10 @@
 {
-  "versionCode": 9,
-  "versionName": "1.8",
-  "apk": "PTapp-1.8.apk",
-  "size": 6672049,
+  "versionCode": 10,
+  "versionName": "1.9",
+  "apk": "PTapp-1.9.apk",
+  "size": 6673107,
   "notes": {
-    "de": "Behebt den Fehler beim Prüfen der KI-Verbindung in der App. Anfragen an Anthropic weichen jetzt auf einen direkten Weg aus, wenn die native HTTP-Brücke dem SDK dazwischenfunkt.",
-    "en": "Fixes the error when checking the AI connection in the app. Requests to Anthropic now fall back to a direct call when the native HTTP bridge gets in the SDK."
+    "de": "Zu wenig Guthaben erscheint jetzt als eigenes Fenster mit dem Weg zur Aufladeseite des Anbieters.",
+    "en": "Running out of credit now opens its own dialog with a direct way to the provider top-up page."
   }
 }

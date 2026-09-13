@@ -37,6 +37,45 @@ export async function haptic(style = 'light') {
 
 export function confirmBox(text) { return window.confirm(text); }
 
+// Eigenes Fenster für Fälle, in denen ein Hinweis zu wenig ist und der Nutzer
+// etwas entscheiden soll. Schließt bei Klick daneben und mit Escape.
+export function dialog({ title, text, actions }) {
+  const alt = document.querySelector('.overlay');
+  if (alt) alt.remove();
+
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.innerHTML =
+    '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+      '<h3>' + esc(title) + '</h3>' +
+      '<p>' + esc(text) + '</p>' +
+      '<div class="dlg-a">' + actions.map((a, i) =>
+        '<button class="set-btn' + (a.primary ? ' go' : '') + '" data-act="' + i + '">' +
+        esc(a.label) + '</button>').join('') +
+      '</div>' +
+    '</div>';
+
+  const close = () => {
+    el.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = ev => { if (ev.key === 'Escape') close(); };
+
+  el.addEventListener('click', ev => { if (ev.target === el) close(); });
+  el.querySelectorAll('[data-act]').forEach(b => {
+    b.addEventListener('click', () => {
+      const a = actions[Number(b.dataset.act)];
+      close();
+      if (a.run) a.run();
+    });
+  });
+
+  document.body.appendChild(el);
+  document.addEventListener('keydown', onKey);
+  const erster = el.querySelector('.set-btn.go') || el.querySelector('.set-btn');
+  if (erster) erster.focus();
+}
+
 // ---- Bausteine für die Eingabeformulare ----
 export function field(label, inner, hint) {
   return '<label class="fld"><span class="fld-l">' + esc(label) + '</span>' + inner +
