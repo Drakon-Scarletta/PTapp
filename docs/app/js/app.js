@@ -194,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.0";
+var APP_VERSION = "2.1";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -428,13 +428,17 @@ async function init() {
   setLang(S.lang);
 }
 async function persist() {
+  emit();
   try {
     await saveState(S);
-    saveErr = "";
+    if (saveErr) {
+      saveErr = "";
+      emit();
+    }
   } catch (e) {
     saveErr = t("data.saveError");
+    emit();
   }
-  emit();
 }
 function touch() {
   return persist();
@@ -2197,6 +2201,7 @@ function zeichne() {
     el = document.createElement("div");
     el.className = "rest";
     document.body.appendChild(el);
+    document.body.classList.add("resting");
   }
   const m = Math.floor(rest / 60), s2 = rest % 60;
   el.innerHTML = '<div class="rest-t">' + m + ":" + String(s2).padStart(2, "0") + '</div><div class="rest-l">' + esc(t("rest.running")) + '</div><button class="mini" data-rest="30">+30 s</button><button class="mini" data-rest="skip">' + esc(t("rest.skip")) + "</button>";
@@ -2228,6 +2233,7 @@ function stop() {
     el.remove();
     el = null;
   }
+  document.body.classList.remove("resting");
 }
 
 // src/js/views/plan.js

@@ -1,10 +1,10 @@
 {
-  "versionCode": 11,
-  "versionName": "2.0",
-  "apk": "PTapp-2.0.apk",
-  "size": 6697501,
+  "versionCode": 12,
+  "versionName": "2.1",
+  "apk": "PTapp-2.1.apk",
+  "size": 6697667,
   "notes": {
-    "de": "Pausen-Uhr, Wiederholungen je Satz, „letztes Mal\" und Bestleistungen, Notiz und Dauer je Einheit, Körpergewicht, Erinnerungen, Verlaufskurven, Muskelverteilung, Pläne kopieren und sortieren, Rückgängig nach dem Löschen, CSV-Export, Einführung beim ersten Start und ein Gesundheitshinweis.",
-    "en": "Rest timer, reps per set, “last time” and personal bests, note and duration per session, body weight, reminders, progress charts, muscle balance, duplicating and sorting plans, undo after deleting, CSV export, a first-run intro and a health notice."
+    "de": "Abhaken reagiert sofort statt erst nach dem Speichern, und die Pausen-Uhr legt sich nicht mehr über die Übungen.",
+    "en": "Ticking a set reacts instantly instead of after saving, and the rest timer no longer covers the exercises."
   }
 }

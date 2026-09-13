@@ -1,4 +1,8 @@
 {
+  "2.1": {
+    "de": "Abhaken reagiert sofort statt erst nach dem Speichern, und die Pausen-Uhr legt sich nicht mehr über die Übungen.",
+    "en": "Ticking a set reacts instantly instead of after saving, and the rest timer no longer covers the exercises."
+  },
   "2.0": {
     "de": "Pausen-Uhr, Wiederholungen je Satz, „letztes Mal\" und Bestleistungen, Notiz und Dauer je Einheit, Körpergewicht, Erinnerungen, Verlaufskurven, Muskelverteilung, Pläne kopieren und sortieren, Rückgängig nach dem Löschen, CSV-Export, Einführung beim ersten Start und ein Gesundheitshinweis.",
     "en": "Rest timer, reps per set, “last time” and personal bests, note and duration per session, body weight, reminders, progress charts, muscle balance, duplicating and sorting plans, undo after deleting, CSV export, a first-run intro and a health notice."

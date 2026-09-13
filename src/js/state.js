@@ -16,10 +16,18 @@ export async function init() {
   setLang(S.lang);
 }
 
+// Erst zeichnen, dann schreiben. Auf dem Gerät geht das Speichern über die
+// native Brücke; würde die Ansicht darauf warten, sähe jeder Tipp aus, als
+// wäre er verschluckt worden - und man tippt ein zweites Mal.
 async function persist() {
-  try { await saveState(S); saveErr = ''; }
-  catch (e) { saveErr = t('data.saveError'); }
   emit();
+  try {
+    await saveState(S);
+    if (saveErr) { saveErr = ''; emit(); }
+  } catch (e) {
+    saveErr = t('data.saveError');
+    emit();
+  }
 }
 export function touch() { return persist(); }
 

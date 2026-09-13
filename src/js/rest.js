@@ -36,6 +36,7 @@ function zeichne() {
     el = document.createElement('div');
     el.className = 'rest';
     document.body.appendChild(el);
+    document.body.classList.add('resting');
   }
   const m = Math.floor(rest / 60), s = rest % 60;
   el.innerHTML =
@@ -67,6 +68,7 @@ export function stop() {
   timer = null;
   rest = 0;
   if (el) { el.remove(); el = null; }
+  document.body.classList.remove('resting');
 }
 
 export const running = () => !!timer;
