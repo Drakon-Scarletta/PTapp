@@ -1,4 +1,8 @@
 {
+  "1.5": {
+    "de": "Geräte anlegen aus einem Katalog mit 83 Gerätetypen in neun Kategorien, mit Suchfeld. Eigene Geräte gehen weiterhin.",
+    "en": "Adding equipment from a catalogue of 83 types in nine categories, with a search field. Custom equipment still works."
+  },
   "1.4": {
     "de": "Ausklappbare Erklärung auf der KI-Seite: was beim Verbinden passiert, warum Guthaben nötig ist und was ein Plan kostet.",
     "en": "Expandable explanation on the AI page: what connecting does, why credits are needed and what a plan costs."

@@ -4,7 +4,7 @@ import {
 import {
   getLang,
   providerOf
-} from "./part-L65V33IK.js";
+} from "./part-RHZP746K.js";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,

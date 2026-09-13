@@ -1,13 +1,15 @@
 // Editoren für Geräte, Übungen und Pläne.
 import * as st from '../state.js';
 import { t } from '../i18n.js';
+import { CATEGORIES, catName, searchText, catalogEntry, catalogSize } from '../catalog.js';
 import { esc, on, byId, val, toast, confirmBox, field, textIn, numIn, selectIn, checkIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
 // Welcher Eintrag gerade bearbeitet wird: null = keiner, 'new' = neuer.
 let editing = null;
-export function resetEditing() { editing = null; }
+let picked = null;           // Katalogschluessel, 'custom' oder null
+export function resetEditing() { editing = null; picked = null; }
 
 function sideOptions() {
   return [
@@ -31,7 +33,7 @@ function backBar(title) {
     '<h2>' + esc(title) + '</h2></div>';
 }
 function wireBack(to) {
-  byId('back').addEventListener('click', () => { editing = null; to(); });
+  byId('back').addEventListener('click', () => { editing = null; picked = null; to(); });
 }
 
 // ---------- Geräte ----------
@@ -69,12 +71,68 @@ export function equipment(mount, head, goHub) {
   });
 }
 
+// Auswahl aus dem Katalog. Erscheint beim Anlegen, bevor das Formular kommt.
+function equipmentPicker(mount, head, goHub) {
+  const groups = CATEGORIES.map(c =>
+    '<div class="cat" data-cat="' + c.id + '">' +
+      '<h3 class="cat-h">' + esc(catName(c)) + '</h3>' +
+      c.items.map(i =>
+        '<button class="cat-i" data-pickeq="' + esc(i.key) + '" ' +
+        'data-find="' + esc(searchText(i)) + '">' + esc(catName(i)) + '</button>').join('') +
+    '</div>').join('');
+
+  mount.innerHTML = head() + backBar(t('equip.pick')) +
+    '<p class="intro">' + esc(t('equip.pickHint')) + '</p>' +
+    '<input class="in" id="f-search" type="search" autocomplete="off" ' +
+      'placeholder="' + esc(t('equip.search')) + '">' +
+    '<p class="intro" id="hits">' + esc(t('equip.fromCatalog', { n: catalogSize })) + '</p>' +
+    '<div id="cats">' + groups + '</div>' +
+    '<p class="intro" id="nomatch" hidden>' + esc(t('equip.noMatch')) + '</p>' +
+    '<button class="set-btn" id="own">+ ' + esc(t('equip.custom')) + '</button>';
+
+  wireBack(rerender);
+  byId('own').addEventListener('click', () => { picked = 'custom'; rerender(); });
+  on('[data-pickeq]', ev => { picked = ev.currentTarget.dataset.pickeq; rerender(); });
+
+  // Filtern ohne Neuaufbau, sonst verliert das Suchfeld den Fokus.
+  const search = byId('f-search');
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    document.querySelectorAll('.cat').forEach(cat => {
+      let inCat = 0;
+      cat.querySelectorAll('.cat-i').forEach(b => {
+        const hit = !q || b.dataset.find.includes(q);
+        b.hidden = !hit;
+        if (hit) inCat++;
+      });
+      cat.hidden = inCat === 0;
+      shown += inCat;
+    });
+    byId('nomatch').hidden = shown > 0;
+    byId('hits').textContent = q
+      ? t('equip.fromCatalog', { n: shown })
+      : t('equip.fromCatalog', { n: catalogSize });
+  });
+  search.focus();
+}
+
 function equipmentForm(mount, head, goHub) {
-  const eq = editing === 'new' ? { kind: 'plates', plate: st.S.pw, step: 2.5 } : st.equipOf(editing);
+  if (editing === 'new' && !picked) return equipmentPicker(mount, head, goHub);
+
+  const fromCatalog = picked && picked !== 'custom' ? catalogEntry(picked) : null;
+  const eq = editing === 'new'
+    ? {
+        kind: fromCatalog ? fromCatalog.kind : 'plates',
+        plate: st.S.pw,
+        step: fromCatalog && fromCatalog.step ? fromCatalog.step : 2.5,
+        name: fromCatalog ? catName(fromCatalog) : ''
+      }
+    : st.equipOf(editing);
   if (!eq) { editing = null; return equipment(mount, head, goHub); }
 
   mount.innerHTML = head() + backBar(editing === 'new' ? t('equip.add') : st.nameOf(eq)) +
-    field(t('equip.name'), textIn('f-name', editing === 'new' ? '' : st.nameOf(eq))) +
+    field(t('equip.name'), textIn('f-name', editing === 'new' ? (eq.name || '') : st.nameOf(eq))) +
     field(t('equip.kind'), selectIn('f-kind', kindOptions(), eq.kind)) +
     '<div id="f-extra"></div>' +
     '<button class="set-btn" id="save">' + esc(t('common.save')) + '</button>';
@@ -89,7 +147,7 @@ function equipmentForm(mount, head, goHub) {
   extra();
   byId('f-kind').addEventListener('change', extra);
 
-  wireBack(goHub);
+  wireBack(rerender);
   byId('save').addEventListener('click', () => {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }
@@ -99,6 +157,7 @@ function equipmentForm(mount, head, goHub) {
     if (kind === 'weight') data.step = parseFloat(val('f-step')) || 2.5;
     if (editing === 'new') st.addEquipment(data); else st.updateEquipment(editing, data);
     editing = null;
+    picked = null;
   });
 }
 
@@ -149,7 +208,7 @@ function exerciseForm(mount, head, goHub) {
       t('ex.bandsSub')) +
     '<button class="set-btn" id="save">' + esc(t('common.save')) + '</button>';
 
-  wireBack(goHub);
+  wireBack(rerender);
   byId('save').addEventListener('click', () => {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }
@@ -233,7 +292,7 @@ function planForm(mount, head, goHub) {
         '<button class="mini" id="additem">+ ' + esc(t('pl.addItem')) + '</button></div>'
       : '<p class="intro">' + esc(st.visibleExercises().length ? '' : t('pl.noExercises')) + '</p>');
 
-  wireBack(goHub);
+  wireBack(rerender);
   byId('save').addEventListener('click', () => {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }

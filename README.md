@@ -13,8 +13,10 @@ installierbare APK.
 - **Verlauf**: Monatskalender, Tag antippen zeigt Übungen und Gewichte von damals.
 - **Optionen**:
   - Sprache Deutsch oder Englisch.
-  - **Geräte** selbst anlegen — mit Platten, in Kilogramm oder Körpergewicht.
-    Jedes Gerät bringt sein eigenes Plattengewicht bzw. seine Schrittweite mit.
+  - **Geräte** aus einem Katalog von 83 Gerätetypen in neun Kategorien wählen,
+    mit Suchfeld über beide Sprachen — oder frei benennen. Gewicht wird in
+    Platten, in Kilogramm oder gar nicht gezählt; Plattengewicht und
+    Schrittweite gehören zum einzelnen Gerät.
   - **Übungen** selbst anlegen, einem Gerät zuordnen, Ampelbereiche setzen.
   - **Pläne** selbst zusammenstellen: Übungen, Sätze, Wiederholungen,
     Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender.
@@ -34,6 +36,7 @@ Start angelegt und ist danach genauso bearbeitbar wie alles Selbstgemachte.
 dachboden/
   src/js/              Quellcode
     data.js            Startbestand: Geräte, Übungen, Pläne
+    catalog.js         Katalog der Gerätetypen  <- hier Geräte ergänzen
     i18n.js            alle Texte auf Deutsch und Englisch
     store.js           Speichern, Laden, Migration, Sicherungen
     state.js           Zustand und Regeln, kennt kein DOM
@@ -134,6 +137,23 @@ brach jeden Download ab. Deshalb wurde das Norton-Zertifikat in den
 Zertifikatspeicher genau dieses JDKs aufgenommen
 (`android-toolchain\jdk21\lib\security\cacerts`, Alias `norton-ssl-scan`).
 Das betrifft nur dieses JDK, nicht Windows und nicht andere Programme.
+
+## Gerätekatalog
+
+`src/js/catalog.js` enthält 83 Gerätetypen in neun Kategorien — Geräteklassen,
+keine Hersteller und keine Modellnummern. Jeder Eintrag trägt seinen Namen
+gleich zweisprachig und weiß, wie sein Gewicht gezählt wird (Platten,
+Kilogramm mit Schrittweite, oder gar nicht). Die Namen stehen bewusst dort und
+nicht in `i18n.js`: sie sind Daten, keine Oberflächentexte.
+
+Das Suchfeld filtert über beide Sprachen gleichzeitig — „bench" findet auch die
+Flachbank. Gefiltert wird im Browser durch Ein- und Ausblenden, nicht durch
+Neuaufbau der Liste, sonst verlöre das Eingabefeld bei jedem Tastendruck den
+Fokus.
+
+Einen Gerätetyp ergänzen heißt: eine Zeile in die passende Kategorie eintragen,
+mit `key`, `de`, `en`, `kind` und bei Kilogramm-Geräten `step`. Was Nutzer
+selbst anlegen, landet in ihren Daten und nicht im Katalog.
 
 ## Aktualisierung aus der App heraus
 

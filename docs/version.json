@@ -1,10 +1,10 @@
 {
-  "versionCode": 5,
-  "versionName": "1.4",
-  "apk": "PTapp-1.4.apk",
-  "size": 6659407,
+  "versionCode": 6,
+  "versionName": "1.5",
+  "apk": "PTapp-1.5.apk",
+  "size": 6662712,
   "notes": {
-    "de": "Ausklappbare Erklärung auf der KI-Seite: was beim Verbinden passiert, warum Guthaben nötig ist und was ein Plan kostet.",
-    "en": "Expandable explanation on the AI page: what connecting does, why credits are needed and what a plan costs."
+    "de": "Geräte anlegen aus einem Katalog mit 83 Gerätetypen in neun Kategorien, mit Suchfeld. Eigene Geräte gehen weiterhin.",
+    "en": "Adding equipment from a catalogue of 83 types in nine categories, with a search field. Custom equipment still works."
   }
 }

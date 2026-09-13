@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-L65V33IK.js";
+} from "./part-RHZP746K.js";
 import {
   Directory,
   Encoding
@@ -194,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.4";
+var APP_VERSION = "1.5";
 var STATE_VERSION = 3;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -928,11 +928,173 @@ __export(options_exports, {
   resetSub: () => resetSub
 });
 
+// src/js/catalog.js
+var CATEGORIES = [
+  {
+    id: "cable",
+    de: "Kabelzug",
+    en: "Cable",
+    items: [
+      { key: "latPulldown", de: "Lat-Zug", en: "Lat pulldown", kind: "plates" },
+      { key: "seatedRow", de: "Rudern sitzend am Kabel", en: "Seated cable row", kind: "plates" },
+      { key: "cableCrossover", de: "Kabelkreuzzug", en: "Cable crossover", kind: "plates" },
+      { key: "cableTower", de: "Kabelturm, verstellbar", en: "Adjustable cable tower", kind: "plates" },
+      { key: "tricepsPushdown", de: "Trizepsdr\xFCcken am Kabel", en: "Cable triceps pushdown", kind: "plates" },
+      { key: "cableCurl", de: "Bizepscurl am Kabel", en: "Cable biceps curl", kind: "plates" },
+      { key: "facePull", de: "Face Pull am Kabel", en: "Cable face pull", kind: "plates" },
+      { key: "cableWoodchop", de: "Holzhacker am Kabel", en: "Cable woodchop", kind: "plates" },
+      { key: "cableAbCrunch", de: "Bauchcrunch am Kabel", en: "Cable ab crunch", kind: "plates" },
+      { key: "cableKickback", de: "Kickback mit Fu\xDFschlaufe", en: "Cable kickback with ankle strap", kind: "plates" }
+    ]
+  },
+  {
+    id: "chestBack",
+    de: "Maschinen f\xFCr Brust und R\xFCcken",
+    en: "Chest and back machines",
+    items: [
+      { key: "chestPress", de: "Brustpresse", en: "Chest press", kind: "plates" },
+      { key: "verticalChestPress", de: "Vertical Chest Press", en: "Vertical chest press", kind: "plates" },
+      { key: "inclineChestPress", de: "Schr\xE4ge Brustpresse", en: "Incline chest press", kind: "plates" },
+      { key: "pecDeck", de: "Butterfly", en: "Pec deck", kind: "plates" },
+      { key: "reverseFly", de: "Butterfly reverse", en: "Reverse fly", kind: "plates" },
+      { key: "assistedPullup", de: "Klimmzugmaschine mit Gegengewicht", en: "Assisted pull-up machine", kind: "plates" },
+      { key: "lowRowMachine", de: "Ruderzug-Maschine", en: "Low row machine", kind: "plates" },
+      { key: "tBarRow", de: "T-Bar-Rudern", en: "T-bar row", kind: "weight", step: 2.5 },
+      { key: "pulloverMachine", de: "Pullover-Maschine", en: "Pullover machine", kind: "plates" },
+      { key: "backExtension", de: "R\xFCckenstrecker", en: "Back extension", kind: "body" }
+    ]
+  },
+  {
+    id: "legs",
+    de: "Beinmaschinen",
+    en: "Leg machines",
+    items: [
+      { key: "legPress", de: "Beinpresse", en: "Leg press", kind: "plates" },
+      { key: "hackSquat", de: "Hackenschmidt-Maschine", en: "Hack squat machine", kind: "weight", step: 2.5 },
+      { key: "legExtension", de: "Beinstrecker", en: "Leg extension", kind: "plates" },
+      { key: "legCurlLying", de: "Beinbeuger liegend", en: "Lying leg curl", kind: "plates" },
+      { key: "legCurlSeated", de: "Beinbeuger sitzend", en: "Seated leg curl", kind: "plates" },
+      { key: "calfRaiseSeated", de: "Wadenheben sitzend", en: "Seated calf raise", kind: "plates" },
+      { key: "calfRaiseStanding", de: "Wadenheben stehend", en: "Standing calf raise", kind: "plates" },
+      { key: "hipAbduction", de: "Abduktoren-Maschine", en: "Hip abduction machine", kind: "plates" },
+      { key: "hipAdduction", de: "Adduktoren-Maschine", en: "Hip adduction machine", kind: "plates" },
+      { key: "hipThrustMachine", de: "Hip-Thrust-Maschine", en: "Hip thrust machine", kind: "plates" },
+      { key: "gluteKickbackMachine", de: "Glute-Kickback-Maschine", en: "Glute kickback machine", kind: "plates" },
+      { key: "smithMachine", de: "Multipresse", en: "Smith machine", kind: "weight", step: 2.5 }
+    ]
+  },
+  {
+    id: "shouldersArms",
+    de: "Schultern und Arme",
+    en: "Shoulders and arms",
+    items: [
+      { key: "shoulderPressMachine", de: "Schulterpresse", en: "Shoulder press machine", kind: "plates" },
+      { key: "lateralRaiseMachine", de: "Seitheben-Maschine", en: "Lateral raise machine", kind: "plates" },
+      { key: "bicepsCurlMachine", de: "Bizepsmaschine", en: "Biceps curl machine", kind: "plates" },
+      { key: "tricepsMachine", de: "Trizepsmaschine", en: "Triceps extension machine", kind: "plates" },
+      { key: "preacherBench", de: "Scottbank", en: "Preacher bench", kind: "weight", step: 2.5 },
+      { key: "assistedDip", de: "Dip-Maschine mit Gegengewicht", en: "Assisted dip machine", kind: "plates" },
+      { key: "wristRoller", de: "Unterarmtrainer", en: "Wrist roller", kind: "weight", step: 1 }
+    ]
+  },
+  {
+    id: "core",
+    de: "Rumpf",
+    en: "Core",
+    items: [
+      { key: "abCrunchMachine", de: "Bauchmaschine", en: "Ab crunch machine", kind: "plates" },
+      { key: "rotaryTorso", de: "Rumpfrotations-Maschine", en: "Rotary torso machine", kind: "plates" },
+      { key: "captainsChair", de: "Beinheber-Station", en: "Captain's chair", kind: "body" },
+      { key: "romanChair", de: "R\xF6mischer Stuhl", en: "Roman chair", kind: "body" },
+      { key: "abWheel", de: "Bauchroller", en: "Ab wheel", kind: "body" },
+      { key: "mat", de: "Trainingsmatte", en: "Exercise mat", kind: "body" }
+    ]
+  },
+  {
+    id: "free",
+    de: "Freie Gewichte",
+    en: "Free weights",
+    items: [
+      { key: "dumbbells", de: "Kurzhanteln", en: "Dumbbells", kind: "weight", step: 2 },
+      { key: "adjustableDumbbells", de: "Verstellbare Kurzhanteln", en: "Adjustable dumbbells", kind: "weight", step: 2.5 },
+      { key: "barbell", de: "Langhantel", en: "Barbell", kind: "weight", step: 2.5 },
+      { key: "ezBar", de: "SZ-Stange", en: "EZ bar", kind: "weight", step: 2.5 },
+      { key: "trapBar", de: "Trap-Bar", en: "Trap bar", kind: "weight", step: 2.5 },
+      { key: "kettlebell", de: "Kettlebell", en: "Kettlebell", kind: "weight", step: 4 },
+      { key: "weightPlates", de: "Hantelscheiben", en: "Weight plates", kind: "weight", step: 1.25 },
+      { key: "medicineBall", de: "Medizinball", en: "Medicine ball", kind: "weight", step: 1 },
+      { key: "slamBall", de: "Slam Ball", en: "Slam ball", kind: "weight", step: 1 },
+      { key: "sandbag", de: "Sandsack", en: "Sandbag", kind: "weight", step: 5 },
+      { key: "weightVest", de: "Gewichtsweste", en: "Weight vest", kind: "weight", step: 1 },
+      { key: "resistanceBand", de: "Widerstandsband", en: "Resistance band", kind: "body" },
+      { key: "gripTrainer", de: "Handtrainer", en: "Grip trainer", kind: "body" }
+    ]
+  },
+  {
+    id: "benchRack",
+    de: "B\xE4nke und Racks",
+    en: "Benches and racks",
+    items: [
+      { key: "flatBench", de: "Flachbank", en: "Flat bench", kind: "body" },
+      { key: "inclineBench", de: "Schr\xE4gbank", en: "Incline bench", kind: "body" },
+      { key: "declineBench", de: "Negativbank", en: "Decline bench", kind: "body" },
+      { key: "adjustableBench", de: "Verstellbare Hantelbank", en: "Adjustable bench", kind: "body" },
+      { key: "powerRack", de: "Power Rack", en: "Power rack", kind: "weight", step: 2.5 },
+      { key: "squatRack", de: "Kniebeugenst\xE4nder", en: "Squat rack", kind: "weight", step: 2.5 },
+      { key: "benchPressStation", de: "Bankdr\xFCckstation", en: "Bench press station", kind: "weight", step: 2.5 },
+      { key: "landmine", de: "Landmine", en: "Landmine", kind: "weight", step: 2.5 }
+    ]
+  },
+  {
+    id: "bodyweight",
+    de: "K\xF6rpergewicht",
+    en: "Bodyweight",
+    items: [
+      { key: "pullupBar", de: "Klimmzugstange", en: "Pull-up bar", kind: "body" },
+      { key: "dipBars", de: "Dip-Barren", en: "Dip bars", kind: "body" },
+      { key: "gymnasticRings", de: "Turnringe", en: "Gymnastic rings", kind: "body" },
+      { key: "suspensionTrainer", de: "Schlingentrainer", en: "Suspension trainer", kind: "body" },
+      { key: "parallettes", de: "Parallettes", en: "Parallettes", kind: "body" },
+      { key: "plyoBox", de: "Sprungkasten", en: "Plyo box", kind: "body" },
+      { key: "stepPlatform", de: "Steppbrett", en: "Step platform", kind: "body" },
+      { key: "floor", de: "Boden, ohne Ger\xE4t", en: "Floor, no equipment", kind: "body" }
+    ]
+  },
+  {
+    id: "cardio",
+    de: "Ausdauer",
+    en: "Cardio",
+    items: [
+      { key: "treadmill", de: "Laufband", en: "Treadmill", kind: "body" },
+      { key: "rowingMachine", de: "Ruderger\xE4t", en: "Rowing machine", kind: "body" },
+      { key: "bike", de: "Ergometer", en: "Exercise bike", kind: "body" },
+      { key: "spinBike", de: "Indoor Bike", en: "Spin bike", kind: "body" },
+      { key: "elliptical", de: "Crosstrainer", en: "Elliptical", kind: "body" },
+      { key: "stairClimber", de: "Stepper", en: "Stair climber", kind: "body" },
+      { key: "skiErg", de: "Ski-Ergometer", en: "Ski erg", kind: "body" },
+      { key: "airBike", de: "Air Bike", en: "Air bike", kind: "body" },
+      { key: "jumpRope", de: "Springseil", en: "Jump rope", kind: "body" }
+    ]
+  }
+];
+var catName = (o) => o[getLang()] || o.de;
+var searchText = (o) => (o.de + " " + o.en).toLowerCase();
+function catalogEntry(key) {
+  for (const c of CATEGORIES) {
+    const hit = c.items.find((i) => i.key === key);
+    if (hit) return hit;
+  }
+  return null;
+}
+var catalogSize = CATEGORIES.reduce((n, c) => n + c.items.length, 0);
+
 // src/js/views/editors.js
 var rerender = () => document.dispatchEvent(new CustomEvent("rerender"));
 var editing = null;
+var picked = null;
 function resetEditing() {
   editing = null;
+  picked = null;
 }
 function sideOptions() {
   return [
@@ -955,6 +1117,7 @@ function backBar(title) {
 function wireBack(to) {
   byId("back").addEventListener("click", () => {
     editing = null;
+    picked = null;
     to();
   });
 }
@@ -987,20 +1150,58 @@ function equipment(mount2, head2, goHub) {
     deleteEquipment(eq.id);
   });
 }
+function equipmentPicker(mount2, head2, goHub) {
+  const groups = CATEGORIES.map((c) => '<div class="cat" data-cat="' + c.id + '"><h3 class="cat-h">' + esc(catName(c)) + "</h3>" + c.items.map((i) => '<button class="cat-i" data-pickeq="' + esc(i.key) + '" data-find="' + esc(searchText(i)) + '">' + esc(catName(i)) + "</button>").join("") + "</div>").join("");
+  mount2.innerHTML = head2() + backBar(t("equip.pick")) + '<p class="intro">' + esc(t("equip.pickHint")) + '</p><input class="in" id="f-search" type="search" autocomplete="off" placeholder="' + esc(t("equip.search")) + '"><p class="intro" id="hits">' + esc(t("equip.fromCatalog", { n: catalogSize })) + '</p><div id="cats">' + groups + '</div><p class="intro" id="nomatch" hidden>' + esc(t("equip.noMatch")) + '</p><button class="set-btn" id="own">+ ' + esc(t("equip.custom")) + "</button>";
+  wireBack(rerender);
+  byId("own").addEventListener("click", () => {
+    picked = "custom";
+    rerender();
+  });
+  on("[data-pickeq]", (ev) => {
+    picked = ev.currentTarget.dataset.pickeq;
+    rerender();
+  });
+  const search = byId("f-search");
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    document.querySelectorAll(".cat").forEach((cat) => {
+      let inCat = 0;
+      cat.querySelectorAll(".cat-i").forEach((b) => {
+        const hit = !q || b.dataset.find.includes(q);
+        b.hidden = !hit;
+        if (hit) inCat++;
+      });
+      cat.hidden = inCat === 0;
+      shown += inCat;
+    });
+    byId("nomatch").hidden = shown > 0;
+    byId("hits").textContent = q ? t("equip.fromCatalog", { n: shown }) : t("equip.fromCatalog", { n: catalogSize });
+  });
+  search.focus();
+}
 function equipmentForm(mount2, head2, goHub) {
-  const eq = editing === "new" ? { kind: "plates", plate: S.pw, step: 2.5 } : equipOf(editing);
+  if (editing === "new" && !picked) return equipmentPicker(mount2, head2, goHub);
+  const fromCatalog = picked && picked !== "custom" ? catalogEntry(picked) : null;
+  const eq = editing === "new" ? {
+    kind: fromCatalog ? fromCatalog.kind : "plates",
+    plate: S.pw,
+    step: fromCatalog && fromCatalog.step ? fromCatalog.step : 2.5,
+    name: fromCatalog ? catName(fromCatalog) : ""
+  } : equipOf(editing);
   if (!eq) {
     editing = null;
     return equipment(mount2, head2, goHub);
   }
-  mount2.innerHTML = head2() + backBar(editing === "new" ? t("equip.add") : nameOf(eq)) + field(t("equip.name"), textIn("f-name", editing === "new" ? "" : nameOf(eq))) + field(t("equip.kind"), selectIn("f-kind", kindOptions(), eq.kind)) + '<div id="f-extra"></div><button class="set-btn" id="save">' + esc(t("common.save")) + "</button>";
+  mount2.innerHTML = head2() + backBar(editing === "new" ? t("equip.add") : nameOf(eq)) + field(t("equip.name"), textIn("f-name", editing === "new" ? eq.name || "" : nameOf(eq))) + field(t("equip.kind"), selectIn("f-kind", kindOptions(), eq.kind)) + '<div id="f-extra"></div><button class="set-btn" id="save">' + esc(t("common.save")) + "</button>";
   const extra = () => {
     const kind = byId("f-kind").value;
     byId("f-extra").innerHTML = kind === "plates" ? field(t("equip.plate"), numIn("f-plate", eq.plate || 4.5, "0.5", 0.5)) : kind === "weight" ? field(t("equip.step"), numIn("f-step", eq.step || 2.5, "0.5", 0.5)) : "";
   };
   extra();
   byId("f-kind").addEventListener("change", extra);
-  wireBack(goHub);
+  wireBack(rerender);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -1014,6 +1215,7 @@ function equipmentForm(mount2, head2, goHub) {
     if (editing === "new") addEquipment(data2);
     else updateEquipment(editing, data2);
     editing = null;
+    picked = null;
   });
 }
 function exercises(mount2, head2, goHub) {
@@ -1053,7 +1255,7 @@ function exerciseForm(mount2, head2, goHub) {
     '<span class="two">' + numIn("f-b1", bands[0] == null ? "" : bands[0], "0.5", 0) + numIn("f-b2", bands[1] == null ? "" : bands[1], "0.5", 0) + "</span>",
     t("ex.bandsSub")
   ) + '<button class="set-btn" id="save">' + esc(t("common.save")) + "</button>";
-  wireBack(goHub);
+  wireBack(rerender);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -1100,7 +1302,7 @@ function planForm(mount2, head2, goHub) {
   }).join("");
   const free = visibleExercises().filter((e) => !p.items.some((i) => i.ex === e.id));
   mount2.innerHTML = head2() + backBar(nameOf(p)) + field(t("pl.name"), textIn("f-name", nameOf(p))) + field(t("pl.short"), textIn("f-short", p.short || ""), t("pl.shortSub")) + field(t("pl.focus"), textIn("f-focus", focusOf(p))) + checkIn("f-night", t("pl.night"), !!p.night) + '<p class="fld-h">' + esc(t("pl.nightSub")) + '</p><button class="set-btn" id="save">' + esc(t("common.save")) + '</button><h3 class="sec">' + esc(t("pl.items")) + "</h3>" + (items || '<p class="intro">' + esc(t("pl.empty")) + "</p>") + (free.length ? '<div class="add-row">' + selectIn("f-add", free.map((e) => ({ id: e.id, label: nameOf(e) })), free[0].id) + '<button class="mini" id="additem">+ ' + esc(t("pl.addItem")) + "</button></div>" : '<p class="intro">' + esc(visibleExercises().length ? "" : t("pl.noExercises")) + "</p>");
-  wireBack(goHub);
+  wireBack(rerender);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -1300,7 +1502,7 @@ async function runVerify() {
   verifying = true;
   rerender2();
   try {
-    const mod = await import("./part-7G3NK6ZJ.js");
+    const mod = await import("./part-FRVXE2YU.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -1388,7 +1590,7 @@ function render3(mount2, head2, backBar3, goHub) {
     result = null;
     rerender2();
     try {
-      const mod = await import("./part-7G3NK6ZJ.js");
+      const mod = await import("./part-FRVXE2YU.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: keyOf(),

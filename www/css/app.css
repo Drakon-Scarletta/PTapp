@@ -436,3 +436,20 @@ select.in { appearance: none; background-image: none; }
   color: var(--decal); margin: 14px 0 2px;
 }
 .help p { font-size: 13.5px; color: #C9C2B1; margin: 0; line-height: 1.5; }
+
+/* ---- Geräte-Katalog ---- */
+#f-search { margin-bottom: 10px; }
+.cat { margin-bottom: 16px; }
+.cat-h {
+  font-family: 'Barlow Condensed'; font-size: 15px; font-weight: 700;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+  margin: 0 0 6px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--timber-line);
+}
+.cat-i {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  font-family: 'Barlow', system-ui, sans-serif; font-size: 15px;
+  padding: 11px 12px; margin-bottom: 5px; border-radius: 3px;
+  background: var(--ink-2); color: var(--decal); border: 1px solid var(--timber-line);
+}
+.cat-i:active { background: var(--decal); color: var(--ink); }
