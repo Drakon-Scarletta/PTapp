@@ -4,18 +4,22 @@ import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = fileURLToPath(new URL('./www', import.meta.url));
+// Standardmäßig die App selbst; mit ROOT=docs prüft man die fertige Seite.
+const ROOT = fileURLToPath(new URL('./' + (process.env.ROOT || 'www'), import.meta.url));
 const PORT = Number(process.env.PORT || 5173);
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
-  '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml'
+  '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json', '.apk': 'application/vnd.android.package-archive'
 };
 
-// Nur Segmente innerhalb von www/ zulassen.
+// Nur Segmente unterhalb der Wurzel zulassen; Ordner liefern ihre index.html.
 function safePath(url) {
   const parts = url.split(/[/\\]+/).filter(p => p && p !== '.' && p !== '..');
-  return parts.length ? join(...parts) : 'index.html';
+  if (!parts.length) return 'index.html';
+  if (!extname(parts[parts.length - 1])) parts.push('index.html');
+  return join(...parts);
 }
 
 createServer(async (req, res) => {

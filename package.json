@@ -11,7 +11,8 @@
     "apk:debug": "npm run sync && cd android && gradlew.bat assembleDebug",
     "apk:release": "npm run sync && cd android && gradlew.bat assembleRelease",
     "build:release": "node build.mjs --release",
-    "icons": "node resources/make-icon.mjs && capacitor-assets generate --android --splashBackgroundColor \"#16140F\" --splashBackgroundColorDark \"#16140F\" && node resources/fix-adaptive-icon.mjs"
+    "icons": "node resources/make-icon.mjs && capacitor-assets generate --android --splashBackgroundColor \"#16140F\" --splashBackgroundColorDark \"#16140F\" && node resources/fix-adaptive-icon.mjs",
+    "site": "npm run build:release && node build-site.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

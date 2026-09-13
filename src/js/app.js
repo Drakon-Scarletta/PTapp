@@ -60,6 +60,14 @@ async function wireNative() {
   } catch (e) { /* ältere Geräte */ }
 }
 
+// Nur die Web-Fassung: Service Worker, damit die App vom Startbildschirm aus
+// auch ohne Verbindung startet. Im APK übernimmt das Capacitor.
+function wireServiceWorker() {
+  if (Capacitor.isNativePlatform()) return;
+  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
+  navigator.serviceWorker.register('sw.js').catch(() => { /* z. B. lokaler Entwicklungsserver */ });
+}
+
 // Falls die App über Mitternacht offen bleibt.
 setInterval(() => { if (st.refreshDay()) render(); }, 60000);
 
@@ -70,5 +78,6 @@ setInterval(() => { if (st.refreshDay()) render(); }, 60000);
     toast('Gespeicherte Daten konnten nicht geladen werden.', true);
   }
   await wireNative();
+  wireServiceWorker();
   render();
 })();

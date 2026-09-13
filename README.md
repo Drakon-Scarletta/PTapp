@@ -67,6 +67,26 @@ Die App ist mit einem eigenen Schlüssel signiert, nicht aus dem Play Store.
 Android zeigt deshalb beim ersten Mal eine Warnung; das ist bei selbst
 gebauten Apps normal.
 
+## Web-Seite (GitHub Pages)
+
+```
+npm run site
+```
+
+Baut `docs/`: eine Startseite mit APK-Download, daneben unter `docs/app/` die App
+selbst — im Browser lauffähig, über *Zum Startbildschirm hinzufügen*
+installierbar und dank Service Worker offline nutzbar. Die APK wird aus dem
+letzten Release-Build übernommen, also vorher `build-apk.cmd` laufen lassen.
+
+Vor dem Veröffentlichen lokal ansehen:
+
+```
+ROOT=docs PORT=5174 node dev-server.mjs
+```
+
+GitHub Pages muss einmalig auf *Branch `main`, Ordner `/docs`* stehen
+(Repository → Settings → Pages).
+
 ## Am PC ausprobieren
 
 ```
