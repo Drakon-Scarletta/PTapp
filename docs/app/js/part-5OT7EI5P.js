@@ -1,7 +1,7 @@
 import {
   getLang,
   providerOf
-} from "./part-7AMOZZUK.js";
+} from "./part-KPUBZ5OY.js";
 import {
   checkMemorySyncInterval
 } from "./part-UZ3PHKCF.js";

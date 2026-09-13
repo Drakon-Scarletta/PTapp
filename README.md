@@ -21,6 +21,7 @@ installierbare APK.
   - **KI-Trainingsplan**: aus den eigenen Geräten einen Plan erzeugen lassen
     (siehe unten).
   - **Daten**: sichern, wiederherstellen, alles löschen.
+  - **Aktualisierung**: neue Fassung suchen, laden und installieren.
 - Läuft vollständig offline, auch die Schriften liegen in der App. Nur die
   KI-Funktion braucht eine Verbindung.
 
@@ -32,27 +33,35 @@ Start angelegt und ist danach genauso bearbeitbar wie alles Selbstgemachte.
 ```
 dachboden/
   src/js/              Quellcode
-    data.js            Pläne, Übungen, Ampelbereiche  <- hier Übungen ändern
-    store.js           Speichern, Laden, Sicherungen
+    data.js            Startbestand: Geräte, Übungen, Pläne
+    i18n.js            alle Texte auf Deutsch und Englisch
+    store.js           Speichern, Laden, Migration, Sicherungen
     state.js           Zustand und Regeln, kennt kein DOM
-    ui.js              kleine DOM-Helfer, Meldungen, Vibration
+    ui.js              DOM-Helfer, Meldungen, Formularbausteine
+    ai.js              Aufruf der KI-Anbieter (wird erst bei Bedarf geladen)
+    ai-meta.js         Anbieterliste, ohne schwere Abhängigkeiten
+    update.js          Versionsabgleich, Download, Installationsaufruf
     app.js             Einstieg, Ansichtswechsel, Zurück-Taste
-    views/             plan.js, log.js, settings.js
+    views/             plan.js, log.js, options.js, editors.js,
+                       aiview.js, updateview.js
   www/                 was die App wirklich lädt
     index.html
     css/app.css        Gestaltung
     css/fonts.css      eingebettete Barlow-Schriften
     fonts/             die Schriftdateien selbst
-    js/app.js          erzeugt aus src/js - nicht von Hand ändern
+    js/                erzeugt aus src/js - nicht von Hand ändern
   build.mjs            bündelt src/js samt Capacitor-Plugins nach www/js
+  build-site.mjs       baut docs/ für GitHub Pages inkl. version.json
+  release-notes.json   was in welcher Fassung neu ist
   resources/           icon.png, splash.png und das Skript, das sie erzeugt
   android/             das native Android-Projekt (von Capacitor erzeugt)
   dev-server.mjs       kleiner Server zum Ausprobieren am PC
   build-apk.cmd        baut die APK
 ```
 
-Übungen, Wiederholungen oder Ampelbereiche ändert man ausschließlich in
-`src/js/data.js`. Danach `build-apk.cmd` ausführen.
+Der Startbestand in `src/js/data.js` gilt nur für eine frische Installation —
+danach liegen Geräte, Übungen und Pläne in den Daten und werden in der App
+bearbeitet.
 
 `www/js/app.js` ist das Ergebnis des Bündelns: dort stecken neben dem eigenen
 Code auch die Capacitor-Plugins für App-Speicher, Dateien, Teilen und Vibration.
@@ -125,6 +134,38 @@ brach jeden Download ab. Deshalb wurde das Norton-Zertifikat in den
 Zertifikatspeicher genau dieses JDKs aufgenommen
 (`android-toolchain\jdk21\lib\security\cacerts`, Alias `norton-ssl-scan`).
 Das betrifft nur dieses JDK, nicht Windows und nicht andere Programme.
+
+## Aktualisierung aus der App heraus
+
+*Optionen → Aktualisierung* vergleicht die eigene Versionsnummer mit
+`version.json` auf der Web-Seite, lädt bei Bedarf die APK herunter und übergibt
+sie dem Android-Installer. Die Trainingsdaten bleiben dabei erhalten, weil die
+neue Fassung mit demselben Schlüssel signiert ist.
+
+Android verlangt dafür zweierlei: die Berechtigung `REQUEST_INSTALL_PACKAGES`
+im Manifest **und** die Freigabe „Unbekannte Apps installieren" für diese App.
+Fehlt die Freigabe, öffnet die App die passende Einstellung; danach genügt ein
+erneuter Tipp auf *Jetzt installieren*. Den Installationsaufruf erledigt ein
+kleines eigenes Capacitor-Plugin (`android/.../UpdaterPlugin.java`), registriert
+in `MainActivity`.
+
+Die Web-Fassung braucht das nicht — sie holt sich Neuerungen beim Öffnen selbst.
+
+### Eine neue Fassung veröffentlichen
+
+1. In `android/app/build.gradle` **`versionCode` um eins erhöhen** und
+   `versionName` setzen. Am `versionCode` erkennt die App, dass es etwas Neues
+   gibt — ohne Erhöhung sieht sie kein Update.
+2. In `release-notes.json` einen Eintrag unter dem neuen `versionName` anlegen
+   (Deutsch und Englisch); er erscheint in der App.
+3. `build-apk.cmd` — baut die signierte APK.
+4. `npm run site` — legt `docs/` neu an, inklusive `version.json` mit
+   Versionsnummer, Dateiname, Größe und den Notizen.
+5. Committen und pushen. Sobald GitHub Pages ausgeliefert hat, findet die
+   installierte App die neue Fassung.
+
+Reihenfolge beachten: erst die APK bauen, dann die Seite — sonst übernimmt
+`npm run site` die vorige APK unter neuem Namen.
 
 ## KI-Trainingsplan
 

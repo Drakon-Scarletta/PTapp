@@ -10,9 +10,13 @@ import sharp from 'sharp';
 
 const root = fileURLToPath(new URL('./', import.meta.url));
 const p = (...s) => join(root, ...s);
-// Die Version kommt aus dem Android-Projekt, damit Dateiname und App übereinstimmen.
+// Die Version kommt aus dem Android-Projekt, damit Dateiname, Seite und App
+// übereinstimmen. versionCode ist die Zahl, an der die App erkennt, ob es etwas
+// Neueres gibt - versionName ist nur die Beschriftung.
 const gradle = await readFile(p('android/app/build.gradle'), 'utf8');
 const VERSION = (/versionName\s+"([^"]+)"/.exec(gradle) || [, '1.0'])[1];
+const VERSION_CODE = Number((/versionCode\s+(\d+)/.exec(gradle) || [, '1'])[1]);
+const NOTES = JSON.parse(await readFile(p('release-notes.json'), 'utf8'));
 const APK_SRC = p('android/app/build/outputs/apk/release/app-release.apk');
 const APK_NAME = `PTapp-${VERSION}.apk`;
 
@@ -127,6 +131,15 @@ if (existsSync(APK_SRC)) {
 } else {
   console.warn('Keine APK gefunden - erst build-apk.cmd ausführen.');
 }
+
+// Hieran erkennt die installierte App, ob es etwas Neueres gibt.
+await writeFile(p('docs/version.json'), JSON.stringify({
+  versionCode: VERSION_CODE,
+  versionName: VERSION,
+  apk: APK_NAME,
+  size: apkSize,
+  notes: NOTES[VERSION] || {}
+}, null, 2) + '\n');
 
 // --- Startseite ---
 const mb = apkSize ? (apkSize / 1024 / 1024).toFixed(1).replace('.', ',') : null;

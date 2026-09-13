@@ -32,4 +32,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Fuer die Update-Funktion: erlaubt der App, die heruntergeladene
+         Fassung dem Installer zu uebergeben. Der Nutzer muss das zusaetzlich
+         in den Android-Einstellungen freigeben. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

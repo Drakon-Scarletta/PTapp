@@ -390,3 +390,10 @@ select.in { appearance: none; background-image: none; }
 
 .set-btn.go { background: var(--signal); color: #241D02; border-color: var(--signal); }
 .set-btn:disabled { opacity: .6; cursor: default; }
+
+/* ---- Fortschritt beim Herunterladen ---- */
+.bar {
+  height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 10px;
+  background: var(--ink-2); border: 1px solid var(--timber-line);
+}
+.bar-in { height: 100%; background: var(--signal); transition: width .2s linear; }

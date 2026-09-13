@@ -2,6 +2,7 @@ import {
   LANGS,
   PROVIDERS,
   detectLang,
+  getLang,
   locale,
   longDate,
   monthName,
@@ -10,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-7AMOZZUK.js";
+} from "./part-KPUBZ5OY.js";
 import {
   Directory,
   Encoding
@@ -192,7 +193,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.1";
+var APP_VERSION = "1.2";
 var STATE_VERSION = 3;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -220,8 +221,8 @@ async function loadState() {
     return freshState();
   }
 }
-async function saveState(state) {
-  await Preferences.set({ key: KEY, value: JSON.stringify(state) });
+async function saveState(state2) {
+  await Preferences.set({ key: KEY, value: JSON.stringify(state2) });
 }
 function migrate(raw) {
   const s2 = Object.assign(freshState(), raw);
@@ -254,9 +255,9 @@ function stamp() {
 }
 var DIRS = [Directory.Documents, Directory.Data];
 var backupDir = DIRS[0];
-async function exportBackup(state) {
+async function exportBackup(state2) {
   const data2 = JSON.stringify(
-    { app: "ptapp", version: STATE_VERSION, exported: (/* @__PURE__ */ new Date()).toISOString(), state },
+    { app: "ptapp", version: STATE_VERSION, exported: (/* @__PURE__ */ new Date()).toISOString(), state: state2 },
     null,
     2
   );
@@ -323,9 +324,9 @@ async function readBackup(name) {
 }
 function parseBackup(text) {
   const obj = JSON.parse(text);
-  const state = obj && obj.state ? obj.state : obj;
-  if (!state || typeof state !== "object" || !("log" in state)) throw new Error("kein g\xFCltiges Format");
-  return migrate(state);
+  const state2 = obj && obj.state ? obj.state : obj;
+  if (!state2 || typeof state2 !== "object" || !("log" in state2)) throw new Error("kein g\xFCltiges Format");
+  return migrate(state2);
 }
 async function ensureFolder(dir) {
   try {
@@ -922,7 +923,7 @@ var options_exports = {};
 __export(options_exports, {
   backBar: () => backBar2,
   refresh: () => refresh,
-  render: () => render4,
+  render: () => render5,
   resetSub: () => resetSub
 });
 
@@ -1215,7 +1216,7 @@ function render3(mount2, head2, backBar3, goHub) {
     btn.disabled = true;
     btn.textContent = t("ai.loadingModels");
     try {
-      const mod = await import("./part-F5KL3VI5.js");
+      const mod = await import("./part-5OT7EI5P.js");
       models = await mod.listModels(S.ai.provider, k);
       readForm();
       rerender2();
@@ -1240,7 +1241,7 @@ function render3(mount2, head2, backBar3, goHub) {
     result = null;
     rerender2();
     try {
-      const mod = await import("./part-F5KL3VI5.js");
+      const mod = await import("./part-5OT7EI5P.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: k,
@@ -1271,14 +1272,173 @@ function render3(mount2, head2, backBar3, goHub) {
   on("#f-goal, #f-days, #f-level, #f-notes", readForm, "change");
 }
 
-// src/js/views/options.js
+// src/js/update.js
+var Updater = registerPlugin("Updater");
+var SITE = "https://drakon-scarletta.github.io/PTapp";
+var canUpdate = () => Capacitor.isNativePlatform();
+async function currentVersion() {
+  if (!canUpdate()) return null;
+  const info = await App.getInfo();
+  return { code: parseInt(info.build, 10) || 0, name: info.version };
+}
+async function fetchLatest() {
+  const res = await fetch(`${SITE}/version.json?t=${Date.now()}`);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data2 = await res.json();
+  if (!data2 || typeof data2.versionCode !== "number" || !data2.apk) {
+    throw new Error("version.json unbrauchbar");
+  }
+  return data2;
+}
+async function check() {
+  const [cur, latest2] = await Promise.all([currentVersion(), fetchLatest()]);
+  return { cur, latest: latest2, newer: !!cur && latest2.versionCode > cur.code };
+}
+async function download(latest2, onProgress) {
+  let handle = null;
+  try {
+    handle = await Filesystem.addListener("progress", (p) => {
+      if (onProgress && p && p.contentLength) {
+        onProgress(Math.min(100, Math.round(p.bytes / p.contentLength * 100)));
+      }
+    });
+  } catch (e) {
+  }
+  try {
+    const res = await Filesystem.downloadFile({
+      url: `${SITE}/${latest2.apk}`,
+      path: latest2.apk,
+      directory: Directory.Cache,
+      progress: true
+    });
+    if (!res || !res.path) throw new Error("Download ohne Ergebnis");
+    return res.path;
+  } finally {
+    if (handle) {
+      try {
+        await handle.remove();
+      } catch (e) {
+      }
+    }
+  }
+}
+async function install(path) {
+  const { granted } = await Updater.canInstall();
+  if (!granted) {
+    await Updater.openInstallSettings();
+    return false;
+  }
+  await Updater.install({ path });
+  return true;
+}
+async function cleanup(name) {
+  try {
+    await Filesystem.deleteFile({ path: name, directory: Directory.Cache });
+  } catch (e) {
+  }
+}
+
+// src/js/views/updateview.js
 var rerender3 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var state = "idle";
+var latest = null;
+var installed = null;
+var percent = 0;
+var apkPath = null;
+function reset2() {
+  if (state === "loading") return;
+  state = "idle";
+  latest = null;
+  percent = 0;
+  apkPath = null;
+}
+function mb(bytes) {
+  return (bytes / 1024 / 1024).toFixed(1).toLocaleString() + " MB";
+}
+function notesOf(info) {
+  if (!info || !info.notes) return "";
+  return info.notes[getLang()] || info.notes.de || info.notes.en || "";
+}
+function render4(mount2, head2, backBar3, goHub) {
+  const body = canUpdate() ? nativeBody() : '<p class="intro">' + esc(t("upd.webSelfUpdates")) + "</p>";
+  mount2.innerHTML = head2() + backBar3(t("upd.title")) + '<p class="intro">' + esc(t("upd.installed", {
+    version: installed ? installed.name : APP_VERSION
+  })) + "</p>" + body;
+  byId("back").addEventListener("click", goHub);
+  wire();
+}
+function nativeBody() {
+  if (state === "checking") {
+    return '<button class="set-btn" disabled>' + esc(t("upd.checking")) + "</button>";
+  }
+  if (state === "current") {
+    return '<p class="intro">' + esc(t("upd.upToDate")) + '</p><button class="set-btn" id="check">' + esc(t("upd.check")) + "</button>";
+  }
+  if (state === "found" || state === "loading" || state === "ready") {
+    const notes = notesOf(latest);
+    return '<h3 class="sec">' + esc(t("upd.available", { version: latest.versionName })) + "</h3>" + (notes ? '<p class="intro">' + esc(notes) + "</p>" : "") + (latest.size ? '<p class="intro">' + esc(mb(latest.size)) + "</p>" : "") + (state === "loading" ? '<div class="bar"><div class="bar-in" style="width:' + percent + '%"></div></div><button class="set-btn" disabled>' + esc(t("upd.downloading", { percent })) + "</button>" : state === "ready" ? '<button class="set-btn go" id="doinstall">' + esc(t("upd.install")) + '</button><p class="fld-h">' + esc(t("upd.installHint")) + "</p>" : '<button class="set-btn go" id="dodownload">' + esc(t("upd.download")) + "</button>");
+  }
+  return '<button class="set-btn" id="check">' + esc(t("upd.check")) + "</button>";
+}
+function wire() {
+  const check$ = byId("check");
+  if (check$) check$.addEventListener("click", runCheck);
+  const dl = byId("dodownload");
+  if (dl) dl.addEventListener("click", runDownload);
+  const inst = byId("doinstall");
+  if (inst) inst.addEventListener("click", runInstall);
+}
+async function runCheck() {
+  state = "checking";
+  rerender3();
+  try {
+    const res = await check();
+    installed = res.cur;
+    latest = res.latest;
+    state = res.newer ? "found" : "current";
+  } catch (e) {
+    state = "idle";
+    toast(t("upd.failed", { msg: e.message }), true);
+  }
+  rerender3();
+}
+async function runDownload() {
+  state = "loading";
+  percent = 0;
+  rerender3();
+  try {
+    await cleanup(latest.apk);
+    apkPath = await download(latest, (p) => {
+      if (p !== percent) {
+        percent = p;
+        rerender3();
+      }
+    });
+    state = "ready";
+  } catch (e) {
+    state = "found";
+    toast(t("upd.failed", { msg: e.message }), true);
+  }
+  rerender3();
+}
+async function runInstall() {
+  try {
+    const ok = await install(apkPath);
+    if (!ok) toast(t("upd.needPermission"), true);
+  } catch (e) {
+    toast(t("upd.failed", { msg: e.message }), true);
+  }
+}
+
+// src/js/views/options.js
+var rerender4 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var sub = null;
 var backups = [];
 function resetSub() {
   sub = null;
   resetEditing();
   reset();
+  reset2();
 }
 async function refresh() {
   backups = await listBackups();
@@ -1287,17 +1447,19 @@ function go(next) {
   sub = next;
   resetEditing();
   if (next !== "ai") reset();
-  rerender3();
+  if (next !== "update") reset2();
+  rerender4();
 }
 function backBar2(title) {
   return '<div class="sub-bar"><button class="mini" id="back">\u2039 ' + esc(t("common.back")) + "</button><h2>" + esc(title) + "</h2></div>";
 }
-function render4(head2, mount2) {
+function render5(head2, mount2) {
   const goHub = () => go(null);
   if (sub === "equipment") return equipment(mount2, head2, goHub);
   if (sub === "exercises") return exercises(mount2, head2, goHub);
   if (sub === "plans") return plans(mount2, head2, goHub);
   if (sub === "ai") return render3(mount2, head2, backBar2, goHub);
+  if (sub === "update") return render4(mount2, head2, backBar2, goHub);
   if (sub === "lang") return language(mount2, head2, goHub);
   if (sub === "data") return data(mount2, head2, goHub);
   return hub(mount2, head2);
@@ -1315,7 +1477,7 @@ function hub(mount2, head2) {
   const lang = LANGS.find((l) => l.id === S.lang);
   mount2.innerHTML = head2() + '<div class="set-sec"><h2>' + esc(t("opt.overview")) + '</h2><div class="set-stat"><div><b>' + s2.total + "</b>" + esc(t("opt.totalUnits")) + "</div></div>" + (s2.first ? "<p>" + esc(t("opt.firstEntry", {
     date: longDate(new Date(s2.first.split("-")[0], s2.first.split("-")[1] - 1, s2.first.split("-")[2]))
-  })) + "</p>" : "") + "</div>" + entry2("ai", t("opt.ai"), t("opt.aiSub")) + entry2("lang", t("opt.language"), lang ? lang.label : S.lang) + entry2("equipment", t("opt.equipment"), t("opt.equipmentSub", { n: S.equipment.length })) + entry2("exercises", t("opt.exercises"), t("opt.exercisesSub", { n: visibleExercises().length })) + entry2("plans", t("opt.plans"), t("opt.plansSub", { n: S.plans.length })) + entry2("data", t("opt.data"), t("opt.dataSub")) + '<div class="tp-note">' + esc(t("opt.about", { app: APP_NAME, version: APP_VERSION })) + "</div>";
+  })) + "</p>" : "") + "</div>" + entry2("ai", t("opt.ai"), t("opt.aiSub")) + entry2("lang", t("opt.language"), lang ? lang.label : S.lang) + entry2("equipment", t("opt.equipment"), t("opt.equipmentSub", { n: S.equipment.length })) + entry2("exercises", t("opt.exercises"), t("opt.exercisesSub", { n: visibleExercises().length })) + entry2("plans", t("opt.plans"), t("opt.plansSub", { n: S.plans.length })) + entry2("data", t("opt.data"), t("opt.dataSub")) + entry2("update", t("upd.title"), t("upd.titleSub")) + '<div class="tp-note">' + esc(t("opt.about", { app: APP_NAME, version: APP_VERSION })) + "</div>";
   on("[data-go]", (ev) => go(ev.currentTarget.dataset.go));
 }
 function language(mount2, head2, goHub) {
@@ -1331,7 +1493,7 @@ function data(mount2, head2, goHub) {
       const r = await exportBackup(S);
       toast(t("data.saved", { name: r.name }));
       await refresh();
-      rerender3();
+      rerender4();
     } catch (e) {
       toast(t("data.saveFailed", { msg: e.message }), true);
     }
@@ -1376,7 +1538,7 @@ function head() {
     (v) => '<button data-view="' + v + '" class="' + (v === view ? "sel" : "") + '">' + esc(t(LABEL[v])) + "</button>"
   ).join("") + "</div>";
 }
-function render5() {
+function render6() {
   const scroll = window.scrollY;
   VIEWS[view].render(head, mount);
   document.querySelectorAll("[data-view]").forEach((b) => {
@@ -1388,11 +1550,11 @@ async function setView(v) {
   if (v === view) {
     if (v === "options") {
       resetSub();
-      render5();
+      render6();
     }
     if (v === "log") {
       resetSelection();
-      render5();
+      render6();
     }
     return;
   }
@@ -1402,10 +1564,10 @@ async function setView(v) {
     resetSub();
     await refresh();
   }
-  render5();
+  render6();
 }
-document.addEventListener("rerender", render5);
-onChange(render5);
+document.addEventListener("rerender", render6);
+onChange(render6);
 async function wireNative() {
   if (!Capacitor.isNativePlatform()) return;
   await App.addListener("backButton", () => {
@@ -1413,7 +1575,7 @@ async function wireNative() {
     else App.exitApp();
   });
   await App.addListener("appStateChange", ({ isActive }) => {
-    if (isActive && refreshDay()) render5();
+    if (isActive && refreshDay()) render6();
   });
   try {
     await StatusBar.setBackgroundColor({ color: "#16140F" });
@@ -1428,7 +1590,7 @@ function wireServiceWorker() {
   });
 }
 setInterval(() => {
-  if (refreshDay()) render5();
+  if (refreshDay()) render6();
 }, 6e4);
 (async function start() {
   try {
@@ -1438,5 +1600,5 @@ setInterval(() => {
   }
   await wireNative();
   wireServiceWorker();
-  render5();
+  render6();
 })();

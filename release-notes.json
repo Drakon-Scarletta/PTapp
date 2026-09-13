@@ -1,0 +1,14 @@
+{
+  "1.2": {
+    "de": "Aktualisierung direkt in der App: nachsehen, herunterladen, installieren.",
+    "en": "Updating from inside the app: check, download, install."
+  },
+  "1.1": {
+    "de": "Optionsmenü, Deutsch und Englisch, eigene Geräte, Übungen und Pläne, Trainingsplan von einer KI erstellen lassen.",
+    "en": "Options menu, German and English, your own equipment, exercises and plans, AI-generated training plans."
+  },
+  "1.0": {
+    "de": "Erste Fassung als eigenständige App.",
+    "en": "First release as a standalone app."
+  }
+}

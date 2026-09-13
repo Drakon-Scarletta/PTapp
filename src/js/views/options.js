@@ -6,13 +6,14 @@ import { exportBackup, listBackups, readBackup, parseBackup, isNative, freshStat
 import { esc, on, byId, toast, confirmBox, selectIn, field } from '../ui.js';
 import * as editors from './editors.js';
 import * as aiview from './aiview.js';
+import * as updateview from './updateview.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
 let sub = null;
 let backups = [];
 
-export function resetSub() { sub = null; editors.resetEditing(); aiview.reset(); }
+export function resetSub() { sub = null; editors.resetEditing(); aiview.reset(); updateview.reset(); }
 
 export async function refresh() {
   backups = await listBackups();
@@ -22,6 +23,7 @@ function go(next) {
   sub = next;
   editors.resetEditing();
   if (next !== 'ai') aiview.reset();
+  if (next !== 'update') updateview.reset();
   rerender();
 }
 
@@ -36,6 +38,7 @@ export function render(head, mount) {
   if (sub === 'exercises') return editors.exercises(mount, head, goHub);
   if (sub === 'plans') return editors.plans(mount, head, goHub);
   if (sub === 'ai') return aiview.render(mount, head, backBar, goHub);
+  if (sub === 'update') return updateview.render(mount, head, backBar, goHub);
   if (sub === 'lang') return language(mount, head, goHub);
   if (sub === 'data') return data(mount, head, goHub);
   return hub(mount, head);
@@ -72,6 +75,7 @@ function hub(mount, head) {
     entry('exercises', t('opt.exercises'), t('opt.exercisesSub', { n: st.visibleExercises().length })) +
     entry('plans', t('opt.plans'), t('opt.plansSub', { n: st.S.plans.length })) +
     entry('data', t('opt.data'), t('opt.dataSub')) +
+    entry('update', t('upd.title'), t('upd.titleSub')) +
 
     '<div class="tp-note">' + esc(t('opt.about', { app: APP_NAME, version: APP_VERSION })) + '</div>';
 
