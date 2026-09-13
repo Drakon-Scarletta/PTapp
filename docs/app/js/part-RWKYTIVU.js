@@ -1,10 +1,10 @@
 import {
-  getLang,
-  providerOf
-} from "./part-KPUBZ5OY.js";
-import {
   checkMemorySyncInterval
 } from "./part-UZ3PHKCF.js";
+import {
+  getLang,
+  providerOf
+} from "./part-GGZ4CHZB.js";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,

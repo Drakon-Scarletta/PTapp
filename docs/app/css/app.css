@@ -397,3 +397,20 @@ select.in { appearance: none; background-image: none; }
   background: var(--ink-2); border: 1px solid var(--timber-line);
 }
 .bar-in { height: 100%; background: var(--signal); transition: width .2s linear; }
+
+/* ---- Verbindung zum KI-Anbieter ---- */
+.conn {
+  background: var(--ink-2); border: 1px solid var(--timber-line); border-radius: 3px;
+  padding: 12px 13px; margin-bottom: 16px;
+}
+.conn-s { font-family: 'Barlow Condensed'; font-size: 16px; font-weight: 600; color: var(--muted); }
+.conn-s.ok { color: #6FB37E; }
+.conn-s.bad { color: #B9A98C; }
+.conn-k {
+  font-family: ui-monospace, 'Courier New', monospace; font-size: 12.5px;
+  color: var(--muted); margin: 2px 0 10px; word-break: break-all;
+}
+.conn .intro { margin-bottom: 12px; }
+.conn .set-btn { margin-bottom: 0; }
+.steps { margin: 14px 0 12px; padding-left: 20px; font-size: 14px; color: #C9C2B1; }
+.steps li { margin-bottom: 6px; }

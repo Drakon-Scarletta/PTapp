@@ -1,36 +1,44 @@
-// Plan von der KI erstellen lassen: Eingaben, Aufruf, Vorschau, Übernahme.
+// Plan von der KI erstellen lassen: verbinden, Eingaben, Aufruf, Vorschau.
+import { Browser } from '@capacitor/browser';
+import { Clipboard } from '@capacitor/clipboard';
 import * as st from '../state.js';
-import { t } from '../i18n.js';
+import { t, locale } from '../i18n.js';
 import { isNative } from '../store.js';
 import { PROVIDERS, providerOf } from '../ai-meta.js';
-import { esc, on, byId, val, toast, field, textIn, selectIn } from '../ui.js';
+import { esc, on, byId, val, toast, confirmBox, field, textIn, selectIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
 let busy = false;
+let verifying = false;
+let connecting = false;       // Anleitung nach dem Öffnen der Anbieterseite
 let result = null;
 let models = [];
 let form = { goal: 'muscle', days: 3, level: 'some', notes: '' };
 
-export function reset() { result = null; busy = false; }
+export function reset() {
+  result = null;
+  busy = false;
+  verifying = false;
+  connecting = false;
+}
 
-function goalOptions() {
-  return [
-    { id: 'strength', label: t('ai.goalStrength') },
-    { id: 'muscle', label: t('ai.goalMuscle') },
-    { id: 'fitness', label: t('ai.goalFitness') },
-    { id: 'lose', label: t('ai.goalLose') }
-  ];
-}
-function levelOptions() {
-  return [
-    { id: 'new', label: t('ai.levelNew') },
-    { id: 'some', label: t('ai.levelSome') },
-    { id: 'pro', label: t('ai.levelPro') }
-  ];
-}
+const goalOptions = () => [
+  { id: 'strength', label: t('ai.goalStrength') },
+  { id: 'muscle', label: t('ai.goalMuscle') },
+  { id: 'fitness', label: t('ai.goalFitness') },
+  { id: 'lose', label: t('ai.goalLose') }
+];
+const levelOptions = () => [
+  { id: 'new', label: t('ai.levelNew') },
+  { id: 'some', label: t('ai.levelSome') },
+  { id: 'pro', label: t('ai.levelPro') }
+];
 const kindLabel = eq => eq.kind === 'plates' ? t('equip.kindPlates')
   : eq.kind === 'weight' ? t('equip.kindWeight') : t('equip.kindBody');
+
+const keyOf = () => (st.S.ai.keys[st.S.ai.provider] || '').trim();
+const verifiedAt = () => (st.S.ai.verified || {})[st.S.ai.provider] || 0;
 
 function readForm() {
   if (!byId('f-goal')) return;
@@ -42,6 +50,86 @@ function readForm() {
   };
 }
 
+// ---- Verbindung ----
+function connectionBlock(prov) {
+  const key = keyOf();
+  const when = verifiedAt();
+
+  if (!key) {
+    return '<div class="conn">' +
+      '<div class="conn-s bad">● ' + esc(t('ai.notConnected')) + '</div>' +
+      '<p class="intro">' + esc(t('ai.noOauth', { host: prov.keyHost })) + '</p>' +
+      '<button class="set-btn go" id="connect">' + esc(t('ai.connect')) + '</button>' +
+      (connecting ? steps(prov) : '') +
+      '</div>';
+  }
+
+  return '<div class="conn">' +
+    '<div class="conn-s' + (when ? ' ok' : '') + '">● ' +
+      esc(when ? t('ai.connectedAt', { date: new Date(when).toLocaleDateString(locale()) })
+               : t('ai.connectedUnchecked')) + '</div>' +
+    '<div class="conn-k">' + esc(mask(key)) + '</div>' +
+    '<div class="row-act">' +
+      '<button class="mini" id="verify"' + (verifying ? ' disabled' : '') + '>' +
+        esc(verifying ? t('ai.verifying') : t('ai.verify')) + '</button>' +
+      '<button class="mini" id="connect">' + esc(t('ai.replaceKey')) + '</button>' +
+      '<button class="mini warn" id="disconnect">' + esc(t('ai.disconnect')) + '</button>' +
+    '</div>' +
+    (connecting ? steps(prov) : '') +
+    '</div>';
+}
+
+function steps(prov) {
+  return '<ol class="steps">' +
+    '<li>' + esc(t('ai.step1', { host: prov.keyHost })) + '</li>' +
+    '<li>' + esc(t('ai.step2')) + '</li>' +
+    '<li>' + esc(t('ai.step3')) + '</li></ol>' +
+    '<button class="set-btn go" id="paste">' + esc(t('ai.paste')) + '</button>' +
+    field(t('ai.orType'), '<input class="in" id="f-key" type="password" autocomplete="off" value="">') +
+    '<button class="set-btn" id="savekey">' + esc(t('common.save')) + '</button>';
+}
+
+function mask(key) {
+  if (key.length <= 12) return '••••';
+  return key.slice(0, 7) + '…' + key.slice(-4);
+}
+
+async function useKey(raw, prov) {
+  const key = (raw || '').trim();
+  if (!key) { toast(t('ai.pasteEmpty'), true); return; }
+  if (!key.startsWith(prov.keyPrefix)) {
+    if (!confirmBox(t('ai.keyLooksWrong', { prefix: prov.keyPrefix }))) return;
+  }
+  st.S.ai.keys[st.S.ai.provider] = key;
+  st.S.ai.verified = st.S.ai.verified || {};
+  delete st.S.ai.verified[st.S.ai.provider];
+  connecting = false;
+  await st.touch();
+  runVerify();
+}
+
+async function runVerify() {
+  const key = keyOf();
+  if (!key) { toast(t('ai.needKey'), true); return; }
+  verifying = true;
+  rerender();
+  try {
+    const mod = await import('../ai.js');
+    models = await mod.listModels(st.S.ai.provider, key);
+    st.S.ai.verified = st.S.ai.verified || {};
+    st.S.ai.verified[st.S.ai.provider] = Date.now();
+    if (models.length && !models.some(m => m.id === st.S.ai.model)) st.S.ai.model = models[0].id;
+    verifying = false;
+    await st.touch();
+    toast(t('ai.verifyOk', { n: models.length }));
+  } catch (e) {
+    verifying = false;
+    toast(t('ai.failed', { msg: e.message }), true);
+    rerender();
+  }
+}
+
+// ---- Vorschau ----
 function preview() {
   const ex = (result.exercises || []).map(e =>
     '<li>' + esc(e.name) + ' <span class="lst-s">— ' +
@@ -60,57 +148,94 @@ function preview() {
   return '<h3 class="sec">' + esc(t('ai.result')) + '</h3>' + plans +
     (ex ? '<p class="intro">' + esc(t('ai.newExercises', { n: (result.exercises || []).length })) +
       '</p><ul class="plain">' + ex + '</ul>' : '') +
-    '<button class="set-btn" id="accept">' + esc(t('ai.accept')) + '</button>' +
+    '<button class="set-btn go" id="accept">' + esc(t('ai.accept')) + '</button>' +
     '<button class="set-btn" id="discard">' + esc(t('ai.discard')) + '</button>';
 }
 
+// ---- Seite ----
 export function render(mount, head, backBar, goHub) {
-  const ai = st.S.ai;
-  const prov = providerOf(ai.provider);
-  const key = ai.keys[ai.provider] || '';
+  const prov = providerOf(st.S.ai.provider);
+  const connected = !!keyOf();
   const modelOpts = models.length
     ? models.map(m => ({ id: m.id, label: m.label }))
-    : [{ id: ai.model || prov.defaultModel, label: ai.model || prov.defaultModel }];
+    : [{ id: st.S.ai.model || prov.defaultModel, label: st.S.ai.model || prov.defaultModel }];
 
   mount.innerHTML = head() + backBar(t('ai.title')) +
     '<p class="intro">' + esc(t('ai.intro')) + '</p>' +
-    (isNative() ? '' : '<div class="tp-err">' + esc(t('ai.webBlocked')) + '</div>') +
+    (isNative() ? '' : '<p class="intro">' + esc(t('ai.webKeyNote')) + '</p>') +
 
-    field(t('ai.provider'), selectIn('f-prov', PROVIDERS.map(p => ({ id: p.id, label: p.label })), ai.provider)) +
-    field(t('ai.key'),
-      '<input class="in" id="f-key" type="password" autocomplete="off" value="' + esc(key) + '">',
-      (ai.provider === 'openai' ? t('ai.keyHintOpenAI') : t('ai.keyHintAnthropic')) + ' ' + t('ai.keyStored')) +
-    field(t('ai.model'),
-      '<span class="two">' + selectIn('f-model', modelOpts, ai.model || prov.defaultModel) +
-      textIn('f-modelfree', ai.model || prov.defaultModel) + '</span>') +
-    '<button class="mini" id="loadmodels">' + esc(t('ai.loadModels')) + '</button>' +
+    field(t('ai.provider'), selectIn('f-prov', PROVIDERS.map(p => ({ id: p.id, label: p.label })), st.S.ai.provider)) +
+    connectionBlock(prov) +
 
-    '<h3 class="sec">' + esc(t('ai.equipUsed')) + '</h3>' +
-    '<ul class="plain">' + st.S.equipment.map(e =>
-      '<li>' + esc(st.nameOf(e)) + ' <span class="lst-s">— ' + esc(kindLabel(e)) + '</span></li>').join('') + '</ul>' +
+    (connected
+      ? field(t('ai.model'),
+          '<span class="two">' + selectIn('f-model', modelOpts, st.S.ai.model || prov.defaultModel) +
+          textIn('f-modelfree', st.S.ai.model || prov.defaultModel) + '</span>') +
 
-    field(t('ai.goal'), selectIn('f-goal', goalOptions(), form.goal)) +
-    field(t('ai.days'), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') +
-    field(t('ai.level'), selectIn('f-level', levelOptions(), form.level)) +
-    field(t('ai.notes'), textIn('f-notes', form.notes)) +
+        '<h3 class="sec">' + esc(t('ai.equipUsed')) + '</h3>' +
+        '<ul class="plain">' + st.S.equipment.map(e =>
+          '<li>' + esc(st.nameOf(e)) + ' <span class="lst-s">— ' + esc(kindLabel(e)) + '</span></li>').join('') + '</ul>' +
 
-    '<button class="set-btn' + (busy ? '' : ' go') + '" id="gen"' + (busy ? ' disabled' : '') + '>' +
-      esc(busy ? t('ai.working') : t('ai.generate')) + '</button>' +
-    (result ? preview() : '');
+        field(t('ai.goal'), selectIn('f-goal', goalOptions(), form.goal)) +
+        field(t('ai.days'), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') +
+        field(t('ai.level'), selectIn('f-level', levelOptions(), form.level)) +
+        field(t('ai.notes'), textIn('f-notes', form.notes)) +
+
+        '<button class="set-btn' + (busy ? '' : ' go') + '" id="gen"' + (busy ? ' disabled' : '') + '>' +
+          esc(busy ? t('ai.working') : t('ai.generate')) + '</button>' +
+        (result ? preview() : '')
+      : '');
 
   byId('back').addEventListener('click', goHub);
 
   byId('f-prov').addEventListener('change', ev => {
     readForm();
     models = [];
+    connecting = false;
     st.S.ai.provider = ev.target.value;
     st.S.ai.model = providerOf(ev.target.value).defaultModel;
     st.touch();
   });
-  byId('f-key').addEventListener('change', ev => {
-    st.S.ai.keys[st.S.ai.provider] = ev.target.value.trim();
-    st.touch();
+
+  const connect = byId('connect');
+  if (connect) connect.addEventListener('click', async () => {
+    connecting = true;
+    rerender();
+    try {
+      await Browser.open({ url: prov.keyUrl });
+    } catch (e) {
+      window.open(prov.keyUrl, '_blank');
+    }
   });
+
+  const paste = byId('paste');
+  if (paste) paste.addEventListener('click', async () => {
+    try {
+      const { value } = await Clipboard.read();
+      await useKey(value, prov);
+    } catch (e) {
+      toast(t('ai.clipboardFailed'), true);
+    }
+  });
+
+  const savekey = byId('savekey');
+  if (savekey) savekey.addEventListener('click', () => useKey(val('f-key'), prov));
+
+  const verify = byId('verify');
+  if (verify) verify.addEventListener('click', runVerify);
+
+  const disconnect = byId('disconnect');
+  if (disconnect) disconnect.addEventListener('click', async () => {
+    if (!confirmBox(t('ai.disconnectAsk'))) return;
+    st.S.ai.keys[st.S.ai.provider] = '';
+    if (st.S.ai.verified) delete st.S.ai.verified[st.S.ai.provider];
+    models = [];
+    await st.touch();
+    toast(t('ai.disconnected'));
+  });
+
+  if (!connected) return;
+
   byId('f-model').addEventListener('change', ev => {
     byId('f-modelfree').value = ev.target.value;
     st.S.ai.model = ev.target.value;
@@ -121,28 +246,8 @@ export function render(mount, head, backBar, goHub) {
     st.touch();
   });
 
-  byId('loadmodels').addEventListener('click', async () => {
-    const k = val('f-key');
-    if (!k) { toast(t('ai.needKey'), true); return; }
-    const btn = byId('loadmodels');
-    btn.disabled = true;
-    btn.textContent = t('ai.loadingModels');
-    try {
-      const mod = await import('../ai.js');
-      models = await mod.listModels(st.S.ai.provider, k);
-      readForm();
-      rerender();
-    } catch (e) {
-      toast(t('ai.failed', { msg: e.message }), true);
-      btn.disabled = false;
-      btn.textContent = t('ai.loadModels');
-    }
-  });
-
   byId('gen').addEventListener('click', async () => {
     readForm();
-    const k = val('f-key');
-    if (!k) { toast(t('ai.needKey'), true); return; }
     if (!st.S.equipment.length) { toast(t('ai.needEquip'), true); return; }
     busy = true;
     result = null;
@@ -151,7 +256,7 @@ export function render(mount, head, backBar, goHub) {
       const mod = await import('../ai.js');
       result = await mod.generatePlan({
         provider: st.S.ai.provider,
-        key: k,
+        key: keyOf(),
         model: val('f-modelfree') || st.S.ai.model,
         goal: goalOptions().find(o => o.id === form.goal).label,
         level: levelOptions().find(o => o.id === form.level).label,

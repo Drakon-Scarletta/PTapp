@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-KPUBZ5OY.js";
+} from "./part-GGZ4CHZB.js";
 import {
   Directory,
   Encoding
@@ -21,6 +21,7 @@ import {
 } from "./part-MJLH4ETE.js";
 import {
   Capacitor,
+  WebPlugin,
   registerPlugin
 } from "./part-NTKUDOCD.js";
 import {
@@ -193,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.2";
+var APP_VERSION = "1.3";
 var STATE_VERSION = 3;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -1132,32 +1133,120 @@ function planForm(mount2, head2, goHub) {
   ), "change");
 }
 
+// node_modules/@capacitor/browser/dist/esm/index.js
+var Browser = registerPlugin("Browser", {
+  web: () => import("./part-CJEYMYTV.js").then((m) => new m.BrowserWeb())
+});
+
+// node_modules/@capacitor/clipboard/dist/esm/web.js
+var ClipboardWeb = class extends WebPlugin {
+  async write(options) {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      throw this.unavailable("Clipboard API not available in this browser");
+    }
+    if (options.string !== void 0) {
+      await this.writeText(options.string);
+    } else if (options.url) {
+      await this.writeText(options.url);
+    } else if (options.image) {
+      if (typeof ClipboardItem !== "undefined") {
+        try {
+          const blob = await (await fetch(options.image)).blob();
+          const clipboardItemInput = new ClipboardItem({ [blob.type]: blob });
+          await navigator.clipboard.write([clipboardItemInput]);
+        } catch (err) {
+          throw new Error("Failed to write image");
+        }
+      } else {
+        throw this.unavailable("Writing images to the clipboard is not supported in this browser");
+      }
+    } else {
+      throw new Error("Nothing to write");
+    }
+  }
+  async read() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      throw this.unavailable("Clipboard API not available in this browser");
+    }
+    if (typeof ClipboardItem !== "undefined") {
+      try {
+        const clipboardItems = await navigator.clipboard.read();
+        const type = clipboardItems[0].types[0];
+        const clipboardBlob = await clipboardItems[0].getType(type);
+        const data2 = await this._getBlobData(clipboardBlob, type);
+        return { value: data2, type };
+      } catch (err) {
+        return this.readText();
+      }
+    } else {
+      return this.readText();
+    }
+  }
+  async readText() {
+    if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.readText) {
+      throw this.unavailable("Reading from clipboard not supported in this browser");
+    }
+    const text = await navigator.clipboard.readText();
+    return { value: text, type: "text/plain" };
+  }
+  async writeText(text) {
+    if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.writeText) {
+      throw this.unavailable("Writting to clipboard not supported in this browser");
+    }
+    await navigator.clipboard.writeText(text);
+  }
+  _getBlobData(clipboardBlob, type) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      if (type.includes("image")) {
+        reader.readAsDataURL(clipboardBlob);
+      } else {
+        reader.readAsText(clipboardBlob);
+      }
+      reader.onloadend = () => {
+        const r = reader.result;
+        resolve(r);
+      };
+      reader.onerror = (e) => {
+        reject(e);
+      };
+    });
+  }
+};
+
+// node_modules/@capacitor/clipboard/dist/esm/index.js
+var Clipboard = registerPlugin("Clipboard", {
+  web: () => new ClipboardWeb()
+});
+
 // src/js/views/aiview.js
 var rerender2 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var busy = false;
+var verifying = false;
+var connecting = false;
 var result = null;
 var models = [];
 var form = { goal: "muscle", days: 3, level: "some", notes: "" };
 function reset() {
   result = null;
   busy = false;
+  verifying = false;
+  connecting = false;
 }
-function goalOptions() {
-  return [
-    { id: "strength", label: t("ai.goalStrength") },
-    { id: "muscle", label: t("ai.goalMuscle") },
-    { id: "fitness", label: t("ai.goalFitness") },
-    { id: "lose", label: t("ai.goalLose") }
-  ];
-}
-function levelOptions() {
-  return [
-    { id: "new", label: t("ai.levelNew") },
-    { id: "some", label: t("ai.levelSome") },
-    { id: "pro", label: t("ai.levelPro") }
-  ];
-}
+var goalOptions = () => [
+  { id: "strength", label: t("ai.goalStrength") },
+  { id: "muscle", label: t("ai.goalMuscle") },
+  { id: "fitness", label: t("ai.goalFitness") },
+  { id: "lose", label: t("ai.goalLose") }
+];
+var levelOptions = () => [
+  { id: "new", label: t("ai.levelNew") },
+  { id: "some", label: t("ai.levelSome") },
+  { id: "pro", label: t("ai.levelPro") }
+];
 var kindLabel = (eq) => eq.kind === "plates" ? t("equip.kindPlates") : eq.kind === "weight" ? t("equip.kindWeight") : t("equip.kindBody");
+var keyOf = () => (S.ai.keys[S.ai.provider] || "").trim();
+var verifiedAt = () => (S.ai.verified || {})[S.ai.provider] || 0;
 function readForm() {
   if (!byId("f-goal")) return;
   form = {
@@ -1167,36 +1256,115 @@ function readForm() {
     notes: val("f-notes")
   };
 }
+function connectionBlock(prov) {
+  const key = keyOf();
+  const when = verifiedAt();
+  if (!key) {
+    return '<div class="conn"><div class="conn-s bad">\u25CF ' + esc(t("ai.notConnected")) + '</div><p class="intro">' + esc(t("ai.noOauth", { host: prov.keyHost })) + '</p><button class="set-btn go" id="connect">' + esc(t("ai.connect")) + "</button>" + (connecting ? steps(prov) : "") + "</div>";
+  }
+  return '<div class="conn"><div class="conn-s' + (when ? " ok" : "") + '">\u25CF ' + esc(when ? t("ai.connectedAt", { date: new Date(when).toLocaleDateString(locale()) }) : t("ai.connectedUnchecked")) + '</div><div class="conn-k">' + esc(mask(key)) + '</div><div class="row-act"><button class="mini" id="verify"' + (verifying ? " disabled" : "") + ">" + esc(verifying ? t("ai.verifying") : t("ai.verify")) + '</button><button class="mini" id="connect">' + esc(t("ai.replaceKey")) + '</button><button class="mini warn" id="disconnect">' + esc(t("ai.disconnect")) + "</button></div>" + (connecting ? steps(prov) : "") + "</div>";
+}
+function steps(prov) {
+  return '<ol class="steps"><li>' + esc(t("ai.step1", { host: prov.keyHost })) + "</li><li>" + esc(t("ai.step2")) + "</li><li>" + esc(t("ai.step3")) + '</li></ol><button class="set-btn go" id="paste">' + esc(t("ai.paste")) + "</button>" + field(t("ai.orType"), '<input class="in" id="f-key" type="password" autocomplete="off" value="">') + '<button class="set-btn" id="savekey">' + esc(t("common.save")) + "</button>";
+}
+function mask(key) {
+  if (key.length <= 12) return "\u2022\u2022\u2022\u2022";
+  return key.slice(0, 7) + "\u2026" + key.slice(-4);
+}
+async function useKey(raw, prov) {
+  const key = (raw || "").trim();
+  if (!key) {
+    toast(t("ai.pasteEmpty"), true);
+    return;
+  }
+  if (!key.startsWith(prov.keyPrefix)) {
+    if (!confirmBox(t("ai.keyLooksWrong", { prefix: prov.keyPrefix }))) return;
+  }
+  S.ai.keys[S.ai.provider] = key;
+  S.ai.verified = S.ai.verified || {};
+  delete S.ai.verified[S.ai.provider];
+  connecting = false;
+  await touch();
+  runVerify();
+}
+async function runVerify() {
+  const key = keyOf();
+  if (!key) {
+    toast(t("ai.needKey"), true);
+    return;
+  }
+  verifying = true;
+  rerender2();
+  try {
+    const mod = await import("./part-RWKYTIVU.js");
+    models = await mod.listModels(S.ai.provider, key);
+    S.ai.verified = S.ai.verified || {};
+    S.ai.verified[S.ai.provider] = Date.now();
+    if (models.length && !models.some((m) => m.id === S.ai.model)) S.ai.model = models[0].id;
+    verifying = false;
+    await touch();
+    toast(t("ai.verifyOk", { n: models.length }));
+  } catch (e) {
+    verifying = false;
+    toast(t("ai.failed", { msg: e.message }), true);
+    rerender2();
+  }
+}
 function preview() {
   const ex = (result.exercises || []).map((e) => "<li>" + esc(e.name) + ' <span class="lst-s">\u2014 ' + esc(nameOf(equipOf(e.equipment))) + "</span></li>").join("");
   const plans2 = (result.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
-  return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plans2 + (ex ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result.exercises || []).length })) + '</p><ul class="plain">' + ex + "</ul>" : "") + '<button class="set-btn" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>";
+  return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plans2 + (ex ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result.exercises || []).length })) + '</p><ul class="plain">' + ex + "</ul>" : "") + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>";
 }
 function render3(mount2, head2, backBar3, goHub) {
-  const ai = S.ai;
-  const prov = providerOf(ai.provider);
-  const key = ai.keys[ai.provider] || "";
-  const modelOpts = models.length ? models.map((m) => ({ id: m.id, label: m.label })) : [{ id: ai.model || prov.defaultModel, label: ai.model || prov.defaultModel }];
-  mount2.innerHTML = head2() + backBar3(t("ai.title")) + '<p class="intro">' + esc(t("ai.intro")) + "</p>" + (isNative() ? "" : '<div class="tp-err">' + esc(t("ai.webBlocked")) + "</div>") + field(t("ai.provider"), selectIn("f-prov", PROVIDERS.map((p) => ({ id: p.id, label: p.label })), ai.provider)) + field(
-    t("ai.key"),
-    '<input class="in" id="f-key" type="password" autocomplete="off" value="' + esc(key) + '">',
-    (ai.provider === "openai" ? t("ai.keyHintOpenAI") : t("ai.keyHintAnthropic")) + " " + t("ai.keyStored")
-  ) + field(
+  const prov = providerOf(S.ai.provider);
+  const connected = !!keyOf();
+  const modelOpts = models.length ? models.map((m) => ({ id: m.id, label: m.label })) : [{ id: S.ai.model || prov.defaultModel, label: S.ai.model || prov.defaultModel }];
+  mount2.innerHTML = head2() + backBar3(t("ai.title")) + '<p class="intro">' + esc(t("ai.intro")) + "</p>" + (isNative() ? "" : '<p class="intro">' + esc(t("ai.webKeyNote")) + "</p>") + field(t("ai.provider"), selectIn("f-prov", PROVIDERS.map((p) => ({ id: p.id, label: p.label })), S.ai.provider)) + connectionBlock(prov) + (connected ? field(
     t("ai.model"),
-    '<span class="two">' + selectIn("f-model", modelOpts, ai.model || prov.defaultModel) + textIn("f-modelfree", ai.model || prov.defaultModel) + "</span>"
-  ) + '<button class="mini" id="loadmodels">' + esc(t("ai.loadModels")) + '</button><h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>" + field(t("ai.goal"), selectIn("f-goal", goalOptions(), form.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form.level)) + field(t("ai.notes"), textIn("f-notes", form.notes)) + '<button class="set-btn' + (busy ? "" : " go") + '" id="gen"' + (busy ? " disabled" : "") + ">" + esc(busy ? t("ai.working") : t("ai.generate")) + "</button>" + (result ? preview() : "");
+    '<span class="two">' + selectIn("f-model", modelOpts, S.ai.model || prov.defaultModel) + textIn("f-modelfree", S.ai.model || prov.defaultModel) + "</span>"
+  ) + '<h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>" + field(t("ai.goal"), selectIn("f-goal", goalOptions(), form.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form.level)) + field(t("ai.notes"), textIn("f-notes", form.notes)) + '<button class="set-btn' + (busy ? "" : " go") + '" id="gen"' + (busy ? " disabled" : "") + ">" + esc(busy ? t("ai.working") : t("ai.generate")) + "</button>" + (result ? preview() : "") : "");
   byId("back").addEventListener("click", goHub);
   byId("f-prov").addEventListener("change", (ev) => {
     readForm();
     models = [];
+    connecting = false;
     S.ai.provider = ev.target.value;
     S.ai.model = providerOf(ev.target.value).defaultModel;
     touch();
   });
-  byId("f-key").addEventListener("change", (ev) => {
-    S.ai.keys[S.ai.provider] = ev.target.value.trim();
-    touch();
+  const connect = byId("connect");
+  if (connect) connect.addEventListener("click", async () => {
+    connecting = true;
+    rerender2();
+    try {
+      await Browser.open({ url: prov.keyUrl });
+    } catch (e) {
+      window.open(prov.keyUrl, "_blank");
+    }
   });
+  const paste = byId("paste");
+  if (paste) paste.addEventListener("click", async () => {
+    try {
+      const { value } = await Clipboard.read();
+      await useKey(value, prov);
+    } catch (e) {
+      toast(t("ai.clipboardFailed"), true);
+    }
+  });
+  const savekey = byId("savekey");
+  if (savekey) savekey.addEventListener("click", () => useKey(val("f-key"), prov));
+  const verify = byId("verify");
+  if (verify) verify.addEventListener("click", runVerify);
+  const disconnect = byId("disconnect");
+  if (disconnect) disconnect.addEventListener("click", async () => {
+    if (!confirmBox(t("ai.disconnectAsk"))) return;
+    S.ai.keys[S.ai.provider] = "";
+    if (S.ai.verified) delete S.ai.verified[S.ai.provider];
+    models = [];
+    await touch();
+    toast(t("ai.disconnected"));
+  });
+  if (!connected) return;
   byId("f-model").addEventListener("change", (ev) => {
     byId("f-modelfree").value = ev.target.value;
     S.ai.model = ev.target.value;
@@ -1206,33 +1374,8 @@ function render3(mount2, head2, backBar3, goHub) {
     S.ai.model = ev.target.value.trim();
     touch();
   });
-  byId("loadmodels").addEventListener("click", async () => {
-    const k = val("f-key");
-    if (!k) {
-      toast(t("ai.needKey"), true);
-      return;
-    }
-    const btn = byId("loadmodels");
-    btn.disabled = true;
-    btn.textContent = t("ai.loadingModels");
-    try {
-      const mod = await import("./part-5OT7EI5P.js");
-      models = await mod.listModels(S.ai.provider, k);
-      readForm();
-      rerender2();
-    } catch (e) {
-      toast(t("ai.failed", { msg: e.message }), true);
-      btn.disabled = false;
-      btn.textContent = t("ai.loadModels");
-    }
-  });
   byId("gen").addEventListener("click", async () => {
     readForm();
-    const k = val("f-key");
-    if (!k) {
-      toast(t("ai.needKey"), true);
-      return;
-    }
     if (!S.equipment.length) {
       toast(t("ai.needEquip"), true);
       return;
@@ -1241,10 +1384,10 @@ function render3(mount2, head2, backBar3, goHub) {
     result = null;
     rerender2();
     try {
-      const mod = await import("./part-5OT7EI5P.js");
+      const mod = await import("./part-RWKYTIVU.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
-        key: k,
+        key: keyOf(),
         model: val("f-modelfree") || S.ai.model,
         goal: goalOptions().find((o) => o.id === form.goal).label,
         level: levelOptions().find((o) => o.id === form.level).label,

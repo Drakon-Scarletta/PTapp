@@ -22,8 +22,8 @@ installierbare APK.
     (siehe unten).
   - **Daten**: sichern, wiederherstellen, alles löschen.
   - **Aktualisierung**: neue Fassung suchen, laden und installieren.
-- Läuft vollständig offline, auch die Schriften liegen in der App. Nur die
-  KI-Funktion braucht eine Verbindung.
+- Läuft vollständig offline, auch die Schriften liegen in der App. Nur KI und
+  Aktualisierung brauchen eine Verbindung.
 
 Der Startbestand (drei Pläne, sechzehn Übungen, zwei Geräte) wird beim ersten
 Start angelegt und ist danach genauso bearbeitbar wie alles Selbstgemachte.
@@ -174,24 +174,37 @@ Woche und Besonderheiten an; die App schickt das zusammen mit der Geräteliste a
 den gewählten Anbieter und zeigt den Vorschlag zur Ansicht, bevor er übernommen
 wird. Übernommene Pläne und neue Übungen sind danach ganz normal bearbeitbar.
 
-Nötig ist ein **API-Schlüssel**, nicht ein Chat-Abo:
+### Verbinden
+
+*Verbinden* öffnet die Schlüsselseite des Anbieters, dort meldet man sich an und
+erzeugt einen Schlüssel; zurück in der App holt *Einfügen* ihn aus der
+Zwischenablage. Danach prüft die App den Schlüssel sofort, indem sie die
+Modellliste abruft — steht die Verbindung, zeigt sie das mit Datum an und füllt
+die Modellauswahl mit dem, was der Anbieter gerade anbietet. *Trennen* löscht
+den Schlüssel wieder vom Gerät.
+
+Einen Anmeldevorgang im Sinne von „Mit Google anmelden" gibt es hier nicht:
+weder Anthropic noch OpenAI bieten fremden Apps einen Weg an, über eine
+Anmeldung Zugriff auf das Konto des Nutzers zu bekommen. Der Schlüssel **ist**
+der Mechanismus; mehr als das Öffnen der richtigen Seite und das Einfügen lässt
+sich nicht automatisieren.
+
+Nötig ist also ein **API-Schlüssel**, kein Chat-Abo:
 
 - Anthropic: `console.anthropic.com`
 - OpenAI: `platform.openai.com`
 
 Ein ChatGPT-Plus- oder Claude-Abo funktioniert dafür nicht — das sind Konten für
 die Chat-Oberfläche. Ein API-Schlüssel ist ein eigenes Konto, das nach Verbrauch
-abgerechnet wird; ein Plan kostet Bruchteile eines Cents. Der Schlüssel wird nur
-im App-Speicher abgelegt und geht an niemanden außer den gewählten Anbieter.
+abgerechnet wird; ein Plan kostet Bruchteile eines Cents. Der Schlüssel geht an
+niemanden außer den gewählten Anbieter.
 
-*Verfügbare Modelle laden* holt die Liste beim Anbieter, statt sich auf fest
-eingebaute Namen zu verlassen — so funktioniert die Auswahl auch, wenn es später
-neue Modelle gibt.
-
-Das funktioniert nur in der **installierten App**: Aufrufe laufen dort über die
-native HTTP-Schicht von Capacitor (`CapacitorHttp`), weshalb die
-Browser-Beschränkungen der Anbieter nicht greifen. In der Web-Fassung ist die
-Seite sichtbar, der Aufruf scheitert aber — darauf weist sie auch hin.
+Es funktioniert in beiden Fassungen. In der App laufen die Aufrufe über die
+native HTTP-Schicht von Capacitor (`CapacitorHttp`); im Browser gehen sie
+direkt, beide Anbieter lassen das zu (Anthropic über den Header
+`anthropic-dangerous-direct-browser-access`). Unterschied ist der Speicherort
+des Schlüssels: in der App der App-Speicher, im Browser dessen eigener Speicher
+— auf einem geteilten Gerät also lieber die App.
 
 Der Anthropic-Teil nutzt das offizielle SDK, der OpenAI-Teil einen direkten
 HTTP-Aufruf. Beide erzwingen ein festes Antwortformat, damit die Antwort ohne

@@ -1,4 +1,8 @@
 {
+  "1.3": {
+    "de": "KI verbinden: Anbieterseite öffnen, Schlüssel einfügen, Verbindung wird sofort geprüft.",
+    "en": "Connecting to an AI: open the provider page, paste the key, the connection is checked right away."
+  },
   "1.2": {
     "de": "Aktualisierung direkt in der App: nachsehen, herunterladen, installieren.",
     "en": "Updating from inside the app: check, download, install."
