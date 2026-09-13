@@ -7,14 +7,25 @@ installierbare APK.
 
 ## Was die App kann
 
-- Drei Einheiten: **A Druck**, **B Zug**, **C Ganzkörper** (Nachtschichtwoche).
-- Sätze je Übung antippen (0 → 1 → 2 → 3 → wieder 0), Gewicht in Platten,
-  Umrechnung in kg mit Ampel (leicht / mittel / schwer).
-- Wochenleiste, Zielanzahl je Woche, Vorschlag der nächsten Einheit.
+- **Training**: Sätze je Übung antippen (0 → 1 → 2 → 3 → wieder 0), Gewicht
+  einstellen, Ampel für leicht / mittel / schwer. Wochenleiste, Zielanzahl je
+  Woche, Vorschlag der nächsten Einheit, Umschalter für Nachtschichtwochen.
 - **Verlauf**: Monatskalender, Tag antippen zeigt Übungen und Gewichte von damals.
-- **Mehr**: Überblick, Plattengewicht, Sicherung anlegen und wiederherstellen,
-  alles löschen.
-- Läuft vollständig offline, auch die Schriften liegen in der App.
+- **Optionen**:
+  - Sprache Deutsch oder Englisch.
+  - **Geräte** selbst anlegen — mit Platten, in Kilogramm oder Körpergewicht.
+    Jedes Gerät bringt sein eigenes Plattengewicht bzw. seine Schrittweite mit.
+  - **Übungen** selbst anlegen, einem Gerät zuordnen, Ampelbereiche setzen.
+  - **Pläne** selbst zusammenstellen: Übungen, Sätze, Wiederholungen,
+    Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender.
+  - **KI-Trainingsplan**: aus den eigenen Geräten einen Plan erzeugen lassen
+    (siehe unten).
+  - **Daten**: sichern, wiederherstellen, alles löschen.
+- Läuft vollständig offline, auch die Schriften liegen in der App. Nur die
+  KI-Funktion braucht eine Verbindung.
+
+Der Startbestand (drei Pläne, sechzehn Übungen, zwei Geräte) wird beim ersten
+Start angelegt und ist danach genauso bearbeitbar wie alles Selbstgemachte.
 
 ## Projektaufbau
 
@@ -114,6 +125,38 @@ brach jeden Download ab. Deshalb wurde das Norton-Zertifikat in den
 Zertifikatspeicher genau dieses JDKs aufgenommen
 (`android-toolchain\jdk21\lib\security\cacerts`, Alias `norton-ssl-scan`).
 Das betrifft nur dieses JDK, nicht Windows und nicht andere Programme.
+
+## KI-Trainingsplan
+
+Unter *Optionen → KI-Trainingsplan* gibt man Ziel, Erfahrung, Einheiten pro
+Woche und Besonderheiten an; die App schickt das zusammen mit der Geräteliste an
+den gewählten Anbieter und zeigt den Vorschlag zur Ansicht, bevor er übernommen
+wird. Übernommene Pläne und neue Übungen sind danach ganz normal bearbeitbar.
+
+Nötig ist ein **API-Schlüssel**, nicht ein Chat-Abo:
+
+- Anthropic: `console.anthropic.com`
+- OpenAI: `platform.openai.com`
+
+Ein ChatGPT-Plus- oder Claude-Abo funktioniert dafür nicht — das sind Konten für
+die Chat-Oberfläche. Ein API-Schlüssel ist ein eigenes Konto, das nach Verbrauch
+abgerechnet wird; ein Plan kostet Bruchteile eines Cents. Der Schlüssel wird nur
+im App-Speicher abgelegt und geht an niemanden außer den gewählten Anbieter.
+
+*Verfügbare Modelle laden* holt die Liste beim Anbieter, statt sich auf fest
+eingebaute Namen zu verlassen — so funktioniert die Auswahl auch, wenn es später
+neue Modelle gibt.
+
+Das funktioniert nur in der **installierten App**: Aufrufe laufen dort über die
+native HTTP-Schicht von Capacitor (`CapacitorHttp`), weshalb die
+Browser-Beschränkungen der Anbieter nicht greifen. In der Web-Fassung ist die
+Seite sichtbar, der Aufruf scheitert aber — darauf weist sie auch hin.
+
+Der Anthropic-Teil nutzt das offizielle SDK, der OpenAI-Teil einen direkten
+HTTP-Aufruf. Beide erzwingen ein festes Antwortformat, damit die Antwort ohne
+Raten in die Datenstruktur der App passt. Weil das SDK knapp ein halbes Megabyte
+wiegt, liegt der ganze KI-Teil in einem eigenen Stück und wird erst beim Öffnen
+der Seite nachgeladen.
 
 ## Icon
 

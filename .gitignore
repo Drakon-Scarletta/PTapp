@@ -2,8 +2,7 @@
 node_modules/
 
 # Gebündelter Code (entsteht aus src/js per "npm run build")
-www/js/app.js
-www/js/app.js.map
+www/js/
 
 # Signatur und lokale Pfade - gehören NICHT ins Repository
 android/keystore.properties

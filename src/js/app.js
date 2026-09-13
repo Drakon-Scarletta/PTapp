@@ -3,22 +3,26 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import * as st from './state.js';
+import { t, locale } from './i18n.js';
+import { APP_NAME } from './store.js';
 import * as plan from './views/plan.js';
 import * as log from './views/log.js';
-import * as settings from './views/settings.js';
-import { toast } from './ui.js';
+import * as options from './views/options.js';
+import { toast, esc } from './ui.js';
 
-const VIEWS = { plan, log, settings };
-const LABEL = { plan: 'Training', log: 'Verlauf', settings: 'Mehr' };
+const VIEWS = { plan, log, options };
+const LABEL = { plan: 'nav.plan', log: 'nav.log', options: 'nav.options' };
 let view = 'plan';
 const mount = document.getElementById('app');
 
 function head() {
-  return '<div class="tp-head"><h1>PTapp</h1><div class="tp-date">' +
-    st.today.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div></div>' +
+  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-date">' +
+    esc(st.today.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })) +
+    '</div></div>' +
     '<div class="tp-nav">' +
       Object.keys(VIEWS).map(v =>
-        '<button data-view="' + v + '" class="' + (v === view ? 'sel' : '') + '">' + LABEL[v] + '</button>'
+        '<button data-view="' + v + '" class="' + (v === view ? 'sel' : '') + '">' +
+        esc(t(LABEL[v])) + '</button>'
       ).join('') +
     '</div>';
 }
@@ -33,10 +37,15 @@ function render() {
 }
 
 async function setView(v) {
-  if (v === view) return;
+  // Nochmal auf den aktiven Reiter tippen führt zurück auf dessen Startseite.
+  if (v === view) {
+    if (v === 'options') { options.resetSub(); render(); }
+    if (v === 'log') { log.resetSelection(); render(); }
+    return;
+  }
   view = v;
   if (v === 'log') log.resetSelection();
-  if (v === 'settings') await settings.refresh();
+  if (v === 'options') { options.resetSub(); await options.refresh(); }
   render();
 }
 
@@ -50,7 +59,6 @@ async function wireNative() {
     if (view !== 'plan') setView('plan');
     else CapApp.exitApp();
   });
-  // Beim Zurückkehren in die App prüfen, ob inzwischen ein neuer Tag begonnen hat.
   await CapApp.addListener('appStateChange', ({ isActive }) => {
     if (isActive && st.refreshDay()) render();
   });
@@ -75,7 +83,7 @@ setInterval(() => { if (st.refreshDay()) render(); }, 60000);
   try {
     await st.init();
   } catch (e) {
-    toast('Gespeicherte Daten konnten nicht geladen werden.', true);
+    toast(t('data.loadError'), true);
   }
   await wireNative();
   wireServiceWorker();

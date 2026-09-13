@@ -54,16 +54,23 @@ await writeFile(p('docs/app/manifest.webmanifest'), JSON.stringify({
 }, null, 2));
 
 // --- Service Worker: alles einmal laden, danach offline ---
+// Große Teilstücke (der KI-Teil) bleiben aus dem Vorrat heraus: sie werden
+// beim ersten Gebrauch geholt und dann gespeichert. Wer die KI nie benutzt,
+// lädt sie auch nie.
+const PRECACHE_MAX = 200 * 1024;
+
 async function walk(dir) {
   const out = [];
   for (const name of await readdir(dir)) {
     const full = join(dir, name);
-    if ((await stat(full)).isDirectory()) out.push(...await walk(full));
-    else out.push(relative(p('docs/app'), full).split('\\').join('/'));
+    const info = await stat(full);
+    if (info.isDirectory()) { out.push(...await walk(full)); continue; }
+    if (name.endsWith('.map') || info.size > PRECACHE_MAX) continue;
+    out.push(relative(p('docs/app'), full).split('\\').join('/'));
   }
   return out;
 }
-const assets = (await walk(p('docs/app'))).filter(f => !f.endsWith('.map'));
+const assets = await walk(p('docs/app'));
 const cacheName = `ptapp-${VERSION}-${Date.now().toString(36)}`;
 
 await writeFile(p('docs/app/sw.js'), `// Erzeugt von build-site.mjs - nicht von Hand ändern.

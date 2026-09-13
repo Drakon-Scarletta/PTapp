@@ -1,5 +1,5 @@
-import { PLANS, MONTHS, WEEKDAYS, goal } from '../data.js';
 import * as st from '../state.js';
+import { t, monthName, weekdayShort, longDate } from '../i18n.js';
 import { esc, on } from '../ui.js';
 
 let month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -11,21 +11,34 @@ function dayDetail() {
   if (!selectedDay) return null;
   const de = st.S.log[selectedDay];
   if (!de) return null;
+  const plan = st.planOf(de.k);
   const [y, m, d] = selectedDay.split('-').map(Number);
   const dd = new Date(y, m - 1, d);
-  const lines = PLANS[de.k].ex.map(x => {
-    const g = goal(x), n = st.setsDone(de, x), ok = n >= g;
-    const plates = de.w && de.w[x.id] != null ? de.w[x.id] : 0;
-    const w = x.bw ? 'Körpergewicht' : plates + ' Pl. · ' + st.fmt(plates * (st.S.pw || 4.5)) + ' kg';
-    return '<div class="dt-row' + (ok ? '' : ' skip') + '">' +
-      '<span class="dt-m">' + n + '/' + g + '</span>' +
-      '<span class="dt-n">' + esc(x.n) + '</span>' +
-      '<span class="dt-w">' + w + '</span></div>';
+
+  // Was an dem Tag tatsächlich dran war - notfalls aus dem Eintrag selbst.
+  const items = plan && plan.items.length
+    ? plan.items
+    : Object.keys(de.t || {}).map(ex => ({ ex, sets: 3 }));
+
+  const lines = items.map(item => {
+    const ex = st.exOf(item.ex);
+    const goal = item.sets || 3;
+    const n = st.setsDone(de, item);
+    const stored = de.w && de.w[item.ex] != null ? de.w[item.ex] : null;
+    const w = st.weightLabel(item.ex, stored == null ? 0 : stored);
+    const label = w.body ? w.sub
+      : (stored == null ? '—' : w.main + ' ' + w.unit + (w.sub ? ' · ' + w.sub : ''));
+    return '<div class="dt-row' + (n >= goal ? '' : ' skip') + '">' +
+      '<span class="dt-m">' + n + '/' + goal + '</span>' +
+      '<span class="dt-n">' + esc(st.nameOf(ex)) + '</span>' +
+      '<span class="dt-w">' + esc(label) + '</span></div>';
   }).join('');
+
   return '<div class="tp-card"><div class="tp-card-in">' +
-    '<div class="tp-title"><div class="big">' + de.k + '</div>' +
-      '<div><div class="nm">' + dd.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div>' +
-      '<div class="fo">' + esc(PLANS[de.k].name) + (de.done ? ' · abgeschlossen' : ' · nicht abgeschlossen') + '</div></div></div>' +
+    '<div class="tp-title"><div class="big">' + esc(plan ? plan.short : '?') + '</div>' +
+      '<div><div class="nm">' + esc(longDate(dd)) + '</div>' +
+      '<div class="fo">' + esc(st.nameOf(plan)) + ' · ' +
+      esc(de.done ? t('log.done') : t('log.notDone')) + '</div></div></div>' +
     lines + '</div></div>';
 }
 
@@ -34,32 +47,36 @@ export function render(head, mount) {
   const lead = (new Date(y, m, 1).getDay() + 6) % 7;
   const days = new Date(y, m + 1, 0).getDate();
   let cells = '', total = 0;
-  const per = { A: 0, B: 0, C: 0 };
+  const per = new Map();
 
-  WEEKDAYS.forEach(l => { cells += '<div class="cal-h">' + l + '</div>'; });
+  for (let i = 0; i < 7; i++) cells += '<div class="cal-h">' + esc(weekdayShort(i)) + '</div>';
   for (let i = 0; i < lead; i++) cells += '<div class="cal-c void"></div>';
   for (let d = 1; d <= days; d++) {
-    const key = st.iso(new Date(y, m, d)), e = st.S.log[key], done = e && e.done;
-    if (done) { total++; per[e.k] = (per[e.k] || 0) + 1; }
+    const key = st.iso(new Date(y, m, d));
+    const e = st.S.log[key];
+    const done = e && e.done;
+    const plan = e ? st.planOf(e.k) : null;
+    if (done) { total++; const s = plan ? plan.short : '?'; per.set(s, (per.get(s) || 0) + 1); }
     cells += '<button class="cal-c' + (done ? ' done' : '') + (e && !done ? ' part' : '') +
       (key === st.tk ? ' now' : '') + (key === selectedDay ? ' sel' : '') + '"' +
-      (e ? '' : ' disabled') + ' data-day="' + key + '" aria-label="' + d + '. ' + MONTHS[m] + '">' +
+      (e ? '' : ' disabled') + ' data-day="' + key + '" aria-label="' + d + '. ' + esc(monthName(m)) + '">' +
       '<span class="n">' + d + '</span>' +
-      (e ? '<span class="k">' + e.k + '</span>' : '') + '</button>';
+      (e ? '<span class="k">' + esc(plan ? plan.short : '?') + '</span>' : '') + '</button>';
   }
 
-  const detail = dayDetail() || ('<div class="tp-hint">' + (total
-    ? 'Tippe auf einen markierten Tag, um Übungen und Gewichte zu sehen.'
-    : 'In diesem Monat ist noch nichts eingetragen.') + '</div>');
+  const summary = [...per.entries()].map(([s, n]) => esc(s) + ' ' + n).join(' · ');
+  const detail = dayDetail() || ('<div class="tp-hint">' +
+    esc(total ? t('log.pickDay') : t('log.emptyMonth')) + '</div>');
 
   mount.innerHTML = head() +
     '<div class="cal-bar">' +
-      '<button data-mon="-1" aria-label="Voriger Monat">‹</button>' +
-      '<div class="cal-t">' + MONTHS[m] + ' ' + y + '</div>' +
-      '<button data-mon="1" aria-label="Nächster Monat">›</button>' +
+      '<button data-mon="-1" aria-label="' + esc(t('log.prevMonth')) + '">‹</button>' +
+      '<div class="cal-t">' + esc(monthName(m)) + ' ' + y + '</div>' +
+      '<button data-mon="1" aria-label="' + esc(t('log.nextMonth')) + '">›</button>' +
     '</div>' +
-    '<div class="cal-sum"><b>' + total + '</b> ' + (total === 1 ? 'Einheit' : 'Einheiten') +
-      (total ? ' — A ' + per.A + ' · B ' + per.B + ' · C ' + per.C : '') + '</div>' +
+    '<div class="cal-sum"><b>' + total + '</b> ' +
+      esc((total === 1 ? t('log.unit', { n: '' }) : t('log.units', { n: '' })).trim()) +
+      (summary ? ' — ' + summary : '') + '</div>' +
     '<div class="cal">' + cells + '</div>' + detail;
 
   on('[data-mon]', ev => {
