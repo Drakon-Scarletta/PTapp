@@ -453,3 +453,11 @@ select.in { appearance: none; background-image: none; }
   background: var(--ink-2); color: var(--decal); border: 1px solid var(--timber-line);
 }
 .cat-i:active { background: var(--decal); color: var(--ink); }
+
+/* ---- Schnellauswahl der Kombigeräte ---- */
+h3.sec.first { margin-top: 8px; padding-top: 0; border-top: 0; }
+.bundle-i {
+  background: var(--ink-2); border: 1px solid var(--timber-line); border-radius: 3px;
+  padding: 11px 12px; margin-bottom: 6px; gap: 11px;
+}
+.bundle-i span { line-height: 1.3; }

@@ -137,8 +137,68 @@ export const CATEGORIES = [
   }
 ];
 
+// Geräte, die mehrere Arten in einem Aufbau vereinen. Sie legen mehrere
+// Einträge auf einmal an; abgewählt wird, was der eigene Aufbau nicht hat.
+// Die Reihenfolge ist bewusst so: das Studio zuerst, weil es am häufigsten passt.
+export const BUNDLES = [
+  {
+    key: 'gym',
+    de: 'Fitnessstudio, übliche Ausstattung',
+    en: 'Gym, usual equipment',
+    deSub: 'Der gängige Maschinenpark samt freien Gewichten.',
+    enSub: 'The usual set of machines plus free weights.',
+    items: ['latPulldown', 'lowRowMachine', 'chestPress', 'pecDeck', 'shoulderPressMachine',
+      'legPress', 'legExtension', 'legCurlSeated', 'abCrunchMachine', 'cableTower',
+      'dumbbells', 'barbell', 'flatBench']
+  },
+  {
+    key: 'multiGym',
+    de: 'Kraftstation',
+    en: 'Multi-gym',
+    deSub: 'Turm mit Plattenstapel, mehrere Stationen an einem Gerät.',
+    enSub: 'One tower with a weight stack and several stations.',
+    items: ['latPulldown', 'chestPress', 'pecDeck', 'lowRowMachine', 'legExtension',
+      'legCurlSeated', 'tricepsPushdown']
+  },
+  {
+    key: 'cableStation',
+    de: 'Kabelzug-Station',
+    en: 'Cable station',
+    deSub: 'Verstellbarer Kabelturm, meist mit Klimmzugstange.',
+    enSub: 'Adjustable cable tower, usually with a pull-up bar.',
+    items: ['cableTower', 'cableCrossover', 'pullupBar', 'mat']
+  },
+  {
+    key: 'rack',
+    de: 'Power Rack mit Langhantel',
+    en: 'Power rack with barbell',
+    deSub: 'Rack, Hantel, Scheiben, Bank — das klassische Heimstudio.',
+    enSub: 'Rack, bar, plates, bench — the classic home setup.',
+    items: ['powerRack', 'barbell', 'weightPlates', 'adjustableBench', 'pullupBar']
+  },
+  {
+    key: 'benchSet',
+    de: 'Hantelbank mit freien Gewichten',
+    en: 'Bench with free weights',
+    deSub: 'Bank, Kurzhanteln, Stange, Scheiben.',
+    enSub: 'Bench, dumbbells, bar, plates.',
+    items: ['adjustableBench', 'dumbbells', 'ezBar', 'weightPlates']
+  },
+  {
+    key: 'bodyweightSet',
+    de: 'Körpergewicht-Grundausstattung',
+    en: 'Bodyweight basics',
+    deSub: 'Ohne Gewichte, nur Aufhängung und Unterlage.',
+    enSub: 'No weights, just something to hang from and a mat.',
+    items: ['pullupBar', 'dipBars', 'suspensionTrainer', 'mat']
+  }
+];
+
+export const bundleOf = key => BUNDLES.find(b => b.key === key) || null;
+
 // Name in der eingestellten Sprache.
 export const catName = o => o[getLang()] || o.de;
+export const catSub = o => o[getLang() + 'Sub'] || o.deSub || '';
 
 // Suchtext eines Eintrags: beide Sprachen, damit "bench" auch auf Deutsch findet.
 export const searchText = o => (o.de + ' ' + o.en).toLowerCase();

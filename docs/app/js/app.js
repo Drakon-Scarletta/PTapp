@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-RHZP746K.js";
+} from "./part-S6UH4G2A.js";
 import {
   Directory,
   Encoding
@@ -194,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.5";
+var APP_VERSION = "1.6";
 var STATE_VERSION = 3;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -1077,7 +1077,81 @@ var CATEGORIES = [
     ]
   }
 ];
+var BUNDLES = [
+  {
+    key: "gym",
+    de: "Fitnessstudio, \xFCbliche Ausstattung",
+    en: "Gym, usual equipment",
+    deSub: "Der g\xE4ngige Maschinenpark samt freien Gewichten.",
+    enSub: "The usual set of machines plus free weights.",
+    items: [
+      "latPulldown",
+      "lowRowMachine",
+      "chestPress",
+      "pecDeck",
+      "shoulderPressMachine",
+      "legPress",
+      "legExtension",
+      "legCurlSeated",
+      "abCrunchMachine",
+      "cableTower",
+      "dumbbells",
+      "barbell",
+      "flatBench"
+    ]
+  },
+  {
+    key: "multiGym",
+    de: "Kraftstation",
+    en: "Multi-gym",
+    deSub: "Turm mit Plattenstapel, mehrere Stationen an einem Ger\xE4t.",
+    enSub: "One tower with a weight stack and several stations.",
+    items: [
+      "latPulldown",
+      "chestPress",
+      "pecDeck",
+      "lowRowMachine",
+      "legExtension",
+      "legCurlSeated",
+      "tricepsPushdown"
+    ]
+  },
+  {
+    key: "cableStation",
+    de: "Kabelzug-Station",
+    en: "Cable station",
+    deSub: "Verstellbarer Kabelturm, meist mit Klimmzugstange.",
+    enSub: "Adjustable cable tower, usually with a pull-up bar.",
+    items: ["cableTower", "cableCrossover", "pullupBar", "mat"]
+  },
+  {
+    key: "rack",
+    de: "Power Rack mit Langhantel",
+    en: "Power rack with barbell",
+    deSub: "Rack, Hantel, Scheiben, Bank \u2014 das klassische Heimstudio.",
+    enSub: "Rack, bar, plates, bench \u2014 the classic home setup.",
+    items: ["powerRack", "barbell", "weightPlates", "adjustableBench", "pullupBar"]
+  },
+  {
+    key: "benchSet",
+    de: "Hantelbank mit freien Gewichten",
+    en: "Bench with free weights",
+    deSub: "Bank, Kurzhanteln, Stange, Scheiben.",
+    enSub: "Bench, dumbbells, bar, plates.",
+    items: ["adjustableBench", "dumbbells", "ezBar", "weightPlates"]
+  },
+  {
+    key: "bodyweightSet",
+    de: "K\xF6rpergewicht-Grundausstattung",
+    en: "Bodyweight basics",
+    deSub: "Ohne Gewichte, nur Aufh\xE4ngung und Unterlage.",
+    enSub: "No weights, just something to hang from and a mat.",
+    items: ["pullupBar", "dipBars", "suspensionTrainer", "mat"]
+  }
+];
+var bundleOf = (key) => BUNDLES.find((b) => b.key === key) || null;
 var catName = (o) => o[getLang()] || o.de;
+var catSub = (o) => o[getLang() + "Sub"] || o.deSub || "";
 var searchText = (o) => (o.de + " " + o.en).toLowerCase();
 function catalogEntry(key) {
   for (const c of CATEGORIES) {
@@ -1092,9 +1166,11 @@ var catalogSize = CATEGORIES.reduce((n, c) => n + c.items.length, 0);
 var rerender = () => document.dispatchEvent(new CustomEvent("rerender"));
 var editing = null;
 var picked = null;
+var bundle = null;
 function resetEditing() {
   editing = null;
   picked = null;
+  bundle = null;
 }
 function sideOptions() {
   return [
@@ -1118,6 +1194,7 @@ function wireBack(to) {
   byId("back").addEventListener("click", () => {
     editing = null;
     picked = null;
+    bundle = null;
     to();
   });
 }
@@ -1150,12 +1227,68 @@ function equipment(mount2, head2, goHub) {
     deleteEquipment(eq.id);
   });
 }
+function bundleForm(mount2, head2, goHub) {
+  const b = bundleOf(bundle);
+  if (!b) {
+    bundle = null;
+    return equipmentPicker(mount2, head2, goHub);
+  }
+  const have = S.equipment.map((e) => nameOf(e).toLowerCase());
+  const rows = b.items.map((key) => {
+    const item = catalogEntry(key);
+    if (!item) return "";
+    const schon = have.includes(catName(item).toLowerCase());
+    return '<label class="chk bundle-i"><input type="checkbox" data-part="' + esc(key) + '"' + (schon ? "" : " checked") + "><span>" + esc(catName(item)) + (schon ? ' <span class="lst-s">\u2014 ' + esc(t("equip.alreadyThere")) + "</span>" : "") + "</span></label>";
+  }).join("");
+  mount2.innerHTML = head2() + backBar(catName(b)) + '<p class="intro">' + esc(t("equip.bundleHint")) + "</p>" + rows + '<button class="set-btn go" id="addsel">' + esc(t("equip.bundleAdd", { n: b.items.length })) + "</button>";
+  byId("back").addEventListener("click", () => {
+    bundle = null;
+    rerender();
+  });
+  const zaehlen = () => [...document.querySelectorAll("[data-part]")].filter((c) => c.checked);
+  const nachzaehlen = () => byId("addsel").textContent = t("equip.bundleAdd", { n: zaehlen().length });
+  nachzaehlen();
+  on("[data-part]", nachzaehlen, "change");
+  byId("addsel").addEventListener("click", () => {
+    const gewaehlt = zaehlen().map((c) => c.dataset.part);
+    if (!gewaehlt.length) {
+      toast(t("equip.bundleNone"), true);
+      return;
+    }
+    let neu = 0, schon = 0;
+    const namen = S.equipment.map((e) => nameOf(e).toLowerCase());
+    gewaehlt.forEach((key) => {
+      const item = catalogEntry(key);
+      if (!item) return;
+      if (namen.includes(catName(item).toLowerCase())) {
+        schon++;
+        return;
+      }
+      const data2 = { name: catName(item), kind: item.kind };
+      if (item.kind === "plates") data2.plate = S.pw;
+      if (item.kind === "weight") data2.step = item.step || 2.5;
+      addEquipment(data2);
+      namen.push(catName(item).toLowerCase());
+      neu++;
+    });
+    bundle = null;
+    editing = null;
+    picked = null;
+    toast(t("equip.bundleDone", { n: neu }) + (schon ? " " + t("equip.bundleSkipped", { n: schon }) : ""));
+  });
+}
 function equipmentPicker(mount2, head2, goHub) {
+  if (bundle) return bundleForm(mount2, head2, goHub);
+  const quick = BUNDLES.map((b) => '<button class="nav-row" data-bundle="' + esc(b.key) + '"><span class="nav-n">' + esc(catName(b)) + '</span><span class="nav-s">' + esc(catSub(b)) + " \xB7 " + esc(t("equip.bundleCount", { n: b.items.length })) + '</span><span class="nav-c">\u203A</span></button>').join("");
   const groups = CATEGORIES.map((c) => '<div class="cat" data-cat="' + c.id + '"><h3 class="cat-h">' + esc(catName(c)) + "</h3>" + c.items.map((i) => '<button class="cat-i" data-pickeq="' + esc(i.key) + '" data-find="' + esc(searchText(i)) + '">' + esc(catName(i)) + "</button>").join("") + "</div>").join("");
-  mount2.innerHTML = head2() + backBar(t("equip.pick")) + '<p class="intro">' + esc(t("equip.pickHint")) + '</p><input class="in" id="f-search" type="search" autocomplete="off" placeholder="' + esc(t("equip.search")) + '"><p class="intro" id="hits">' + esc(t("equip.fromCatalog", { n: catalogSize })) + '</p><div id="cats">' + groups + '</div><p class="intro" id="nomatch" hidden>' + esc(t("equip.noMatch")) + '</p><button class="set-btn" id="own">+ ' + esc(t("equip.custom")) + "</button>";
+  mount2.innerHTML = head2() + backBar(t("equip.pick")) + '<h3 class="sec first">' + esc(t("equip.bundles")) + '</h3><p class="intro">' + esc(t("equip.bundlesHint")) + "</p>" + quick + '<h3 class="sec">' + esc(t("equip.single")) + '</h3><p class="intro">' + esc(t("equip.pickHint")) + '</p><input class="in" id="f-search" type="search" autocomplete="off" placeholder="' + esc(t("equip.search")) + '"><p class="intro" id="hits">' + esc(t("equip.fromCatalog", { n: catalogSize })) + '</p><div id="cats">' + groups + '</div><p class="intro" id="nomatch" hidden>' + esc(t("equip.noMatch")) + '</p><button class="set-btn" id="own">+ ' + esc(t("equip.custom")) + "</button>";
   wireBack(rerender);
   byId("own").addEventListener("click", () => {
     picked = "custom";
+    rerender();
+  });
+  on("[data-bundle]", (ev) => {
+    bundle = ev.currentTarget.dataset.bundle;
     rerender();
   });
   on("[data-pickeq]", (ev) => {
@@ -1179,7 +1312,6 @@ function equipmentPicker(mount2, head2, goHub) {
     byId("nomatch").hidden = shown > 0;
     byId("hits").textContent = q ? t("equip.fromCatalog", { n: shown }) : t("equip.fromCatalog", { n: catalogSize });
   });
-  search.focus();
 }
 function equipmentForm(mount2, head2, goHub) {
   if (editing === "new" && !picked) return equipmentPicker(mount2, head2, goHub);
@@ -1502,7 +1634,7 @@ async function runVerify() {
   verifying = true;
   rerender2();
   try {
-    const mod = await import("./part-FRVXE2YU.js");
+    const mod = await import("./part-N7USLMFD.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -1590,7 +1722,7 @@ function render3(mount2, head2, backBar3, goHub) {
     result = null;
     rerender2();
     try {
-      const mod = await import("./part-FRVXE2YU.js");
+      const mod = await import("./part-N7USLMFD.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: keyOf(),

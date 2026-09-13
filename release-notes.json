@@ -1,4 +1,8 @@
 {
+  "1.6": {
+    "de": "Schnellauswahl für Kombigeräte: Studio, Kraftstation, Power Rack und mehr legen alle Geräte auf einmal an — abwählen, was der eigene Aufbau nicht hat.",
+    "en": "Quick picks for combined setups: gym, multi-gym, power rack and more add all pieces at once — untick whatever yours does not have."
+  },
   "1.5": {
     "de": "Geräte anlegen aus einem Katalog mit 83 Gerätetypen in neun Kategorien, mit Suchfeld. Eigene Geräte gehen weiterhin.",
     "en": "Adding equipment from a catalogue of 83 types in nine categories, with a search field. Custom equipment still works."

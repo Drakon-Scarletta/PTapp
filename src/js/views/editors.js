@@ -1,7 +1,7 @@
 // Editoren für Geräte, Übungen und Pläne.
 import * as st from '../state.js';
 import { t } from '../i18n.js';
-import { CATEGORIES, catName, searchText, catalogEntry, catalogSize } from '../catalog.js';
+import { CATEGORIES, BUNDLES, bundleOf, catName, catSub, searchText, catalogEntry, catalogSize } from '../catalog.js';
 import { esc, on, byId, val, toast, confirmBox, field, textIn, numIn, selectIn, checkIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -9,7 +9,8 @@ const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 // Welcher Eintrag gerade bearbeitet wird: null = keiner, 'new' = neuer.
 let editing = null;
 let picked = null;           // Katalogschluessel, 'custom' oder null
-export function resetEditing() { editing = null; picked = null; }
+let bundle = null;           // gewaehltes Kombigeraet
+export function resetEditing() { editing = null; picked = null; bundle = null; }
 
 function sideOptions() {
   return [
@@ -33,7 +34,7 @@ function backBar(title) {
     '<h2>' + esc(title) + '</h2></div>';
 }
 function wireBack(to) {
-  byId('back').addEventListener('click', () => { editing = null; picked = null; to(); });
+  byId('back').addEventListener('click', () => { editing = null; picked = null; bundle = null; to(); });
 }
 
 // ---------- Geräte ----------
@@ -71,8 +72,71 @@ export function equipment(mount, head, goHub) {
   });
 }
 
+// Ein Kombigerät: alle Teile angehakt, abwählen was der eigene Aufbau nicht hat.
+function bundleForm(mount, head, goHub) {
+  const b = bundleOf(bundle);
+  if (!b) { bundle = null; return equipmentPicker(mount, head, goHub); }
+
+  const have = st.S.equipment.map(e => st.nameOf(e).toLowerCase());
+  const rows = b.items.map(key => {
+    const item = catalogEntry(key);
+    if (!item) return '';
+    const schon = have.includes(catName(item).toLowerCase());
+    return '<label class="chk bundle-i">' +
+      '<input type="checkbox" data-part="' + esc(key) + '"' + (schon ? '' : ' checked') + '>' +
+      '<span>' + esc(catName(item)) +
+      (schon ? ' <span class="lst-s">— ' + esc(t('equip.alreadyThere')) + '</span>' : '') +
+      '</span></label>';
+  }).join('');
+
+  mount.innerHTML = head() + backBar(catName(b)) +
+    '<p class="intro">' + esc(t('equip.bundleHint')) + '</p>' +
+    rows +
+    '<button class="set-btn go" id="addsel">' + esc(t('equip.bundleAdd', { n: b.items.length })) + '</button>';
+
+  byId('back').addEventListener('click', () => { bundle = null; rerender(); });
+
+  const zaehlen = () => [...document.querySelectorAll('[data-part]')].filter(c => c.checked);
+  const nachzaehlen = () =>
+    byId('addsel').textContent = t('equip.bundleAdd', { n: zaehlen().length });
+  nachzaehlen();
+  on('[data-part]', nachzaehlen, 'change');
+
+  byId('addsel').addEventListener('click', () => {
+    const gewaehlt = zaehlen().map(c => c.dataset.part);
+    if (!gewaehlt.length) { toast(t('equip.bundleNone'), true); return; }
+    let neu = 0, schon = 0;
+    const namen = st.S.equipment.map(e => st.nameOf(e).toLowerCase());
+    gewaehlt.forEach(key => {
+      const item = catalogEntry(key);
+      if (!item) return;
+      if (namen.includes(catName(item).toLowerCase())) { schon++; return; }
+      const data = { name: catName(item), kind: item.kind };
+      if (item.kind === 'plates') data.plate = st.S.pw;
+      if (item.kind === 'weight') data.step = item.step || 2.5;
+      st.addEquipment(data);
+      namen.push(catName(item).toLowerCase());
+      neu++;
+    });
+    bundle = null;
+    editing = null;
+    picked = null;
+    toast(t('equip.bundleDone', { n: neu }) +
+      (schon ? ' ' + t('equip.bundleSkipped', { n: schon }) : ''));
+  });
+}
+
 // Auswahl aus dem Katalog. Erscheint beim Anlegen, bevor das Formular kommt.
 function equipmentPicker(mount, head, goHub) {
+  if (bundle) return bundleForm(mount, head, goHub);
+
+  const quick = BUNDLES.map(b =>
+    '<button class="nav-row" data-bundle="' + esc(b.key) + '">' +
+      '<span class="nav-n">' + esc(catName(b)) + '</span>' +
+      '<span class="nav-s">' + esc(catSub(b)) + ' · ' +
+        esc(t('equip.bundleCount', { n: b.items.length })) + '</span>' +
+      '<span class="nav-c">›</span></button>').join('');
+
   const groups = CATEGORIES.map(c =>
     '<div class="cat" data-cat="' + c.id + '">' +
       '<h3 class="cat-h">' + esc(catName(c)) + '</h3>' +
@@ -82,6 +146,10 @@ function equipmentPicker(mount, head, goHub) {
     '</div>').join('');
 
   mount.innerHTML = head() + backBar(t('equip.pick')) +
+    '<h3 class="sec first">' + esc(t('equip.bundles')) + '</h3>' +
+    '<p class="intro">' + esc(t('equip.bundlesHint')) + '</p>' +
+    quick +
+    '<h3 class="sec">' + esc(t('equip.single')) + '</h3>' +
     '<p class="intro">' + esc(t('equip.pickHint')) + '</p>' +
     '<input class="in" id="f-search" type="search" autocomplete="off" ' +
       'placeholder="' + esc(t('equip.search')) + '">' +
@@ -92,6 +160,7 @@ function equipmentPicker(mount, head, goHub) {
 
   wireBack(rerender);
   byId('own').addEventListener('click', () => { picked = 'custom'; rerender(); });
+  on('[data-bundle]', ev => { bundle = ev.currentTarget.dataset.bundle; rerender(); });
   on('[data-pickeq]', ev => { picked = ev.currentTarget.dataset.pickeq; rerender(); });
 
   // Filtern ohne Neuaufbau, sonst verliert das Suchfeld den Fokus.
@@ -114,7 +183,6 @@ function equipmentPicker(mount, head, goHub) {
       ? t('equip.fromCatalog', { n: shown })
       : t('equip.fromCatalog', { n: catalogSize });
   });
-  search.focus();
 }
 
 function equipmentForm(mount, head, goHub) {

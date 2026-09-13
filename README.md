@@ -13,10 +13,11 @@ installierbare APK.
 - **Verlauf**: Monatskalender, Tag antippen zeigt Übungen und Gewichte von damals.
 - **Optionen**:
   - Sprache Deutsch oder Englisch.
-  - **Geräte** aus einem Katalog von 83 Gerätetypen in neun Kategorien wählen,
-    mit Suchfeld über beide Sprachen — oder frei benennen. Gewicht wird in
-    Platten, in Kilogramm oder gar nicht gezählt; Plattengewicht und
-    Schrittweite gehören zum einzelnen Gerät.
+  - **Geräte** per Schnellauswahl gleich im Satz anlegen (Studio, Kraftstation,
+    Power Rack …) oder einzeln aus einem Katalog von 83 Gerätetypen in neun
+    Kategorien wählen, mit Suchfeld über beide Sprachen — oder frei benennen.
+    Gewicht wird in Platten, in Kilogramm oder gar nicht gezählt; Plattengewicht
+    und Schrittweite gehören zum einzelnen Gerät.
   - **Übungen** selbst anlegen, einem Gerät zuordnen, Ampelbereiche setzen.
   - **Pläne** selbst zusammenstellen: Übungen, Sätze, Wiederholungen,
     Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender.
@@ -154,6 +155,13 @@ Fokus.
 Einen Gerätetyp ergänzen heißt: eine Zeile in die passende Kategorie eintragen,
 mit `key`, `de`, `en`, `kind` und bei Kilogramm-Geräten `step`. Was Nutzer
 selbst anlegen, landet in ihren Daten und nicht im Katalog.
+
+Darüber steht die **Schnellauswahl**: sechs Aufbauten (`BUNDLES`), die mehrere
+Geräte auf einmal anlegen — Studio, Kraftstation, Kabelzug-Station, Power Rack,
+Hantelbank-Set, Körpergewicht. Ein Bündel ist nur eine Liste von
+Katalogschlüsseln; beim Öffnen sind alle Teile angehakt, was der eigene Aufbau
+nicht hat, wird abgewählt. Bereits vorhandene Geräte erkennt die App am Namen,
+zeigt sie abgehakt und legt sie nicht doppelt an.
 
 ## Aktualisierung aus der App heraus
 
