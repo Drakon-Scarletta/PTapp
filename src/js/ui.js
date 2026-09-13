@@ -17,16 +17,29 @@ export function val(id) {
 }
 
 let toastTimer = null;
-export function toast(msg, bad = false) {
+export function toast(msg, bad = false, action) {
   const old = document.querySelector('.toast');
   if (old) old.remove();
   const el = document.createElement('div');
   el.className = 'toast' + (bad ? ' bad' : '');
   el.setAttribute('role', 'status');
-  el.textContent = msg;
+
+  const text = document.createElement('span');
+  text.textContent = msg;
+  el.appendChild(text);
+
+  // Etwa zum Rückgängigmachen: die Meldung bleibt dafür länger stehen.
+  if (action) {
+    const btn = document.createElement('button');
+    btn.className = 'toast-a';
+    btn.textContent = action.label;
+    btn.addEventListener('click', () => { el.remove(); action.run(); });
+    el.appendChild(btn);
+  }
+
   document.body.appendChild(el);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.remove(), bad ? 6000 : 2600);
+  toastTimer = setTimeout(() => el.remove(), action ? 8000 : (bad ? 6000 : 2600));
 }
 
 export async function haptic(style = 'light') {
@@ -39,7 +52,7 @@ export function confirmBox(text) { return window.confirm(text); }
 
 // Eigenes Fenster für Fälle, in denen ein Hinweis zu wenig ist und der Nutzer
 // etwas entscheiden soll. Schließt bei Klick daneben und mit Escape.
-export function dialog({ title, text, actions }) {
+export function dialog({ title, text, html, actions, onOpen }) {
   const alt = document.querySelector('.overlay');
   if (alt) alt.remove();
 
@@ -48,7 +61,8 @@ export function dialog({ title, text, actions }) {
   el.innerHTML =
     '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
       '<h3>' + esc(title) + '</h3>' +
-      '<p>' + esc(text) + '</p>' +
+      (text ? '<p>' + esc(text) + '</p>' : '') +
+      (html || '') +
       '<div class="dlg-a">' + actions.map((a, i) =>
         '<button class="set-btn' + (a.primary ? ' go' : '') + '" data-act="' + i + '">' +
         esc(a.label) + '</button>').join('') +
@@ -72,6 +86,7 @@ export function dialog({ title, text, actions }) {
 
   document.body.appendChild(el);
   document.addEventListener('keydown', onKey);
+  if (onOpen) onOpen(el, close);
   const erster = el.querySelector('.set-btn.go') || el.querySelector('.set-btn');
   if (erster) erster.focus();
 }

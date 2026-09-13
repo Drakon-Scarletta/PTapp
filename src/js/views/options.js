@@ -1,13 +1,14 @@
 // Optionen: Übersicht, Sprache, KI, Geräte, Übungen, Pläne, Daten.
 import * as st from '../state.js';
 import { t, LANGS, longDate } from '../i18n.js';
-import { exportBackup, listBackups, readBackup, parseBackup, isNative, freshState, APP_NAME, APP_VERSION }
+import { exportBackup, exportCsv, listBackups, readBackup, parseBackup, isNative, freshState, APP_NAME, APP_VERSION }
   from '../store.js';
 import { esc, on, byId, toast, confirmBox, selectIn, field } from '../ui.js';
 import * as editors from './editors.js';
 import * as aiview from './aiview.js';
 import * as updateview from './updateview.js';
 import * as planner from './planner.js';
+import * as misc from './misc.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
@@ -29,6 +30,9 @@ function go(next) {
   rerender();
 }
 
+// Von außen (etwa aus der Einführung) in eine Unterseite springen.
+document.addEventListener('gosub', ev => go(ev.detail));
+
 export function backBar(title) {
   return '<div class="sub-bar"><button class="mini" id="back">‹ ' + esc(t('common.back')) + '</button>' +
     '<h2>' + esc(title) + '</h2></div>';
@@ -43,6 +47,10 @@ export function render(head, mount) {
   if (sub === 'ai') return aiview.render(mount, head, backBar, goHub);
   if (sub === 'update') return updateview.render(mount, head, backBar, goHub);
   if (sub === 'lang') return language(mount, head, goHub);
+  if (sub === 'rest') return misc.restPrefs(mount, head, backBar, goHub);
+  if (sub === 'body') return misc.bodyWeight(mount, head, backBar, goHub);
+  if (sub === 'reminders') return misc.reminders(mount, head, backBar, goHub);
+  if (sub === 'legal') return misc.legal(mount, head, backBar, goHub);
   if (sub === 'data') return data(mount, head, goHub);
   return hub(mount, head);
 }
@@ -77,7 +85,11 @@ function hub(mount, head) {
     entry('equipment', t('opt.equipment'), t('opt.equipmentSub', { n: st.S.equipment.length })) +
     entry('exercises', t('opt.exercises'), t('opt.exercisesSub', { n: st.visibleExercises().length })) +
     entry('plans', t('opt.plans'), t('opt.plansSub', { n: st.S.plans.length })) +
+    entry('rest', t('rest.title'), t('rest.on')) +
+    entry('body', t('body.title'), t('body.sub')) +
+    entry('reminders', t('rem.title'), t('rem.sub')) +
     entry('data', t('opt.data'), t('opt.dataSub')) +
+    entry('legal', t('legal.title'), t('legal.sub')) +
     entry('update', t('upd.title'), t('upd.titleSub')) +
 
     '<div class="tp-note">' + esc(t('opt.about', { app: APP_NAME, version: APP_VERSION })) + '</div>';
@@ -106,6 +118,9 @@ function data(mount, head, goHub) {
         '</div>'
       : '') +
     '<button class="set-btn" id="paste">' + esc(t('data.paste')) + '</button>' +
+    '<h3 class="sec">' + esc(t('csv.button')) + '</h3>' +
+    '<p class="intro">' + esc(t('csv.hint')) + '</p>' +
+    '<button class="set-btn" id="csv">' + esc(t('csv.button')) + '</button>' +
     '<h3 class="sec">' + esc(t('data.reset')) + '</h3>' +
     '<p class="intro">' + esc(t('data.resetSub')) + '</p>' +
     '<button class="set-btn warn" id="wipe">' + esc(t('data.resetBtn')) + '</button>';
@@ -132,6 +147,21 @@ function data(mount, head, goHub) {
       toast(t('data.restored'));
     } catch (e) {
       toast(t('data.readFailed', { msg: e.message }), true);
+    }
+  });
+
+  byId('csv').addEventListener('click', async () => {
+    try {
+      // Namen und Einheit je Übung liefert die App, der Speicher kennt sie nicht.
+      const aufloesen = (exId) => {
+        const w = st.weightLabel(exId, 0);
+        return { name: st.nameOf(st.exOf(exId)), unit: w.body ? '' : w.unit };
+      };
+      aufloesen.planName = (id) => st.nameOf(st.planOf(id));
+      const r = await exportCsv(st.S, aufloesen);
+      toast(t('csv.done', { name: r.name }));
+    } catch (e) {
+      toast(t('data.saveFailed', { msg: e.message }), true);
     }
   });
 

@@ -1,10 +1,10 @@
 {
-  "versionCode": 10,
-  "versionName": "1.9",
-  "apk": "PTapp-1.9.apk",
-  "size": 6673107,
+  "versionCode": 11,
+  "versionName": "2.0",
+  "apk": "PTapp-2.0.apk",
+  "size": 6697501,
   "notes": {
-    "de": "Zu wenig Guthaben erscheint jetzt als eigenes Fenster mit dem Weg zur Aufladeseite des Anbieters.",
-    "en": "Running out of credit now opens its own dialog with a direct way to the provider top-up page."
+    "de": "Pausen-Uhr, Wiederholungen je Satz, „letztes Mal\" und Bestleistungen, Notiz und Dauer je Einheit, Körpergewicht, Erinnerungen, Verlaufskurven, Muskelverteilung, Pläne kopieren und sortieren, Rückgängig nach dem Löschen, CSV-Export, Einführung beim ersten Start und ein Gesundheitshinweis.",
+    "en": "Rest timer, reps per set, “last time” and personal bests, note and duration per session, body weight, reminders, progress charts, muscle balance, duplicating and sorting plans, undo after deleting, CSV export, a first-run intro and a health notice."
   }
 }

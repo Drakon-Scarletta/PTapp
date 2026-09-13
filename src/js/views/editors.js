@@ -3,6 +3,7 @@ import * as st from '../state.js';
 import { t } from '../i18n.js';
 import { CATEGORIES, BUNDLES, bundleOf, catName, catSub, searchText, catalogEntry, catalogSize } from '../catalog.js';
 import { EX_CATEGORIES, exCatalogEntry, exName, exSearchText } from '../ex-catalog.js';
+import { weightText, recordText } from './sets.js';
 import { esc, on, byId, val, toast, confirmBox, field, textIn, numIn, selectIn, checkIn } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -14,6 +15,20 @@ let bundle = null;           // gewaehltes Kombigeraet
 let pickedEx = null;         // Uebungskatalog: Schluessel, 'custom' oder null
 let onlyMine = true;         // Uebungen auf die eigenen Geraete beschraenken
 export function resetEditing() { editing = null; picked = null; bundle = null; pickedEx = null; }
+
+// Die Kategorie des Katalogs ist zugleich die Muskelgruppe.
+function muscleOptions() {
+  return [{ id: '', label: t('ex.muscleNone') }]
+    .concat(EX_CATEGORIES.map(c => ({ id: c.id, label: exName(c) })));
+}
+export function muscleLabel(id) {
+  const c = EX_CATEGORIES.find(x => x.id === id);
+  return c ? exName(c) : '';
+}
+function muscleOf(key) {
+  const c = EX_CATEGORIES.find(x => x.items.some(i => i.key === key));
+  return c ? c.id : '';
+}
 
 function sideOptions() {
   return [
@@ -73,7 +88,7 @@ export function equipment(mount, head, goHub) {
     if (!eq) return;
     if (st.equipmentUsage(eq.id)) { toast(t('equip.deleteBlocked'), true); return; }
     if (!confirmBox(t('common.deleteAsk', { name: st.nameOf(eq) }))) return;
-    st.deleteEquipment(eq.id);
+    undoable(st.deleteEquipment(eq.id));
   });
 }
 
@@ -234,6 +249,15 @@ function equipmentForm(mount, head, goHub) {
   });
 }
 
+// Nach dem Löschen bleibt eine Meldung mit Rückgängig stehen.
+function undoable(snap) {
+  if (!snap) return;
+  toast(t('undo.done'), false, {
+    label: t('undo.action'),
+    run: () => { st.restore(snap); toast(t('undo.back')); }
+  });
+}
+
 // Zeichen für alles, was der virtuelle Trainer angelegt hat.
 export function aiMark(obj) {
   return obj && obj.src === 'ai'
@@ -272,7 +296,7 @@ export function exercises(mount, head, goHub) {
     const ex = st.exOf(ev.currentTarget.dataset.del);
     if (!ex) return;
     if (!confirmBox(t('common.deleteAsk', { name: st.nameOf(ex) }) + '\n' + t('ex.keepForHistory'))) return;
-    st.deleteExercise(ex.id);
+    undoable(st.deleteExercise(ex.id));
   });
 }
 
@@ -349,7 +373,8 @@ function exerciseForm(mount, head, goHub) {
   const ex = editing === 'new'
     ? {
         equip: vorhanden ? vorhanden.id : (st.S.equipment[0] && st.S.equipment[0].id),
-        name: ausKatalog ? exName(ausKatalog) : ''
+        name: ausKatalog ? exName(ausKatalog) : '',
+        muscle: ausKatalog ? muscleOf(ausKatalog.key) : ''
       }
     : st.exOf(editing);
   if (!ex) { editing = null; return exercises(mount, head, goHub); }
@@ -367,11 +392,13 @@ function exerciseForm(mount, head, goHub) {
         esc(t('ex.addEquipToo')) + '</span></label>'
       : '') +
     field(t('ex.equip'), selectIn('f-equip', eqOpts, ex.equip)) +
+    field(t('ex.muscle'), selectIn('f-muscle', muscleOptions(), ex.muscle || '')) +
     field(t('ex.bands'),
       '<span class="two">' + numIn('f-b1', bands[0] == null ? '' : bands[0], '0.5', 0) +
       numIn('f-b2', bands[1] == null ? '' : bands[1], '0.5', 0) + '</span>',
       t('ex.bandsSub')) +
-    '<button class="set-btn" id="save">' + esc(t('common.save')) + '</button>';
+    '<button class="set-btn" id="save">' + esc(t('common.save')) + '</button>' +
+    (editing === 'new' ? '' : exerciseStats(editing));
 
   wireBack(rerender);
   byId('save').addEventListener('click', () => {
@@ -388,12 +415,35 @@ function exerciseForm(mount, head, goHub) {
       equip = st.addEquipment(daten).id;
     }
 
-    const data = { name, equip };
+    const data = { name, equip, muscle: byId('f-muscle').value || undefined };
     data.bands = (isFinite(b1) && isFinite(b2)) ? [b1, b2] : undefined;
     if (editing === 'new') st.addExercise(data); else st.updateExercise(editing, data);
     editing = null;
     pickedEx = null;
   });
+}
+
+// Bestleistung und die letzten Einheiten einer Übung.
+function exerciseStats(exId) {
+  const best = st.personalRecord(exId);
+  const verlauf = st.exerciseHistory(exId, 12);
+  if (!best && !verlauf.length) return '';
+
+  const hoch = Math.max(1, ...verlauf.map(v => v.weight || 0));
+  const balken = verlauf.map(v =>
+    '<div class="bar-col" title="' + esc(v.date) + '">' +
+    '<div class="bar-v full" style="height:' + Math.max(4, Math.round((v.weight / hoch) * 100)) + '%"></div>' +
+    '</div>').join('');
+
+  const zeilen = verlauf.slice(-6).reverse().map(v =>
+    '<div class="dt-row"><span class="dt-m">' + esc(v.date.slice(5).replace('-', '.')) + '</span>' +
+    '<span class="dt-n">' + esc((v.reps || []).filter(r => r > 0).join('/') || '—') + '</span>' +
+    '<span class="dt-w">' + esc(weightText(exId, v.weight)) + '</span></div>').join('');
+
+  return '<h3 class="sec">' + esc(t('set.history')) + '</h3>' +
+    (best ? '<p class="intro">' + esc(t('set.record', { text: recordText(exId, best) })) + '</p>' : '') +
+    (verlauf.length ? '<div class="bars">' + balken + '</div>' + zeilen
+                    : '<p class="fld-h">' + esc(t('set.noHistory')) + '</p>');
 }
 
 // ---------- Pläne ----------
@@ -406,6 +456,9 @@ export function plans(mount, head, goHub, openPlanner) {
       esc(st.nameOf(p)) + aiMark(p) + '</div>' +
     '<div class="lst-s">' + esc(st.focusOf(p) || '—') + ' · ' + p.items.length + '</div></div>' +
     '<div class="row-act">' +
+    '<button class="mini" data-up="' + p.id + '" aria-label="' + esc(t('plan.moveUp')) + '">↑</button>' +
+    '<button class="mini" data-down="' + p.id + '" aria-label="' + esc(t('plan.moveDown')) + '">↓</button>' +
+    '<button class="mini" data-copy="' + p.id + '">' + esc(t('plan.copy')) + '</button>' +
     '<button class="mini" data-edit="' + p.id + '">' + esc(t('common.edit')) + '</button>' +
     '<button class="mini warn" data-del="' + p.id + '">' + esc(t('common.delete')) + '</button>' +
     '</div></div>').join('');
@@ -430,12 +483,18 @@ export function plans(mount, head, goHub, openPlanner) {
     const p = st.addPlan({ name: t('common.new'), focus: '' });
     editing = p.id;
   });
+  on('[data-copy]', ev => {
+    st.duplicatePlan(ev.currentTarget.dataset.copy);
+    toast(t('plan.copied'));
+  });
+  on('[data-up]', ev => st.movePlan(ev.currentTarget.dataset.up, -1));
+  on('[data-down]', ev => st.movePlan(ev.currentTarget.dataset.down, 1));
   on('[data-edit]', ev => { editing = ev.currentTarget.dataset.edit; rerender(); });
   on('[data-del]', ev => {
     const p = st.planOf(ev.currentTarget.dataset.del);
     if (!p) return;
     if (!confirmBox(t('common.deleteAsk', { name: st.nameOf(p) }))) return;
-    st.deletePlan(p.id);
+    undoable(st.deletePlan(p.id));
   });
 }
 

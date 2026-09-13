@@ -9,22 +9,22 @@ export const SEED_EQUIPMENT = [
 ];
 
 export const SEED_EXERCISES = [
-  { id: 'chestpress', key: 'chestpress', equip: 'stack', bands: [4, 6] },
-  { id: 'butterfly', key: 'butterfly', equip: 'stack', bands: [2, 4] },
-  { id: 'legext', key: 'legext', equip: 'stack', bands: [3, 5] },
-  { id: 'backkick', key: 'backkick', equip: 'stack', bands: [2, 4], hintKey: 'hintBackkick' },
-  { id: 'pushdown', key: 'pushdown', equip: 'stack', bands: [3, 5], hintKey: 'hintPushdown' },
-  { id: 'deltoid', key: 'deltoid', equip: 'stack', bands: [1, 3] },
-  { id: 'abcrunch', key: 'abcrunch', equip: 'stack', bands: [3, 5] },
-  { id: 'lat', key: 'lat', equip: 'stack', bands: [4, 6] },
-  { id: 'lowrow', key: 'lowrow', equip: 'stack', bands: [4, 6] },
-  { id: 'curl', key: 'curl', equip: 'stack', bands: [3, 5] },
-  { id: 'upright', key: 'upright', equip: 'stack', bands: [3, 5], hintKey: 'hintUpright' },
-  { id: 'armset', key: 'armset', equip: 'stack', bands: [3, 5] },
-  { id: 'split', key: 'split', equip: 'body', hintKey: 'hintSplit' },
-  { id: 'calf', key: 'calf', equip: 'body' },
-  { id: 'plank', key: 'plank', equip: 'body' },
-  { id: 'hipraise', key: 'hipraise', equip: 'body' }
+  { id: 'chestpress', key: 'chestpress', muscle: 'chest', equip: 'stack', bands: [4, 6] },
+  { id: 'butterfly', key: 'butterfly', muscle: 'chest', equip: 'stack', bands: [2, 4] },
+  { id: 'legext', key: 'legext', muscle: 'legs', equip: 'stack', bands: [3, 5] },
+  { id: 'backkick', key: 'backkick', muscle: 'legs', equip: 'stack', bands: [2, 4], hintKey: 'hintBackkick' },
+  { id: 'pushdown', key: 'pushdown', muscle: 'arms', equip: 'stack', bands: [3, 5], hintKey: 'hintPushdown' },
+  { id: 'deltoid', key: 'deltoid', muscle: 'shoulders', equip: 'stack', bands: [1, 3] },
+  { id: 'abcrunch', key: 'abcrunch', muscle: 'core', equip: 'stack', bands: [3, 5] },
+  { id: 'lat', key: 'lat', muscle: 'back', equip: 'stack', bands: [4, 6] },
+  { id: 'lowrow', key: 'lowrow', muscle: 'back', equip: 'stack', bands: [4, 6] },
+  { id: 'curl', key: 'curl', muscle: 'arms', equip: 'stack', bands: [3, 5] },
+  { id: 'upright', key: 'upright', muscle: 'shoulders', equip: 'stack', bands: [3, 5], hintKey: 'hintUpright' },
+  { id: 'armset', key: 'armset', muscle: 'arms', equip: 'stack', bands: [3, 5] },
+  { id: 'split', key: 'split', muscle: 'legs', equip: 'body', hintKey: 'hintSplit' },
+  { id: 'calf', key: 'calf', muscle: 'legs', equip: 'body' },
+  { id: 'plank', key: 'plank', muscle: 'core', equip: 'body' },
+  { id: 'hipraise', key: 'hipraise', muscle: 'legs', equip: 'body' }
 ];
 
 export const SEED_PLANS = [

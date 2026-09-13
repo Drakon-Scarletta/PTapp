@@ -3,6 +3,7 @@ import * as st from '../state.js';
 import { t, locale } from '../i18n.js';
 import { providerOf } from '../ai-meta.js';
 import { showAiError } from './credits.js';
+import { muscleLabel } from './editors.js';
 import { esc, on, byId, val, toast, confirmBox } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -40,6 +41,32 @@ function stats() {
     '<p class="intro">' + esc(t('home.lastWeeks')) + ' · ' +
       esc(letzte ? t('home.last', { plan: st.nameOf(letzte.plan), date: datum }) : t('home.never')) +
     '</p>';
+}
+
+// Wie oft welche Muskelgruppe drankam - zeigt Schieflagen.
+function muscles() {
+  const zaehler = new Map();
+  Object.values(st.S.log).forEach(e => {
+    if (!e || !e.done || !e.t) return;
+    Object.keys(e.t).forEach(exId => {
+      if (!e.t[exId]) return;
+      const ex = st.exOf(exId);
+      const gruppe = ex && ex.muscle;
+      if (!gruppe) return;
+      zaehler.set(gruppe, (zaehler.get(gruppe) || 0) + 1);
+    });
+  });
+  if (!zaehler.size) return '';
+
+  const hoch = Math.max(...zaehler.values());
+  const zeilen = [...zaehler.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) =>
+      '<div class="mus"><span class="mus-n">' + esc(muscleLabel(id)) + '</span>' +
+      '<span class="mus-b"><i style="width:' + Math.round((n / hoch) * 100) + '%"></i></span>' +
+      '<span class="mus-c">' + n + '</span></div>').join('');
+
+  return '<h3 class="sec">' + esc(t('stats.muscles')) + '</h3>' + zeilen;
 }
 
 function plans() {
@@ -124,7 +151,7 @@ async function send() {
 }
 
 export function render(head, mount) {
-  mount.innerHTML = head() + stats() +
+  mount.innerHTML = head() + stats() + muscles() +
     '<h3 class="sec">' + esc(t('home.pickPlan')) + '</h3>' +
     '<p class="intro">' + esc(t('home.pickPlanSub')) + '</p>' +
     plans() +

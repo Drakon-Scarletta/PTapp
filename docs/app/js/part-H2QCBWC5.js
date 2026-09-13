@@ -4,7 +4,7 @@ import {
 import {
   getLang,
   providerOf
-} from "./part-AKVMTSYN.js";
+} from "./part-SPGIUINV.js";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,

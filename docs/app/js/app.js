@@ -11,7 +11,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-AKVMTSYN.js";
+} from "./part-SPGIUINV.js";
 import {
   Directory,
   Encoding
@@ -56,22 +56,22 @@ var SEED_EQUIPMENT = [
   { id: "body", key: "eqBody", kind: "body" }
 ];
 var SEED_EXERCISES = [
-  { id: "chestpress", key: "chestpress", equip: "stack", bands: [4, 6] },
-  { id: "butterfly", key: "butterfly", equip: "stack", bands: [2, 4] },
-  { id: "legext", key: "legext", equip: "stack", bands: [3, 5] },
-  { id: "backkick", key: "backkick", equip: "stack", bands: [2, 4], hintKey: "hintBackkick" },
-  { id: "pushdown", key: "pushdown", equip: "stack", bands: [3, 5], hintKey: "hintPushdown" },
-  { id: "deltoid", key: "deltoid", equip: "stack", bands: [1, 3] },
-  { id: "abcrunch", key: "abcrunch", equip: "stack", bands: [3, 5] },
-  { id: "lat", key: "lat", equip: "stack", bands: [4, 6] },
-  { id: "lowrow", key: "lowrow", equip: "stack", bands: [4, 6] },
-  { id: "curl", key: "curl", equip: "stack", bands: [3, 5] },
-  { id: "upright", key: "upright", equip: "stack", bands: [3, 5], hintKey: "hintUpright" },
-  { id: "armset", key: "armset", equip: "stack", bands: [3, 5] },
-  { id: "split", key: "split", equip: "body", hintKey: "hintSplit" },
-  { id: "calf", key: "calf", equip: "body" },
-  { id: "plank", key: "plank", equip: "body" },
-  { id: "hipraise", key: "hipraise", equip: "body" }
+  { id: "chestpress", key: "chestpress", muscle: "chest", equip: "stack", bands: [4, 6] },
+  { id: "butterfly", key: "butterfly", muscle: "chest", equip: "stack", bands: [2, 4] },
+  { id: "legext", key: "legext", muscle: "legs", equip: "stack", bands: [3, 5] },
+  { id: "backkick", key: "backkick", muscle: "legs", equip: "stack", bands: [2, 4], hintKey: "hintBackkick" },
+  { id: "pushdown", key: "pushdown", muscle: "arms", equip: "stack", bands: [3, 5], hintKey: "hintPushdown" },
+  { id: "deltoid", key: "deltoid", muscle: "shoulders", equip: "stack", bands: [1, 3] },
+  { id: "abcrunch", key: "abcrunch", muscle: "core", equip: "stack", bands: [3, 5] },
+  { id: "lat", key: "lat", muscle: "back", equip: "stack", bands: [4, 6] },
+  { id: "lowrow", key: "lowrow", muscle: "back", equip: "stack", bands: [4, 6] },
+  { id: "curl", key: "curl", muscle: "arms", equip: "stack", bands: [3, 5] },
+  { id: "upright", key: "upright", muscle: "shoulders", equip: "stack", bands: [3, 5], hintKey: "hintUpright" },
+  { id: "armset", key: "armset", muscle: "arms", equip: "stack", bands: [3, 5] },
+  { id: "split", key: "split", muscle: "legs", equip: "body", hintKey: "hintSplit" },
+  { id: "calf", key: "calf", muscle: "legs", equip: "body" },
+  { id: "plank", key: "plank", muscle: "core", equip: "body" },
+  { id: "hipraise", key: "hipraise", muscle: "legs", equip: "body" }
 ];
 var SEED_PLANS = [
   {
@@ -194,8 +194,8 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.9";
-var STATE_VERSION = 4;
+var APP_VERSION = "2.0";
+var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
   return {
@@ -210,7 +210,15 @@ function freshState() {
     exercises: SEED_EXERCISES.map((e) => ({ ...e, bands: e.bands ? [...e.bands] : void 0 })),
     plans: SEED_PLANS.map((p) => ({ ...p, items: p.items.map((i) => ({ ...i })) })),
     ai: { provider: "anthropic", model: "", keys: { anthropic: "", openai: "" } },
-    chat: []
+    chat: [],
+    body: [],
+    // Körpergewicht: { d: 'JJJJ-MM-TT', kg: Zahl }
+    prefs: {
+      restOn: true,
+      restSec: 90,
+      onboarded: false,
+      reminder: { on: false, days: [0, 2, 4], hour: 18, minute: 0 }
+    }
   };
 }
 async function loadState() {
@@ -239,7 +247,7 @@ function migrate(raw) {
     const stack = s2.equipment.find((e) => e.id === "stack");
     if (stack && typeof raw.pw === "number") stack.plate = raw.pw;
     s2.exercises = SEED_EXERCISES.map((e) => ({ ...e, bands: e.bands ? [...e.bands] : void 0 }));
-    s2.plans = SEED_PLANS.map((p) => ({ ...p, items: p.items.map((i) => ({ ...i })) }));
+    s2.plans = SEED_PLANS.map((p2) => ({ ...p2, items: p2.items.map((i) => ({ ...i })) }));
   }
   if (!Array.isArray(s2.equipment) || !s2.equipment.length) s2.equipment = SEED_EQUIPMENT.map((e) => ({ ...e }));
   if (!Array.isArray(s2.exercises)) s2.exercises = [];
@@ -248,6 +256,14 @@ function migrate(raw) {
   if (!s2.ai.keys) s2.ai.keys = { anthropic: "", openai: "" };
   if (!s2.lang) s2.lang = detectLang();
   if (!Array.isArray(s2.chat)) s2.chat = [];
+  if (!Array.isArray(s2.body)) s2.body = [];
+  SEED_EXERCISES.forEach((seed) => {
+    const vorhanden = s2.exercises.find((e) => e.id === seed.id);
+    if (vorhanden && !vorhanden.muscle && seed.muscle) vorhanden.muscle = seed.muscle;
+  });
+  const p = freshState().prefs;
+  s2.prefs = Object.assign({}, p, s2.prefs || {});
+  s2.prefs.reminder = Object.assign({}, p.reminder, s2.prefs.reminder || {});
   s2.v = STATE_VERSION;
   return s2;
 }
@@ -269,6 +285,9 @@ async function exportBackup(state2) {
     downloadInBrowser(name, data2);
     return { name, path: "Download" };
   }
+  return writeAndShare(name, data2);
+}
+async function writeAndShare(name, data2) {
   let res = null, lastErr = null;
   for (const dir of DIRS) {
     try {
@@ -288,11 +307,57 @@ async function exportBackup(state2) {
   if (!res) throw lastErr || new Error("Kein Schreibzugriff");
   try {
     if ((await Share.canShare()).value) {
-      await Share.share({ title: `${APP_NAME} Backup`, url: res.uri, dialogTitle: `${APP_NAME} Backup` });
+      await Share.share({ title: APP_NAME, url: res.uri, dialogTitle: APP_NAME });
     }
   } catch (e) {
   }
   return { name, path: `${FOLDER}` };
+}
+async function exportCsv(state2, resolve) {
+  const trenner = ";";
+  const zeilen = [[
+    "Datum",
+    "Plan",
+    "Uebung",
+    "Saetze",
+    "Wiederholungen",
+    "Gewicht",
+    "Einheit",
+    "Abgeschlossen",
+    "Dauer_min",
+    "Notiz"
+  ].join(trenner)];
+  Object.keys(state2.log).sort().forEach((d) => {
+    const e = state2.log[d];
+    if (!e || !e.t) return;
+    const dauer = e.start && e.end ? Math.max(1, Math.round((e.end - e.start) / 6e4)) : "";
+    Object.keys(e.t).forEach((exId) => {
+      const info = resolve(exId, e);
+      zeilen.push([
+        d,
+        csv(resolve.planName(e.k)),
+        csv(info.name),
+        e.t[exId],
+        (e.r && e.r[exId] || []).join("/"),
+        e.w && e.w[exId] != null ? String(e.w[exId]).replace(".", ",") : "",
+        csv(info.unit),
+        e.done ? "ja" : "nein",
+        dauer,
+        csv(e.n || "")
+      ].join(trenner));
+    });
+  });
+  const data2 = "\uFEFF" + zeilen.join("\r\n") + "\r\n";
+  const name = `ptapp-${stamp()}.csv`;
+  if (!isNative()) {
+    downloadInBrowser(name, data2, "text/csv");
+    return { name };
+  }
+  return writeAndShare(name, data2);
+}
+function csv(text) {
+  const s2 = String(text == null ? "" : text);
+  return /[;"\r\n]/.test(s2) ? '"' + s2.split('"').join('""') + '"' : s2;
 }
 async function listBackups() {
   if (!isNative()) return [];
@@ -337,9 +402,9 @@ async function ensureFolder(dir) {
   } catch (e) {
   }
 }
-function downloadInBrowser(name, data2) {
+function downloadInBrowser(name, data2, typ) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([data2], { type: "application/json" }));
+  a.href = URL.createObjectURL(new Blob([data2], { type: typ || "application/json" }));
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1e3);
@@ -540,9 +605,105 @@ function toggleExercise(exId) {
   const n = setsDone(e, item) + 1;
   const wrapped = n > goal;
   e.t[exId] = wrapped ? 0 : n;
+  e.r = e.r || {};
+  if (wrapped) delete e.r[exId];
+  else {
+    const liste = (e.r[exId] || []).slice(0, n - 1);
+    liste[n - 1] = suggestReps(exId, item, n - 1);
+    e.r[exId] = liste;
+  }
+  if (!e.start) e.start = Date.now();
   snapshotWeights(e, plan);
   persist();
   return !wrapped && n >= goal;
+}
+function suggestReps(exId, item, index) {
+  const frueher = lastPerformance(exId);
+  if (frueher && frueher.reps && frueher.reps[index]) return frueher.reps[index];
+  return targetReps(item);
+}
+function targetReps(item) {
+  const zahlen = String(item && item.reps || "").match(/\d+/g);
+  if (!zahlen || zahlen.length < 2) return 10;
+  return parseInt(zahlen[zahlen.length - 1], 10) || 10;
+}
+function repsOf(e, exId) {
+  return e && e.r && e.r[exId] || [];
+}
+function setReps(exId, index, value) {
+  const plan = planOf(activePlan());
+  if (!plan) return;
+  const e = ensureEntry(plan.id);
+  e.r = e.r || {};
+  const liste = (e.r[exId] || []).slice();
+  liste[index] = Math.max(0, Math.min(999, parseInt(value, 10) || 0));
+  e.r[exId] = liste;
+  persist();
+}
+function lastPerformance(exId, vorDatum) {
+  const grenze = vorDatum || tk;
+  const tage = Object.keys(S.log).filter((d) => d < grenze).sort();
+  for (let i = tage.length - 1; i >= 0; i--) {
+    const e = S.log[tage[i]];
+    if (!e || !e.t || e.t[exId] == null) continue;
+    return {
+      date: tage[i],
+      sets: setsDone(e, { ex: exId, sets: 99 }),
+      weight: e.w && e.w[exId] != null ? e.w[exId] : null,
+      reps: e.r && e.r[exId] || []
+    };
+  }
+  return null;
+}
+function personalRecord(exId) {
+  let best = null;
+  Object.keys(S.log).forEach((d) => {
+    const e = S.log[d];
+    if (!e || !e.t || !e.t[exId]) return;
+    const w = e.w && e.w[exId] != null ? e.w[exId] : 0;
+    const reps = Math.max(0, ...e.r && e.r[exId] || [0]);
+    if (!best || w > best.weight || w === best.weight && reps > best.reps) {
+      best = { date: d, weight: w, reps };
+    }
+  });
+  return best;
+}
+function exerciseHistory(exId, count) {
+  return Object.keys(S.log).sort().filter((d) => S.log[d] && S.log[d].t && S.log[d].t[exId]).slice(-(count || 20)).map((d) => ({
+    date: d,
+    weight: S.log[d].w && S.log[d].w[exId] != null ? S.log[d].w[exId] : 0,
+    reps: S.log[d].r && S.log[d].r[exId] || [],
+    sets: S.log[d].t[exId]
+  }));
+}
+function setNote(text) {
+  const plan = planOf(activePlan());
+  if (!plan) return;
+  const e = ensureEntry(plan.id);
+  e.n = text;
+  persist();
+}
+function durationMinutes(e) {
+  if (!e || !e.start || !e.end) return null;
+  return Math.max(1, Math.round((e.end - e.start) / 6e4));
+}
+function addBodyWeight(kg, date) {
+  const d = date || tk;
+  const wert = Math.round(parseFloat(kg) * 10) / 10;
+  if (!isFinite(wert) || wert <= 0) return false;
+  S.body = S.body.filter((b) => b.d !== d);
+  S.body.push({ d, kg: wert });
+  S.body.sort((a, b) => a.d.localeCompare(b.d));
+  persist();
+  return true;
+}
+function removeBodyWeight(d) {
+  S.body = S.body.filter((b) => b.d !== d);
+  persist();
+}
+function setPref(key, value) {
+  S.prefs[key] = value;
+  persist();
 }
 function bumpWeight(exId, dir) {
   const kind = kindOf(exId);
@@ -566,6 +727,8 @@ function finish() {
     if (!plan.night) S.next = plan.id;
   } else {
     e.done = true;
+    e.end = Date.now();
+    if (!e.start) e.start = e.end;
     S.next = nextRotating(plan.id);
   }
   sel = null;
@@ -602,10 +765,12 @@ function equipmentUsage(id) {
   return S.exercises.filter((e) => e.equip === id && !e.hidden).length;
 }
 function deleteEquipment(id) {
-  if (equipmentUsage(id)) return false;
-  S.equipment = S.equipment.filter((e) => e.id !== id);
+  if (equipmentUsage(id)) return null;
+  const i = S.equipment.findIndex((e) => e.id === id);
+  if (i < 0) return null;
+  const [eq] = S.equipment.splice(i, 1);
   persist();
-  return true;
+  return { art: "equipment", index: i, eintrag: eq };
 }
 function addExercise(data2) {
   const ex = { id: newId("ex", S.exercises.map((e) => e.id)), ...data2 };
@@ -630,17 +795,27 @@ function usedInLog(id) {
   return Object.values(S.log).some((e) => e && e.t && e.t[id] != null);
 }
 function deleteExercise(id) {
+  const ausPlaenen = [];
   S.plans.forEach((p) => {
-    p.items = p.items.filter((i) => i.ex !== id);
+    const i2 = p.items.findIndex((x) => x.ex === id);
+    if (i2 >= 0) ausPlaenen.push({ plan: p.id, index: i2, item: p.items[i2] });
+    p.items = p.items.filter((x) => x.ex !== id);
   });
+  const i = S.exercises.findIndex((e) => e.id === id);
+  const ex = S.exercises[i];
+  const gewicht = S.kg[id];
+  let versteckt = false;
   if (usedInLog(id)) {
-    const ex = exOf(id);
-    if (ex) ex.hidden = true;
-  } else {
-    S.exercises = S.exercises.filter((e) => e.id !== id);
+    if (ex) {
+      ex.hidden = true;
+      versteckt = true;
+    }
+  } else if (i >= 0) {
+    S.exercises.splice(i, 1);
     delete S.kg[id];
   }
   persist();
+  return { art: "exercise", index: i, eintrag: ex, versteckt, gewicht, ausPlaenen };
 }
 function addPlan(data2) {
   const p = {
@@ -669,9 +844,54 @@ function updatePlan(id, data2) {
   if (data2.focus != null) delete p.focusKey;
   persist();
 }
+function duplicatePlan(id) {
+  const p = planOf(id);
+  if (!p) return null;
+  const kopie = {
+    ...p,
+    id: newId("pl", S.plans.map((x) => x.id)),
+    short: nextShort(),
+    name: nameOf(p) + " (2)",
+    focus: focusOf(p),
+    items: p.items.map((i) => ({ ...i }))
+  };
+  delete kopie.key;
+  delete kopie.focusKey;
+  S.plans.splice(S.plans.indexOf(p) + 1, 0, kopie);
+  persist();
+  return kopie;
+}
+function movePlan(id, dir) {
+  const i = S.plans.findIndex((p2) => p2.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= S.plans.length) return;
+  const [p] = S.plans.splice(i, 1);
+  S.plans.splice(j, 0, p);
+  persist();
+}
 function deletePlan(id) {
-  S.plans = S.plans.filter((p) => p.id !== id);
+  const i = S.plans.findIndex((p2) => p2.id === id);
+  if (i < 0) return null;
+  const [p] = S.plans.splice(i, 1);
   if (S.next === id) S.next = suggested();
+  persist();
+  return { art: "plan", index: i, eintrag: p };
+}
+function restore(snap) {
+  if (!snap || !snap.eintrag) return;
+  if (snap.art === "equipment") {
+    S.equipment.splice(snap.index, 0, snap.eintrag);
+  } else if (snap.art === "plan") {
+    S.plans.splice(snap.index, 0, snap.eintrag);
+  } else if (snap.art === "exercise") {
+    if (snap.versteckt) delete snap.eintrag.hidden;
+    else if (snap.index >= 0) S.exercises.splice(snap.index, 0, snap.eintrag);
+    if (snap.gewicht != null) S.kg[snap.eintrag.id] = snap.gewicht;
+    snap.ausPlaenen.forEach((v) => {
+      const p = planOf(v.plan);
+      if (p && !p.items.some((x) => x.ex === snap.eintrag.id)) p.items.splice(v.index, 0, v.item);
+    });
+  }
   persist();
 }
 function addPlanItem(planId, exId) {
@@ -710,14 +930,14 @@ function weekStreak() {
   let n = 0;
   const m = monday(today);
   for (let back = 0; back < 260; back++) {
-    const start2 = new Date(m);
-    start2.setDate(m.getDate() - back * 7);
-    const key = iso(start2);
+    const start3 = new Date(m);
+    start3.setDate(m.getDate() - back * 7);
+    const key = iso(start3);
     const ziel = S.nights[key] ? 2 : 4;
     let done = 0;
     for (let i = 0; i < 7; i++) {
-      const d = new Date(start2);
-      d.setDate(start2.getDate() + i);
+      const d = new Date(start3);
+      d.setDate(start3.getDate() + i);
       const e = S.log[iso(d)];
       if (e && e.done) done++;
     }
@@ -731,16 +951,16 @@ function lastWeeks(count) {
   const m = monday(today);
   const out = [];
   for (let back = count - 1; back >= 0; back--) {
-    const start2 = new Date(m);
-    start2.setDate(m.getDate() - back * 7);
+    const start3 = new Date(m);
+    start3.setDate(m.getDate() - back * 7);
     let done = 0;
     for (let i = 0; i < 7; i++) {
-      const d = new Date(start2);
-      d.setDate(start2.getDate() + i);
+      const d = new Date(start3);
+      d.setDate(start3.getDate() + i);
       const e = S.log[iso(d)];
       if (e && e.done) done++;
     }
-    out.push({ start: iso(start2), done, target: S.nights[iso(start2)] ? 2 : 4 });
+    out.push({ start: iso(start3), done, target: S.nights[iso(start3)] ? 2 : 4 });
   }
   return out;
 }
@@ -822,26 +1042,38 @@ function esc(s2) {
   return String(s2 == null ? "" : s2).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function on(selector, handler, event = "click") {
-  document.querySelectorAll(selector).forEach((el) => el.addEventListener(event, handler));
+  document.querySelectorAll(selector).forEach((el2) => el2.addEventListener(event, handler));
 }
 function byId(id) {
   return document.getElementById(id);
 }
 function val(id) {
-  const el = byId(id);
-  return el ? el.value.trim() : "";
+  const el2 = byId(id);
+  return el2 ? el2.value.trim() : "";
 }
 var toastTimer = null;
-function toast(msg, bad = false) {
+function toast(msg, bad = false, action) {
   const old = document.querySelector(".toast");
   if (old) old.remove();
-  const el = document.createElement("div");
-  el.className = "toast" + (bad ? " bad" : "");
-  el.setAttribute("role", "status");
-  el.textContent = msg;
-  document.body.appendChild(el);
+  const el2 = document.createElement("div");
+  el2.className = "toast" + (bad ? " bad" : "");
+  el2.setAttribute("role", "status");
+  const text = document.createElement("span");
+  text.textContent = msg;
+  el2.appendChild(text);
+  if (action) {
+    const btn = document.createElement("button");
+    btn.className = "toast-a";
+    btn.textContent = action.label;
+    btn.addEventListener("click", () => {
+      el2.remove();
+      action.run();
+    });
+    el2.appendChild(btn);
+  }
+  document.body.appendChild(el2);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.remove(), bad ? 6e3 : 2600);
+  toastTimer = setTimeout(() => el2.remove(), action ? 8e3 : bad ? 6e3 : 2600);
 }
 async function haptic(style = "light") {
   try {
@@ -852,32 +1084,33 @@ async function haptic(style = "light") {
 function confirmBox(text) {
   return window.confirm(text);
 }
-function dialog({ title, text, actions }) {
+function dialog({ title, text, html, actions, onOpen }) {
   const alt = document.querySelector(".overlay");
   if (alt) alt.remove();
-  const el = document.createElement("div");
-  el.className = "overlay";
-  el.innerHTML = '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><h3>' + esc(title) + "</h3><p>" + esc(text) + '</p><div class="dlg-a">' + actions.map((a, i) => '<button class="set-btn' + (a.primary ? " go" : "") + '" data-act="' + i + '">' + esc(a.label) + "</button>").join("") + "</div></div>";
+  const el2 = document.createElement("div");
+  el2.className = "overlay";
+  el2.innerHTML = '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><h3>' + esc(title) + "</h3>" + (text ? "<p>" + esc(text) + "</p>" : "") + (html || "") + '<div class="dlg-a">' + actions.map((a, i) => '<button class="set-btn' + (a.primary ? " go" : "") + '" data-act="' + i + '">' + esc(a.label) + "</button>").join("") + "</div></div>";
   const close = () => {
-    el.remove();
+    el2.remove();
     document.removeEventListener("keydown", onKey);
   };
   const onKey = (ev) => {
     if (ev.key === "Escape") close();
   };
-  el.addEventListener("click", (ev) => {
-    if (ev.target === el) close();
+  el2.addEventListener("click", (ev) => {
+    if (ev.target === el2) close();
   });
-  el.querySelectorAll("[data-act]").forEach((b) => {
+  el2.querySelectorAll("[data-act]").forEach((b) => {
     b.addEventListener("click", () => {
       const a = actions[Number(b.dataset.act)];
       close();
       if (a.run) a.run();
     });
   });
-  document.body.appendChild(el);
+  document.body.appendChild(el2);
   document.addEventListener("keydown", onKey);
-  const erster = el.querySelector(".set-btn.go") || el.querySelector(".set-btn");
+  if (onOpen) onOpen(el2, close);
+  const erster = el2.querySelector(".set-btn.go") || el2.querySelector(".set-btn");
   if (erster) erster.focus();
 }
 function field(label, inner, hint) {
@@ -925,232 +1158,6 @@ function showAiError(e, providerId) {
   if (isCreditProblem(e)) creditsDialog(providerId);
   else toast(t("ai.failed", { msg: e.message }), true);
 }
-
-// src/js/views/home.js
-var rerender = () => document.dispatchEvent(new CustomEvent("rerender"));
-var busy = false;
-var draft = "";
-function reset() {
-  busy = false;
-}
-var connected = () => !!(S.ai.keys[S.ai.provider] || "").trim();
-function stats() {
-  const done = weekCount(), ziel = weekTarget();
-  const wochen = lastWeeks(8);
-  const hoch = Math.max(4, ...wochen.map((w) => w.done));
-  const balken = wochen.map((w) => '<div class="bar-col" title="' + esc(w.start) + '"><div class="bar-v' + (w.done >= w.target ? " full" : "") + '" style="height:' + Math.round(w.done / hoch * 100) + '%"></div></div>').join("");
-  const letzte = lastSessions(1)[0];
-  const datum = letzte ? new Date(letzte.date.split("-")[0], letzte.date.split("-")[1] - 1, letzte.date.split("-")[2]).toLocaleDateString(locale(), { day: "numeric", month: "long" }) : null;
-  return '<h3 class="sec first">' + esc(t("home.stats")) + '</h3><div class="stat-row"><div class="stat"><b>' + done + "/" + ziel + "</b>" + esc(t("home.thisWeek")) + '</div><div class="stat"><b>' + weekStreak() + "</b>" + esc(t("home.streak")) + '</div><div class="stat"><b>' + totalSessions() + "</b>" + esc(t("home.total")) + '</div></div><div class="bars" aria-hidden="true">' + balken + '</div><p class="intro">' + esc(t("home.lastWeeks")) + " \xB7 " + esc(letzte ? t("home.last", { plan: nameOf(letzte.plan), date: datum }) : t("home.never")) + "</p>";
-}
-function plans() {
-  if (!S.plans.length) return '<p class="intro">' + esc(t("home.noPlans")) + "</p>";
-  const sug = suggested();
-  const counts = perPlanCounts();
-  return S.plans.map((p) => '<button class="nav-row' + (p.id === sug ? " due" : "") + '" data-start="' + esc(p.id) + '"><span class="nav-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + (p.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "") + '</span><span class="nav-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + (counts.get(p.id) || 0) + '\xD7</span><span class="nav-c">\u203A</span></button>').join("");
-}
-function coach() {
-  if (!connected()) {
-    return '<h3 class="sec">' + esc(t("home.coach")) + '</h3><p class="intro">' + esc(t("home.coachOff")) + "</p>";
-  }
-  const verlauf = S.chat.length ? '<div class="chat">' + S.chat.map((m) => '<div class="msg ' + (m.role === "coach" ? "from-coach" : "from-me") + '"><div class="msg-w">' + esc(m.role === "coach" ? t("home.coach") : t("home.you")) + '</div><div class="msg-t">' + esc(m.text) + "</div></div>").join("") + "</div>" : '<p class="intro">' + esc(t("home.coachSub")) + "</p>";
-  return '<h3 class="sec">' + esc(t("home.coach")) + "</h3>" + verlauf + (busy ? '<p class="intro">' + esc(t("home.thinking")) + "</p>" : "") + '<div class="add-row"><input class="in" id="c-msg" type="text" autocomplete="off" placeholder="' + esc(t("home.ask")) + '" value="' + esc(draft) + '"' + (busy ? " disabled" : "") + '><button class="mini" id="c-send"' + (busy ? " disabled" : "") + ">" + esc(t("home.send")) + '</button></div><p class="fld-h">' + esc(t("home.costHint")) + "</p>" + (S.chat.length ? '<button class="mini" id="c-clear">' + esc(t("home.clearChat")) + "</button>" : "");
-}
-function context() {
-  const geraete = S.equipment.map((e) => nameOf(e)).join(", ");
-  const plaene = S.plans.map(
-    (p) => nameOf(p) + " (" + p.items.map((i) => nameOf(exOf(i.ex)) + " " + (i.reps || "")).join("; ") + ")"
-  ).join(" | ");
-  const letzte = lastSessions(8).map((s2) => s2.date + " " + nameOf(s2.plan)).join(", ");
-  return [
-    "Equipment: " + (geraete || "none"),
-    "Plans: " + (plaene || "none"),
-    "Recent sessions: " + (letzte || "none"),
-    "This week: " + weekCount() + " of " + weekTarget() + " sessions."
-  ].join("\n");
-}
-async function send() {
-  const text = val("c-msg");
-  if (!text) return;
-  draft = "";
-  busy = true;
-  await addChat("me", text);
-  try {
-    const mod = await import("./part-B3QHQ7ZB.js");
-    const antwort = await mod.chat({
-      provider: S.ai.provider,
-      key: (S.ai.keys[S.ai.provider] || "").trim(),
-      model: S.ai.model || providerOf(S.ai.provider).defaultModel,
-      context: context(),
-      messages: S.chat
-    });
-    busy = false;
-    await addChat("coach", antwort);
-  } catch (e) {
-    busy = false;
-    showAiError(e, S.ai.provider);
-    rerender();
-  }
-}
-function render(head2, mount2) {
-  mount2.innerHTML = head2() + stats() + '<h3 class="sec">' + esc(t("home.pickPlan")) + '</h3><p class="intro">' + esc(t("home.pickPlanSub")) + "</p>" + plans() + coach();
-  on("[data-start]", (ev) => {
-    selectPlan(ev.currentTarget.dataset.start);
-    document.dispatchEvent(new CustomEvent("goview", { detail: "plan" }));
-  });
-  const feld = byId("c-msg");
-  if (feld) {
-    feld.addEventListener("input", () => {
-      draft = feld.value;
-    });
-    feld.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") send();
-    });
-    byId("c-send").addEventListener("click", send);
-    const chat = document.querySelector(".chat");
-    if (chat) chat.scrollTop = chat.scrollHeight;
-  }
-  const clear = byId("c-clear");
-  if (clear) clear.addEventListener("click", () => {
-    if (confirmBox(t("home.clearChatAsk"))) clearChat();
-  });
-}
-
-// src/js/views/plan.js
-var plan_exports = {};
-__export(plan_exports, {
-  render: () => render2
-});
-function weekStrip() {
-  const m = monday(today);
-  let h = "";
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(m);
-    d.setDate(m.getDate() + i);
-    const key = iso(d), e = S.log[key], done = e && e.done;
-    const p = done ? planOf(e.k) : null;
-    h += '<div class="tp-day' + (done ? " filled" : "") + (key === tk ? " today" : "") + '"><div class="d">' + esc(weekdayShort(i)) + '</div><div class="m' + (done ? "" : " empty") + '">' + (done ? esc(p ? p.short : "\xB7") : "\xB7") + "</div></div>";
-  }
-  return '<div class="tp-week">' + h + "</div>";
-}
-function exerciseRow(item, e) {
-  const ex = exOf(item.ex);
-  const goal = item.sets || 3;
-  const n = setsDone(e, item);
-  const ok = n >= goal;
-  const w = weightLabel(item.ex);
-  const bd = w.body ? null : band(item.ex);
-  const hint = hintOf(ex);
-  const right = w.body ? '<div class="tp-bw">' + esc(w.sub) + "</div>" : '<div class="tp-kg"><button data-kg="' + item.ex + '" data-dir="-1" aria-label="' + esc(t("plan.less")) + '">\u2212</button><div class="val">' + esc(w.main) + "<small> " + esc(w.unit) + "</small>" + (w.sub ? '<div class="sub"><i class="dot ' + (bd || "n") + '"></i>' + esc(w.sub) + "</div>" : '<div class="sub"><i class="dot ' + (bd || "n") + '"></i></div>') + '</div><button data-kg="' + item.ex + '" data-dir="1" aria-label="' + esc(t("plan.more")) + '">+</button></div>';
-  return '<div class="tp-ex' + (ok ? " ok" : "") + (n > 0 && !ok ? " part" : "") + '" data-ex="' + item.ex + '" role="button" tabindex="0" aria-label="' + esc(nameOf(ex)) + ", " + esc(t("plan.sets", { done: n, total: goal })) + '"><div class="tp-box">' + (ok ? "\u2713" : n + "<em>/" + goal + "</em>") + '</div><div><div class="nm">' + esc(nameOf(ex)) + '</div><div class="rp">' + esc(item.reps || "") + (item.side ? " " + esc(sideLabel(item.side)) : "") + "</div>" + (hint ? '<div class="hint">' + esc(hint) + "</div>" : "") + "</div>" + right + "</div>";
-}
-function render2(head2, mount2) {
-  const planId = activePlan();
-  const plan = planOf(planId);
-  const e = entry();
-  const sug = suggested();
-  const night = isNight();
-  if (!plan) {
-    mount2.innerHTML = head2() + weekStrip() + '<div class="tp-hint">' + esc(t("plan.noPlans")) + "</div>";
-    return;
-  }
-  const pick = S.plans.map((p) => '<button data-pick="' + p.id + '" class="' + (p.id === planId ? "sel" : "") + (p.id === sug && p.id !== planId ? " sug" : "") + '"><span class="k">' + esc(p.short || "?") + "</span>" + esc(nameOf(p)) + "</button>").join("");
-  const rows = plan.items.length ? plan.items.map((i) => exerciseRow(i, e)).join("") : '<div class="tp-ex"><div></div><div class="rp">' + esc(t("plan.emptyPlan")) + "</div><div></div></div>";
-  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + "</button></div></div>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
-  document.getElementById("nt").addEventListener("click", () => toggleNight());
-  document.getElementById("fin").addEventListener("click", () => {
-    haptic("medium");
-    finish();
-  });
-  on("[data-pick]", (ev) => selectPlan(ev.currentTarget.dataset.pick));
-  on("[data-kg]", (ev) => {
-    ev.stopPropagation();
-    bumpWeight(ev.currentTarget.dataset.kg, parseInt(ev.currentTarget.dataset.dir, 10));
-  });
-  on("[data-ex]", (ev) => {
-    if (toggleExercise(ev.currentTarget.dataset.ex)) haptic("light");
-  });
-  on("[data-ex]", (ev) => {
-    if (ev.key === " " || ev.key === "Enter") {
-      ev.preventDefault();
-      toggleExercise(ev.currentTarget.dataset.ex);
-    }
-  }, "keydown");
-}
-
-// src/js/views/log.js
-var log_exports = {};
-__export(log_exports, {
-  render: () => render3,
-  resetSelection: () => resetSelection
-});
-var month = new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1);
-var selectedDay = null;
-function resetSelection() {
-  selectedDay = null;
-}
-function dayDetail() {
-  if (!selectedDay) return null;
-  const de = S.log[selectedDay];
-  if (!de) return null;
-  const plan = planOf(de.k);
-  const [y, m, d] = selectedDay.split("-").map(Number);
-  const dd = new Date(y, m - 1, d);
-  const items = plan && plan.items.length ? plan.items : Object.keys(de.t || {}).map((ex) => ({ ex, sets: 3 }));
-  const lines = items.map((item) => {
-    const ex = exOf(item.ex);
-    const goal = item.sets || 3;
-    const n = setsDone(de, item);
-    const stored = de.w && de.w[item.ex] != null ? de.w[item.ex] : null;
-    const w = weightLabel(item.ex, stored == null ? 0 : stored);
-    const label = w.body ? w.sub : stored == null ? "\u2014" : w.main + " " + w.unit + (w.sub ? " \xB7 " + w.sub : "");
-    return '<div class="dt-row' + (n >= goal ? "" : " skip") + '"><span class="dt-m">' + n + "/" + goal + '</span><span class="dt-n">' + esc(nameOf(ex)) + '</span><span class="dt-w">' + esc(label) + "</span></div>";
-  }).join("");
-  return '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan ? plan.short : "?") + '</div><div><div class="nm">' + esc(longDate(dd)) + '</div><div class="fo">' + esc(nameOf(plan)) + " \xB7 " + esc(de.done ? t("log.done") : t("log.notDone")) + "</div></div></div>" + lines + "</div></div>";
-}
-function render3(head2, mount2) {
-  const y = month.getFullYear(), m = month.getMonth();
-  const lead = (new Date(y, m, 1).getDay() + 6) % 7;
-  const days = new Date(y, m + 1, 0).getDate();
-  let cells = "", total = 0;
-  const per = /* @__PURE__ */ new Map();
-  for (let i = 0; i < 7; i++) cells += '<div class="cal-h">' + esc(weekdayShort(i)) + "</div>";
-  for (let i = 0; i < lead; i++) cells += '<div class="cal-c void"></div>';
-  for (let d = 1; d <= days; d++) {
-    const key = iso(new Date(y, m, d));
-    const e = S.log[key];
-    const done = e && e.done;
-    const plan = e ? planOf(e.k) : null;
-    if (done) {
-      total++;
-      const s2 = plan ? plan.short : "?";
-      per.set(s2, (per.get(s2) || 0) + 1);
-    }
-    cells += '<button class="cal-c' + (done ? " done" : "") + (e && !done ? " part" : "") + (key === tk ? " now" : "") + (key === selectedDay ? " sel" : "") + '"' + (e ? "" : " disabled") + ' data-day="' + key + '" aria-label="' + d + ". " + esc(monthName(m)) + '"><span class="n">' + d + "</span>" + (e ? '<span class="k">' + esc(plan ? plan.short : "?") + "</span>" : "") + "</button>";
-  }
-  const summary = [...per.entries()].map(([s2, n]) => esc(s2) + " " + n).join(" \xB7 ");
-  const detail = dayDetail() || '<div class="tp-hint">' + esc(total ? t("log.pickDay") : t("log.emptyMonth")) + "</div>";
-  mount2.innerHTML = head2() + '<div class="cal-bar"><button data-mon="-1" aria-label="' + esc(t("log.prevMonth")) + '">\u2039</button><div class="cal-t">' + esc(monthName(m)) + " " + y + '</div><button data-mon="1" aria-label="' + esc(t("log.nextMonth")) + '">\u203A</button></div><div class="cal-sum"><b>' + total + "</b> " + esc((total === 1 ? t("log.unit", { n: "" }) : t("log.units", { n: "" })).trim()) + (summary ? " \u2014 " + summary : "") + '</div><div class="cal">' + cells + "</div>" + detail;
-  on("[data-mon]", (ev) => {
-    month = new Date(month.getFullYear(), month.getMonth() + parseInt(ev.currentTarget.dataset.mon, 10), 1);
-    selectedDay = null;
-    document.dispatchEvent(new CustomEvent("rerender"));
-  });
-  on("[data-day]", (ev) => {
-    const d = ev.currentTarget.dataset.day;
-    selectedDay = selectedDay === d ? null : d;
-    document.dispatchEvent(new CustomEvent("rerender"));
-  });
-}
-
-// src/js/views/options.js
-var options_exports = {};
-__export(options_exports, {
-  backBar: () => backBar2,
-  refresh: () => refresh,
-  render: () => render7,
-  resetSub: () => resetSub
-});
 
 // src/js/catalog.js
 var CATEGORIES = [
@@ -1562,6 +1569,65 @@ function exCatalogEntry(key) {
 var exName = (o) => o[getLang()] || o.de;
 var exSearchText = (o) => (o.de + " " + o.en).toLowerCase();
 
+// src/js/views/sets.js
+var rerender = () => document.dispatchEvent(new CustomEvent("rerender"));
+function datum(d) {
+  const [y, m, tag] = d.split("-").map(Number);
+  return new Date(y, m - 1, tag).toLocaleDateString(locale(), { day: "numeric", month: "short" });
+}
+function performanceText(exId, perf) {
+  if (!perf) return "";
+  const teile = [];
+  if (perf.weight != null) {
+    const w = weightLabel(exId, perf.weight);
+    if (!w.body) teile.push(w.main + " " + w.unit);
+  }
+  const reps = (perf.reps || []).filter((r) => r > 0);
+  if (reps.length) teile.push(reps.join("/"));
+  return teile.join(" \xB7 ");
+}
+function weightText(exId, value) {
+  const w = weightLabel(exId, value || 0);
+  return w.body ? w.sub : w.main + " " + w.unit;
+}
+function recordText(exId, pr) {
+  if (!pr) return "";
+  const w = weightLabel(exId, pr.weight);
+  const teil = w.body ? "" : w.main + " " + w.unit;
+  return [teil, pr.reps ? pr.reps + "\xD7" : ""].filter(Boolean).join(" \xB7 ") + " (" + datum(pr.date) + ")";
+}
+function verlauf(exId) {
+  const eintraege = exerciseHistory(exId, 12);
+  if (!eintraege.length) return '<p class="fld-h">' + esc(t("set.noHistory")) + "</p>";
+  const werte = eintraege.map((e) => e.weight || 0);
+  const hoch = Math.max(1, ...werte);
+  const balken = eintraege.map((e) => '<div class="bar-col" title="' + esc(e.date) + '"><div class="bar-v full" style="height:' + Math.max(4, Math.round(e.weight / hoch * 100)) + '%"></div></div>').join("");
+  const zeilen = eintraege.slice(-5).reverse().map((e) => '<div class="dt-row"><span class="dt-m">' + esc(datum(e.date)) + '</span><span class="dt-n">' + esc((e.reps || []).filter((r) => r > 0).join("/") || "\u2014") + '</span><span class="dt-w">' + esc(weightText(exId, e.weight)) + "</span></div>").join("");
+  return "<h4>" + esc(t("set.history")) + '</h4><div class="bars">' + balken + "</div>" + zeilen;
+}
+function openSets(exId, item) {
+  const ex = exOf(exId);
+  const e = entry();
+  const anzahl = setsDone(e, item);
+  const reps = repsOf(e, exId);
+  const letzte = lastPerformance(exId);
+  const best = personalRecord(exId);
+  const zeilen = anzahl ? Array.from({ length: anzahl }, (_, i) => '<label class="chk set-row"><span>' + esc(t("set.nr", { n: i + 1 })) + '</span><input class="in tiny num" type="number" inputmode="numeric" min="0" max="999" data-set="' + i + '" value="' + (reps[i] || 0) + '"><span class="lst-s">' + esc(t("set.reps")) + "</span></label>").join("") : '<p class="fld-h">' + esc(t("set.none")) + "</p>";
+  dialog({
+    title: t("set.title", { name: nameOf(ex) }),
+    html: '<p class="fld-h">' + esc(t("set.hint")) + "</p>" + zeilen + (letzte ? '<p class="fld-h">' + esc(t("set.last", { text: performanceText(exId, letzte) || "\u2014" })) + " \xB7 " + esc(datum(letzte.date)) + "</p>" : "") + (best ? '<p class="fld-h">' + esc(t("set.record", { text: recordText(exId, best) })) + "</p>" : "") + verlauf(exId),
+    actions: [{ label: t("common.save"), primary: true }],
+    onOpen: (el2) => {
+      el2.querySelectorAll("[data-set]").forEach((inp) => {
+        inp.addEventListener("change", () => {
+          setReps(exId, Number(inp.dataset.set), inp.value);
+        });
+      });
+    }
+  });
+  setTimeout(rerender, 50);
+}
+
 // src/js/views/editors.js
 var rerender2 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var editing = null;
@@ -1574,6 +1640,17 @@ function resetEditing() {
   picked = null;
   bundle = null;
   pickedEx = null;
+}
+function muscleOptions() {
+  return [{ id: "", label: t("ex.muscleNone") }].concat(EX_CATEGORIES.map((c) => ({ id: c.id, label: exName(c) })));
+}
+function muscleLabel(id) {
+  const c = EX_CATEGORIES.find((x) => x.id === id);
+  return c ? exName(c) : "";
+}
+function muscleOf(key) {
+  const c = EX_CATEGORIES.find((x) => x.items.some((i) => i.key === key));
+  return c ? c.id : "";
 }
 function sideOptions() {
   return [
@@ -1628,7 +1705,7 @@ function equipment(mount2, head2, goHub) {
       return;
     }
     if (!confirmBox(t("common.deleteAsk", { name: nameOf(eq) }))) return;
-    deleteEquipment(eq.id);
+    undoable(deleteEquipment(eq.id));
   });
 }
 function bundleForm(mount2, head2, goHub) {
@@ -1754,6 +1831,16 @@ function equipmentForm(mount2, head2, goHub) {
     picked = null;
   });
 }
+function undoable(snap) {
+  if (!snap) return;
+  toast(t("undo.done"), false, {
+    label: t("undo.action"),
+    run: () => {
+      restore(snap);
+      toast(t("undo.back"));
+    }
+  });
+}
 function aiMark(obj) {
   return obj && obj.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "";
 }
@@ -1780,7 +1867,7 @@ function exercises(mount2, head2, goHub) {
     const ex = exOf(ev.currentTarget.dataset.del);
     if (!ex) return;
     if (!confirmBox(t("common.deleteAsk", { name: nameOf(ex) }) + "\n" + t("ex.keepForHistory"))) return;
-    deleteExercise(ex.id);
+    undoable(deleteExercise(ex.id));
   });
 }
 function exercisePicker(mount2, head2, goHub) {
@@ -1836,7 +1923,8 @@ function exerciseForm(mount2, head2, goHub) {
   const vorhanden = geraetTyp ? S.equipment.find((e) => nameOf(e).toLowerCase() === catName(geraetTyp).toLowerCase()) : null;
   const ex = editing === "new" ? {
     equip: vorhanden ? vorhanden.id : S.equipment[0] && S.equipment[0].id,
-    name: ausKatalog ? exName(ausKatalog) : ""
+    name: ausKatalog ? exName(ausKatalog) : "",
+    muscle: ausKatalog ? muscleOf(ausKatalog.key) : ""
   } : exOf(editing);
   if (!ex) {
     editing = null;
@@ -1845,11 +1933,11 @@ function exerciseForm(mount2, head2, goHub) {
   const eqOpts = S.equipment.map((e) => ({ id: e.id, label: nameOf(e) }));
   const bands = ex.bands || [];
   const fehlendesGeraet = geraetTyp && !vorhanden ? geraetTyp : null;
-  mount2.innerHTML = head2() + backBar(editing === "new" ? t("ex.add") : nameOf(ex)) + field(t("ex.name"), textIn("f-name", editing === "new" ? ex.name || "" : nameOf(ex))) + (fehlendesGeraet ? '<p class="intro">' + esc(t("ex.needsEquip", { name: catName(fehlendesGeraet) })) + '</p><label class="chk"><input type="checkbox" id="f-addeq" checked><span>' + esc(t("ex.addEquipToo")) + "</span></label>" : "") + field(t("ex.equip"), selectIn("f-equip", eqOpts, ex.equip)) + field(
+  mount2.innerHTML = head2() + backBar(editing === "new" ? t("ex.add") : nameOf(ex)) + field(t("ex.name"), textIn("f-name", editing === "new" ? ex.name || "" : nameOf(ex))) + (fehlendesGeraet ? '<p class="intro">' + esc(t("ex.needsEquip", { name: catName(fehlendesGeraet) })) + '</p><label class="chk"><input type="checkbox" id="f-addeq" checked><span>' + esc(t("ex.addEquipToo")) + "</span></label>" : "") + field(t("ex.equip"), selectIn("f-equip", eqOpts, ex.equip)) + field(t("ex.muscle"), selectIn("f-muscle", muscleOptions(), ex.muscle || "")) + field(
     t("ex.bands"),
     '<span class="two">' + numIn("f-b1", bands[0] == null ? "" : bands[0], "0.5", 0) + numIn("f-b2", bands[1] == null ? "" : bands[1], "0.5", 0) + "</span>",
     t("ex.bandsSub")
-  ) + '<button class="set-btn" id="save">' + esc(t("common.save")) + "</button>";
+  ) + '<button class="set-btn" id="save">' + esc(t("common.save")) + "</button>" + (editing === "new" ? "" : exerciseStats(editing));
   wireBack(rerender2);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
@@ -1866,7 +1954,7 @@ function exerciseForm(mount2, head2, goHub) {
       if (fehlendesGeraet.kind === "weight") daten.step = fehlendesGeraet.step || 2.5;
       equip = addEquipment(daten).id;
     }
-    const data2 = { name, equip };
+    const data2 = { name, equip, muscle: byId("f-muscle").value || void 0 };
     data2.bands = isFinite(b1) && isFinite(b2) ? [b1, b2] : void 0;
     if (editing === "new") addExercise(data2);
     else updateExercise(editing, data2);
@@ -1874,9 +1962,18 @@ function exerciseForm(mount2, head2, goHub) {
     pickedEx = null;
   });
 }
-function plans2(mount2, head2, goHub, openPlanner) {
+function exerciseStats(exId) {
+  const best = personalRecord(exId);
+  const verlauf2 = exerciseHistory(exId, 12);
+  if (!best && !verlauf2.length) return "";
+  const hoch = Math.max(1, ...verlauf2.map((v) => v.weight || 0));
+  const balken = verlauf2.map((v) => '<div class="bar-col" title="' + esc(v.date) + '"><div class="bar-v full" style="height:' + Math.max(4, Math.round(v.weight / hoch * 100)) + '%"></div></div>').join("");
+  const zeilen = verlauf2.slice(-6).reverse().map((v) => '<div class="dt-row"><span class="dt-m">' + esc(v.date.slice(5).replace("-", ".")) + '</span><span class="dt-n">' + esc((v.reps || []).filter((r) => r > 0).join("/") || "\u2014") + '</span><span class="dt-w">' + esc(weightText(exId, v.weight)) + "</span></div>").join("");
+  return '<h3 class="sec">' + esc(t("set.history")) + "</h3>" + (best ? '<p class="intro">' + esc(t("set.record", { text: recordText(exId, best) })) + "</p>" : "") + (verlauf2.length ? '<div class="bars">' + balken + "</div>" + zeilen : '<p class="fld-h">' + esc(t("set.noHistory")) + "</p>");
+}
+function plans(mount2, head2, goHub, openPlanner) {
   if (editing) return planForm(mount2, head2, goHub);
-  const rows = S.plans.map((p) => '<div class="lst"><div class="lst-m"><div class="lst-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + aiMark(p) + '</div><div class="lst-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + p.items.length + '</div></div><div class="row-act"><button class="mini" data-edit="' + p.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + p.id + '">' + esc(t("common.delete")) + "</button></div></div>").join("");
+  const rows = S.plans.map((p) => '<div class="lst"><div class="lst-m"><div class="lst-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + aiMark(p) + '</div><div class="lst-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + p.items.length + '</div></div><div class="row-act"><button class="mini" data-up="' + p.id + '" aria-label="' + esc(t("plan.moveUp")) + '">\u2191</button><button class="mini" data-down="' + p.id + '" aria-label="' + esc(t("plan.moveDown")) + '">\u2193</button><button class="mini" data-copy="' + p.id + '">' + esc(t("plan.copy")) + '</button><button class="mini" data-edit="' + p.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + p.id + '">' + esc(t("common.delete")) + "</button></div></div>").join("");
   const verbunden = !!(S.ai.keys[S.ai.provider] || "").trim();
   mount2.innerHTML = head2() + backBar(t("pl.title")) + '<p class="intro">' + esc(t("pl.intro")) + "</p>" + rows + (S.plans.some((p) => p.src === "ai") ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + '<button class="set-btn" id="add">+ ' + esc(t("pl.add")) + '</button><button class="nav-row" id="ai"><span class="nav-n">\u2726 ' + esc(t("pl.aiCreate")) + '</span><span class="nav-s">' + esc(verbunden ? t("pl.aiCreateSub") : t("pl.aiNeedsKey")) + '</span><span class="nav-c">\u203A</span></button>';
   wireBack(goHub);
@@ -1891,6 +1988,12 @@ function plans2(mount2, head2, goHub, openPlanner) {
     const p = addPlan({ name: t("common.new"), focus: "" });
     editing = p.id;
   });
+  on("[data-copy]", (ev) => {
+    duplicatePlan(ev.currentTarget.dataset.copy);
+    toast(t("plan.copied"));
+  });
+  on("[data-up]", (ev) => movePlan(ev.currentTarget.dataset.up, -1));
+  on("[data-down]", (ev) => movePlan(ev.currentTarget.dataset.down, 1));
   on("[data-edit]", (ev) => {
     editing = ev.currentTarget.dataset.edit;
     rerender2();
@@ -1899,14 +2002,14 @@ function plans2(mount2, head2, goHub, openPlanner) {
     const p = planOf(ev.currentTarget.dataset.del);
     if (!p) return;
     if (!confirmBox(t("common.deleteAsk", { name: nameOf(p) }))) return;
-    deletePlan(p.id);
+    undoable(deletePlan(p.id));
   });
 }
 function planForm(mount2, head2, goHub) {
   const p = planOf(editing);
   if (!p) {
     editing = null;
-    return plans2(mount2, head2, goHub);
+    return plans(mount2, head2, goHub);
   }
   const items = p.items.map((i) => {
     const ex = exOf(i.ex);
@@ -1946,6 +2049,336 @@ function planForm(mount2, head2, goHub) {
     { side: ev.currentTarget.value || void 0 }
   ), "change");
 }
+
+// src/js/views/home.js
+var rerender3 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var busy = false;
+var draft = "";
+function reset() {
+  busy = false;
+}
+var connected = () => !!(S.ai.keys[S.ai.provider] || "").trim();
+function stats() {
+  const done = weekCount(), ziel = weekTarget();
+  const wochen = lastWeeks(8);
+  const hoch = Math.max(4, ...wochen.map((w) => w.done));
+  const balken = wochen.map((w) => '<div class="bar-col" title="' + esc(w.start) + '"><div class="bar-v' + (w.done >= w.target ? " full" : "") + '" style="height:' + Math.round(w.done / hoch * 100) + '%"></div></div>').join("");
+  const letzte = lastSessions(1)[0];
+  const datum2 = letzte ? new Date(letzte.date.split("-")[0], letzte.date.split("-")[1] - 1, letzte.date.split("-")[2]).toLocaleDateString(locale(), { day: "numeric", month: "long" }) : null;
+  return '<h3 class="sec first">' + esc(t("home.stats")) + '</h3><div class="stat-row"><div class="stat"><b>' + done + "/" + ziel + "</b>" + esc(t("home.thisWeek")) + '</div><div class="stat"><b>' + weekStreak() + "</b>" + esc(t("home.streak")) + '</div><div class="stat"><b>' + totalSessions() + "</b>" + esc(t("home.total")) + '</div></div><div class="bars" aria-hidden="true">' + balken + '</div><p class="intro">' + esc(t("home.lastWeeks")) + " \xB7 " + esc(letzte ? t("home.last", { plan: nameOf(letzte.plan), date: datum2 }) : t("home.never")) + "</p>";
+}
+function muscles() {
+  const zaehler = /* @__PURE__ */ new Map();
+  Object.values(S.log).forEach((e) => {
+    if (!e || !e.done || !e.t) return;
+    Object.keys(e.t).forEach((exId) => {
+      if (!e.t[exId]) return;
+      const ex = exOf(exId);
+      const gruppe = ex && ex.muscle;
+      if (!gruppe) return;
+      zaehler.set(gruppe, (zaehler.get(gruppe) || 0) + 1);
+    });
+  });
+  if (!zaehler.size) return "";
+  const hoch = Math.max(...zaehler.values());
+  const zeilen = [...zaehler.entries()].sort((a, b) => b[1] - a[1]).map(([id, n]) => '<div class="mus"><span class="mus-n">' + esc(muscleLabel(id)) + '</span><span class="mus-b"><i style="width:' + Math.round(n / hoch * 100) + '%"></i></span><span class="mus-c">' + n + "</span></div>").join("");
+  return '<h3 class="sec">' + esc(t("stats.muscles")) + "</h3>" + zeilen;
+}
+function plans2() {
+  if (!S.plans.length) return '<p class="intro">' + esc(t("home.noPlans")) + "</p>";
+  const sug = suggested();
+  const counts = perPlanCounts();
+  return S.plans.map((p) => '<button class="nav-row' + (p.id === sug ? " due" : "") + '" data-start="' + esc(p.id) + '"><span class="nav-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + (p.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "") + '</span><span class="nav-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + (counts.get(p.id) || 0) + '\xD7</span><span class="nav-c">\u203A</span></button>').join("");
+}
+function coach() {
+  if (!connected()) {
+    return '<h3 class="sec">' + esc(t("home.coach")) + '</h3><p class="intro">' + esc(t("home.coachOff")) + "</p>";
+  }
+  const verlauf2 = S.chat.length ? '<div class="chat">' + S.chat.map((m) => '<div class="msg ' + (m.role === "coach" ? "from-coach" : "from-me") + '"><div class="msg-w">' + esc(m.role === "coach" ? t("home.coach") : t("home.you")) + '</div><div class="msg-t">' + esc(m.text) + "</div></div>").join("") + "</div>" : '<p class="intro">' + esc(t("home.coachSub")) + "</p>";
+  return '<h3 class="sec">' + esc(t("home.coach")) + "</h3>" + verlauf2 + (busy ? '<p class="intro">' + esc(t("home.thinking")) + "</p>" : "") + '<div class="add-row"><input class="in" id="c-msg" type="text" autocomplete="off" placeholder="' + esc(t("home.ask")) + '" value="' + esc(draft) + '"' + (busy ? " disabled" : "") + '><button class="mini" id="c-send"' + (busy ? " disabled" : "") + ">" + esc(t("home.send")) + '</button></div><p class="fld-h">' + esc(t("home.costHint")) + "</p>" + (S.chat.length ? '<button class="mini" id="c-clear">' + esc(t("home.clearChat")) + "</button>" : "");
+}
+function context() {
+  const geraete = S.equipment.map((e) => nameOf(e)).join(", ");
+  const plaene = S.plans.map(
+    (p) => nameOf(p) + " (" + p.items.map((i) => nameOf(exOf(i.ex)) + " " + (i.reps || "")).join("; ") + ")"
+  ).join(" | ");
+  const letzte = lastSessions(8).map((s2) => s2.date + " " + nameOf(s2.plan)).join(", ");
+  return [
+    "Equipment: " + (geraete || "none"),
+    "Plans: " + (plaene || "none"),
+    "Recent sessions: " + (letzte || "none"),
+    "This week: " + weekCount() + " of " + weekTarget() + " sessions."
+  ].join("\n");
+}
+async function send() {
+  const text = val("c-msg");
+  if (!text) return;
+  draft = "";
+  busy = true;
+  await addChat("me", text);
+  try {
+    const mod = await import("./part-H2QCBWC5.js");
+    const antwort = await mod.chat({
+      provider: S.ai.provider,
+      key: (S.ai.keys[S.ai.provider] || "").trim(),
+      model: S.ai.model || providerOf(S.ai.provider).defaultModel,
+      context: context(),
+      messages: S.chat
+    });
+    busy = false;
+    await addChat("coach", antwort);
+  } catch (e) {
+    busy = false;
+    showAiError(e, S.ai.provider);
+    rerender3();
+  }
+}
+function render(head2, mount2) {
+  mount2.innerHTML = head2() + stats() + muscles() + '<h3 class="sec">' + esc(t("home.pickPlan")) + '</h3><p class="intro">' + esc(t("home.pickPlanSub")) + "</p>" + plans2() + coach();
+  on("[data-start]", (ev) => {
+    selectPlan(ev.currentTarget.dataset.start);
+    document.dispatchEvent(new CustomEvent("goview", { detail: "plan" }));
+  });
+  const feld = byId("c-msg");
+  if (feld) {
+    feld.addEventListener("input", () => {
+      draft = feld.value;
+    });
+    feld.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") send();
+    });
+    byId("c-send").addEventListener("click", send);
+    const chat = document.querySelector(".chat");
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  }
+  const clear = byId("c-clear");
+  if (clear) clear.addEventListener("click", () => {
+    if (confirmBox(t("home.clearChatAsk"))) clearChat();
+  });
+}
+
+// src/js/views/plan.js
+var plan_exports = {};
+__export(plan_exports, {
+  render: () => render2
+});
+
+// src/js/rest.js
+var rest = 0;
+var timer = null;
+var el = null;
+function ton() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(1e-4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(1e-4, ctx.currentTime + 0.45);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+    setTimeout(() => ctx.close(), 800);
+  } catch (e) {
+  }
+}
+function fertig() {
+  stop();
+  ton();
+  try {
+    Haptics.impact({ style: ImpactStyle.Medium });
+  } catch (e) {
+  }
+}
+function zeichne() {
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "rest";
+    document.body.appendChild(el);
+  }
+  const m = Math.floor(rest / 60), s2 = rest % 60;
+  el.innerHTML = '<div class="rest-t">' + m + ":" + String(s2).padStart(2, "0") + '</div><div class="rest-l">' + esc(t("rest.running")) + '</div><button class="mini" data-rest="30">+30 s</button><button class="mini" data-rest="skip">' + esc(t("rest.skip")) + "</button>";
+  el.querySelectorAll("[data-rest]").forEach((b) => {
+    b.addEventListener("click", () => {
+      if (b.dataset.rest === "skip") stop();
+      else {
+        rest += 30;
+        zeichne();
+      }
+    });
+  });
+}
+function start(seconds) {
+  stop();
+  rest = Math.max(5, seconds || 90);
+  zeichne();
+  timer = setInterval(() => {
+    rest--;
+    if (rest <= 0) fertig();
+    else zeichne();
+  }, 1e3);
+}
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  rest = 0;
+  if (el) {
+    el.remove();
+    el = null;
+  }
+}
+
+// src/js/views/plan.js
+function weekStrip() {
+  const m = monday(today);
+  let h = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(m);
+    d.setDate(m.getDate() + i);
+    const key = iso(d), e = S.log[key], done = e && e.done;
+    const p = done ? planOf(e.k) : null;
+    h += '<div class="tp-day' + (done ? " filled" : "") + (key === tk ? " today" : "") + '"><div class="d">' + esc(weekdayShort(i)) + '</div><div class="m' + (done ? "" : " empty") + '">' + (done ? esc(p ? p.short : "\xB7") : "\xB7") + "</div></div>";
+  }
+  return '<div class="tp-week">' + h + "</div>";
+}
+function exerciseRow(item, e) {
+  const ex = exOf(item.ex);
+  const goal = item.sets || 3;
+  const n = setsDone(e, item);
+  const ok = n >= goal;
+  const w = weightLabel(item.ex);
+  const bd = w.body ? null : band(item.ex);
+  const hint = hintOf(ex);
+  const letzte = lastPerformance(item.ex);
+  const best = personalRecord(item.ex);
+  const heute = S.kg[item.ex] || 0;
+  const rekord = best && !w.body && heute > best.weight;
+  const letzteZeile = letzte ? t("set.last", { text: performanceText(item.ex, letzte) || "\u2014" }) : "";
+  const right = w.body ? '<div class="tp-bw">' + esc(w.sub) + "</div>" : '<div class="tp-kg"><button data-kg="' + item.ex + '" data-dir="-1" aria-label="' + esc(t("plan.less")) + '">\u2212</button><div class="val">' + esc(w.main) + "<small> " + esc(w.unit) + '</small><div class="sub"><i class="dot ' + (bd || "n") + '"></i>' + esc(w.sub) + '</div></div><button data-kg="' + item.ex + '" data-dir="1" aria-label="' + esc(t("plan.more")) + '">+</button></div>';
+  return '<div class="tp-ex' + (ok ? " ok" : "") + (n > 0 && !ok ? " part" : "") + '"><button class="tp-box" data-sets="' + item.ex + '" aria-label="' + esc(t("set.title", { name: nameOf(ex) })) + '">' + (ok ? "\u2713" : n + "<em>/" + goal + "</em>") + '</button><div class="tp-mid" data-ex="' + item.ex + '" role="button" tabindex="0" aria-label="' + esc(nameOf(ex)) + ", " + esc(t("plan.sets", { done: n, total: goal })) + '"><div class="nm">' + esc(nameOf(ex)) + (rekord ? ' <span class="ai-mark" title="' + esc(t("set.newRecord")) + '">\u2605</span>' : "") + '</div><div class="rp">' + esc(item.reps || "") + (item.side ? " " + esc(sideLabel(item.side)) : "") + "</div>" + (letzteZeile ? '<div class="last">' + esc(letzteZeile) + "</div>" : "") + (hint ? '<div class="hint">' + esc(hint) + "</div>" : "") + "</div>" + right + "</div>";
+}
+function render2(head2, mount2) {
+  const planId = activePlan();
+  const plan = planOf(planId);
+  const e = entry();
+  const sug = suggested();
+  const night = isNight();
+  if (!plan) {
+    mount2.innerHTML = head2() + weekStrip() + '<div class="tp-hint">' + esc(t("plan.noPlans")) + "</div>";
+    return;
+  }
+  const pick = S.plans.map((p) => '<button data-pick="' + p.id + '" class="' + (p.id === planId ? "sel" : "") + (p.id === sug && p.id !== planId ? " sug" : "") + '"><span class="k">' + esc(p.short || "?") + "</span>" + esc(nameOf(p)) + "</button>").join("");
+  const rows = plan.items.length ? plan.items.map((i) => exerciseRow(i, e)).join("") : '<div class="tp-ex"><div></div><div class="rp">' + esc(t("plan.emptyPlan")) + "</div><div></div></div>";
+  const dauer = e.done ? durationMinutes(e) : e.start ? Math.max(1, Math.round((Date.now() - e.start) / 6e4)) : null;
+  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + '</button></div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
+  byId("nt").addEventListener("click", () => toggleNight());
+  byId("fin").addEventListener("click", () => {
+    haptic("medium");
+    stop();
+    finish();
+  });
+  byId("f-note").addEventListener("change", (ev) => setNote(ev.target.value));
+  on("[data-pick]", (ev) => selectPlan(ev.currentTarget.dataset.pick));
+  on("[data-sets]", (ev) => {
+    const id = ev.currentTarget.dataset.sets;
+    openSets(id, plan.items.find((i) => i.ex === id));
+  });
+  on("[data-kg]", (ev) => {
+    ev.stopPropagation();
+    bumpWeight(ev.currentTarget.dataset.kg, parseInt(ev.currentTarget.dataset.dir, 10));
+  });
+  on("[data-ex]", (ev) => tick(ev.currentTarget.dataset.ex));
+  on("[data-ex]", (ev) => {
+    if (ev.key === " " || ev.key === "Enter") {
+      ev.preventDefault();
+      tick(ev.currentTarget.dataset.ex);
+    }
+  }, "keydown");
+}
+function tick(exId) {
+  const fertig3 = toggleExercise(exId);
+  if (fertig3) haptic("light");
+  const e = entry();
+  if (S.prefs.restOn && setsDone(e, { ex: exId, sets: 99 }) > 0) {
+    start(S.prefs.restSec);
+  }
+}
+
+// src/js/views/log.js
+var log_exports = {};
+__export(log_exports, {
+  render: () => render3,
+  resetSelection: () => resetSelection
+});
+var month = new Date((/* @__PURE__ */ new Date()).getFullYear(), (/* @__PURE__ */ new Date()).getMonth(), 1);
+var selectedDay = null;
+function resetSelection() {
+  selectedDay = null;
+}
+function dayDetail() {
+  if (!selectedDay) return null;
+  const de = S.log[selectedDay];
+  if (!de) return null;
+  const plan = planOf(de.k);
+  const [y, m, d] = selectedDay.split("-").map(Number);
+  const dd = new Date(y, m - 1, d);
+  const items = plan && plan.items.length ? plan.items : Object.keys(de.t || {}).map((ex) => ({ ex, sets: 3 }));
+  const lines = items.map((item) => {
+    const ex = exOf(item.ex);
+    const goal = item.sets || 3;
+    const n = setsDone(de, item);
+    const stored = de.w && de.w[item.ex] != null ? de.w[item.ex] : null;
+    const w = weightLabel(item.ex, stored == null ? 0 : stored);
+    const label = w.body ? w.sub : stored == null ? "\u2014" : w.main + " " + w.unit + (w.sub ? " \xB7 " + w.sub : "");
+    return '<div class="dt-row' + (n >= goal ? "" : " skip") + '"><span class="dt-m">' + n + "/" + goal + '</span><span class="dt-n">' + esc(nameOf(ex)) + '</span><span class="dt-w">' + esc(label) + "</span></div>";
+  }).join("");
+  return '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan ? plan.short : "?") + '</div><div><div class="nm">' + esc(longDate(dd)) + '</div><div class="fo">' + esc(nameOf(plan)) + " \xB7 " + esc(de.done ? t("log.done") : t("log.notDone")) + "</div></div></div>" + lines + "</div></div>";
+}
+function render3(head2, mount2) {
+  const y = month.getFullYear(), m = month.getMonth();
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;
+  const days = new Date(y, m + 1, 0).getDate();
+  let cells = "", total = 0;
+  const per = /* @__PURE__ */ new Map();
+  for (let i = 0; i < 7; i++) cells += '<div class="cal-h">' + esc(weekdayShort(i)) + "</div>";
+  for (let i = 0; i < lead; i++) cells += '<div class="cal-c void"></div>';
+  for (let d = 1; d <= days; d++) {
+    const key = iso(new Date(y, m, d));
+    const e = S.log[key];
+    const done = e && e.done;
+    const plan = e ? planOf(e.k) : null;
+    if (done) {
+      total++;
+      const s2 = plan ? plan.short : "?";
+      per.set(s2, (per.get(s2) || 0) + 1);
+    }
+    cells += '<button class="cal-c' + (done ? " done" : "") + (e && !done ? " part" : "") + (key === tk ? " now" : "") + (key === selectedDay ? " sel" : "") + '"' + (e ? "" : " disabled") + ' data-day="' + key + '" aria-label="' + d + ". " + esc(monthName(m)) + '"><span class="n">' + d + "</span>" + (e ? '<span class="k">' + esc(plan ? plan.short : "?") + "</span>" : "") + "</button>";
+  }
+  const summary = [...per.entries()].map(([s2, n]) => esc(s2) + " " + n).join(" \xB7 ");
+  const detail = dayDetail() || '<div class="tp-hint">' + esc(total ? t("log.pickDay") : t("log.emptyMonth")) + "</div>";
+  mount2.innerHTML = head2() + '<div class="cal-bar"><button data-mon="-1" aria-label="' + esc(t("log.prevMonth")) + '">\u2039</button><div class="cal-t">' + esc(monthName(m)) + " " + y + '</div><button data-mon="1" aria-label="' + esc(t("log.nextMonth")) + '">\u203A</button></div><div class="cal-sum"><b>' + total + "</b> " + esc((total === 1 ? t("log.unit", { n: "" }) : t("log.units", { n: "" })).trim()) + (summary ? " \u2014 " + summary : "") + '</div><div class="cal">' + cells + "</div>" + detail;
+  on("[data-mon]", (ev) => {
+    month = new Date(month.getFullYear(), month.getMonth() + parseInt(ev.currentTarget.dataset.mon, 10), 1);
+    selectedDay = null;
+    document.dispatchEvent(new CustomEvent("rerender"));
+  });
+  on("[data-day]", (ev) => {
+    const d = ev.currentTarget.dataset.day;
+    selectedDay = selectedDay === d ? null : d;
+    document.dispatchEvent(new CustomEvent("rerender"));
+  });
+}
+
+// src/js/views/options.js
+var options_exports = {};
+__export(options_exports, {
+  backBar: () => backBar2,
+  refresh: () => refresh,
+  render: () => render7,
+  resetSub: () => resetSub
+});
 
 // node_modules/@capacitor/clipboard/dist/esm/web.js
 var ClipboardWeb = class extends WebPlugin {
@@ -2029,7 +2462,7 @@ var Clipboard = registerPlugin("Clipboard", {
 });
 
 // src/js/views/aiview.js
-var rerender3 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender4 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var verifying = false;
 var connecting = false;
 var models = [];
@@ -2081,9 +2514,9 @@ async function runVerify() {
     return;
   }
   verifying = true;
-  rerender3();
+  rerender4();
   try {
-    const mod = await import("./part-B3QHQ7ZB.js");
+    const mod = await import("./part-H2QCBWC5.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2094,7 +2527,7 @@ async function runVerify() {
   } catch (e) {
     verifying = false;
     showAiError(e, S.ai.provider);
-    rerender3();
+    rerender4();
   }
 }
 function render4(mount2, head2, backBar3, goHub) {
@@ -2116,7 +2549,7 @@ function render4(mount2, head2, backBar3, goHub) {
   const connect = byId("connect");
   if (connect) connect.addEventListener("click", async () => {
     connecting = true;
-    rerender3();
+    rerender4();
     try {
       await Browser.open({ url: prov.keyUrl });
     } catch (e) {
@@ -2224,7 +2657,7 @@ async function cleanup(name) {
 }
 
 // src/js/views/updateview.js
-var rerender4 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender5 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var state = "idle";
 var latest = null;
 var installed = null;
@@ -2275,7 +2708,7 @@ function wire() {
 }
 async function runCheck() {
   state = "checking";
-  rerender4();
+  rerender5();
   try {
     const res = await check();
     installed = res.cur;
@@ -2285,18 +2718,18 @@ async function runCheck() {
     state = "idle";
     toast(t("upd.failed", { msg: e.message }), true);
   }
-  rerender4();
+  rerender5();
 }
 async function runDownload() {
   state = "loading";
   percent = 0;
-  rerender4();
+  rerender5();
   try {
     await cleanup(latest.apk);
     apkPath = await download(latest, (p) => {
       if (p !== percent) {
         percent = p;
-        rerender4();
+        rerender5();
       }
     });
     state = "ready";
@@ -2304,7 +2737,7 @@ async function runDownload() {
     state = "found";
     toast(t("upd.failed", { msg: e.message }), true);
   }
-  rerender4();
+  rerender5();
 }
 async function runInstall() {
   try {
@@ -2316,7 +2749,7 @@ async function runInstall() {
 }
 
 // src/js/views/planner.js
-var rerender5 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender6 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var busy2 = false;
 var result = null;
 var form = { goal: "muscle", days: 3, level: "some", notes: "" };
@@ -2361,9 +2794,9 @@ function render6(mount2, head2, backBar3, goBack) {
     }
     busy2 = true;
     result = null;
-    rerender5();
+    rerender6();
     try {
-      const mod = await import("./part-B3QHQ7ZB.js");
+      const mod = await import("./part-H2QCBWC5.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2378,7 +2811,7 @@ function render6(mount2, head2, backBar3, goBack) {
       showAiError(e, S.ai.provider);
     }
     busy2 = false;
-    rerender5();
+    rerender6();
   });
   if (result) {
     byId("accept").addEventListener("click", () => {
@@ -2389,14 +2822,132 @@ function render6(mount2, head2, backBar3, goBack) {
     });
     byId("discard").addEventListener("click", () => {
       result = null;
-      rerender5();
+      rerender6();
     });
   }
   on("#f-goal, #f-days, #f-level, #f-notes", readForm, "change");
 }
 
+// node_modules/@capacitor/local-notifications/dist/esm/definitions.js
+var Weekday;
+(function(Weekday2) {
+  Weekday2[Weekday2["Sunday"] = 1] = "Sunday";
+  Weekday2[Weekday2["Monday"] = 2] = "Monday";
+  Weekday2[Weekday2["Tuesday"] = 3] = "Tuesday";
+  Weekday2[Weekday2["Wednesday"] = 4] = "Wednesday";
+  Weekday2[Weekday2["Thursday"] = 5] = "Thursday";
+  Weekday2[Weekday2["Friday"] = 6] = "Friday";
+  Weekday2[Weekday2["Saturday"] = 7] = "Saturday";
+})(Weekday || (Weekday = {}));
+
+// node_modules/@capacitor/local-notifications/dist/esm/index.js
+var LocalNotifications = registerPlugin("LocalNotifications", {
+  web: () => import("./part-3PP7HME7.js").then((m) => new m.LocalNotificationsWeb())
+});
+
+// src/js/reminder.js
+var canRemind = () => Capacitor.isNativePlatform();
+var toAndroidWeekday = (tag) => (tag + 1) % 7 + 1;
+async function ensurePermission() {
+  if (!canRemind()) return false;
+  const jetzt = await LocalNotifications.checkPermissions();
+  if (jetzt.display === "granted") return true;
+  const gefragt = await LocalNotifications.requestPermissions();
+  return gefragt.display === "granted";
+}
+async function clearAll() {
+  if (!canRemind()) return;
+  try {
+    const offen = await LocalNotifications.getPending();
+    const meine = (offen.notifications || []).filter((n) => n.id >= 900 && n.id < 910);
+    if (meine.length) await LocalNotifications.cancel({ notifications: meine });
+  } catch (e) {
+  }
+}
+async function apply(reminder, texte) {
+  if (!canRemind()) return false;
+  await clearAll();
+  if (!reminder.on || !reminder.days.length) return true;
+  if (!await ensurePermission()) return false;
+  const notifications = reminder.days.map((tag, i) => ({
+    id: 900 + i,
+    title: texte.title,
+    body: texte.body,
+    schedule: {
+      on: {
+        weekday: toAndroidWeekday(tag),
+        hour: reminder.hour,
+        minute: reminder.minute
+      },
+      allowWhileIdle: true
+    }
+  }));
+  await LocalNotifications.schedule({ notifications });
+  return true;
+}
+
+// src/js/views/misc.js
+var rerender7 = () => document.dispatchEvent(new CustomEvent("rerender"));
+function restPrefs(mount2, head2, backBar3, goHub) {
+  mount2.innerHTML = head2() + backBar3(t("rest.title")) + checkIn("f-on", t("rest.on"), S.prefs.restOn) + field(t("rest.sec"), numIn("f-sec", S.prefs.restSec, "5", 5));
+  byId("back").addEventListener("click", goHub);
+  byId("f-on").addEventListener("change", (ev) => setPref("restOn", ev.target.checked));
+  byId("f-sec").addEventListener("change", (ev) => setPref("restSec", Math.max(5, Math.min(600, parseInt(ev.target.value, 10) || 90))));
+}
+function bodyWeight(mount2, head2, backBar3, goHub) {
+  const liste = S.body.slice().reverse();
+  const werte = S.body.map((b) => b.kg);
+  const hoch = Math.max(1, ...werte), tief = Math.min(...werte, hoch);
+  const spanne = Math.max(0.5, hoch - tief);
+  const balken = S.body.slice(-20).map((b) => '<div class="bar-col" title="' + esc(b.d) + '"><div class="bar-v full" style="height:' + Math.max(6, Math.round((b.kg - tief) / spanne * 90) + 10) + '%"></div></div>').join("");
+  const zeilen = liste.slice(0, 20).map((b) => '<div class="lst"><div class="lst-m"><div class="lst-n">' + esc(num(b.kg)) + ' kg</div><div class="lst-s">' + esc(b.d.split("-").reverse().join(".")) + '</div></div><div class="row-act"><button class="mini warn" data-delbody="' + esc(b.d) + '">\xD7</button></div></div>').join("");
+  const diff = S.body.length > 1 ? Math.round((S.body[S.body.length - 1].kg - S.body[0].kg) * 10) / 10 : null;
+  mount2.innerHTML = head2() + backBar3(t("body.title")) + '<p class="intro">' + esc(t("body.intro")) + '</p><div class="add-row"><input class="in" id="f-kg" type="number" inputmode="decimal" step="0.1" min="1" placeholder="' + esc(t("body.value")) + '"><button class="mini" id="addbody">' + esc(t("body.add")) + "</button></div>" + (S.body.length ? '<div class="bars">' + balken + "</div>" + (diff != null ? '<p class="intro">' + esc(t("body.change", { n: (diff > 0 ? "+" : "") + num(diff) })) + "</p>" : "") + zeilen : '<p class="intro">' + esc(t("body.empty")) + "</p>");
+  byId("back").addEventListener("click", goHub);
+  byId("addbody").addEventListener("click", () => {
+    if (addBodyWeight(val("f-kg"))) rerender7();
+  });
+  byId("f-kg").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && addBodyWeight(val("f-kg"))) rerender7();
+  });
+  on("[data-delbody]", (ev) => removeBodyWeight(ev.currentTarget.dataset.delbody));
+}
+function reminders(mount2, head2, backBar3, goHub) {
+  const r = S.prefs.reminder;
+  if (!canRemind()) {
+    mount2.innerHTML = head2() + backBar3(t("rem.title")) + '<p class="intro">' + esc(t("rem.webOnly")) + "</p>";
+    byId("back").addEventListener("click", goHub);
+    return;
+  }
+  const tage = Array.from({ length: 7 }, (_, i) => '<button class="mini' + (r.days.includes(i) ? " on" : "") + '" data-day="' + i + '">' + esc(weekdayShort(i)) + "</button>").join("");
+  mount2.innerHTML = head2() + backBar3(t("rem.title")) + '<p class="intro">' + esc(t("rem.intro")) + "</p>" + checkIn("f-on", t("rem.on"), r.on) + '<label class="fld"><span class="fld-l">' + esc(t("rem.days")) + '</span><span class="days">' + tage + "</span></label>" + field(
+    t("rem.time"),
+    '<input class="in" id="f-time" type="time" value="' + String(r.hour).padStart(2, "0") + ":" + String(r.minute).padStart(2, "0") + '">'
+  ) + '<button class="set-btn go" id="save">' + esc(t("common.save")) + "</button>";
+  byId("back").addEventListener("click", goHub);
+  on("[data-day]", (ev) => {
+    const tag = Number(ev.currentTarget.dataset.day);
+    const neu = r.days.includes(tag) ? r.days.filter((d) => d !== tag) : r.days.concat(tag).sort();
+    setPref("reminder", { ...r, days: neu });
+  });
+  byId("save").addEventListener("click", async () => {
+    const [h, m] = val("f-time").split(":").map(Number);
+    const neu = { ...r, on: byId("f-on").checked, hour: h || 0, minute: m || 0 };
+    setPref("reminder", neu);
+    const ok = await apply(neu, {
+      title: t("rem.notifyTitle"),
+      body: t("rem.notifyBody")
+    });
+    toast(ok ? t("rem.saved") : t("rem.denied"), !ok);
+  });
+}
+function legal(mount2, head2, backBar3, goHub) {
+  mount2.innerHTML = head2() + backBar3(t("legal.title")) + '<p class="intro">' + esc(t("ob.healthText", { app: APP_NAME })) + '</p><h3 class="sec">' + esc(t("ai.helpH5")) + '</h3><p class="intro">' + esc(t("ai.helpP5")) + '</p><p class="intro">' + esc(t("legal.chat")) + "</p>";
+  byId("back").addEventListener("click", goHub);
+}
+
 // src/js/views/options.js
-var rerender6 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender8 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var sub = null;
 var backups = [];
 function resetSub() {
@@ -2415,8 +2966,9 @@ function go(next) {
   if (next !== "ai") reset2();
   if (next !== "update") reset3();
   if (next !== "planner") reset4();
-  rerender6();
+  rerender8();
 }
+document.addEventListener("gosub", (ev) => go(ev.detail));
 function backBar2(title) {
   return '<div class="sub-bar"><button class="mini" id="back">\u2039 ' + esc(t("common.back")) + "</button><h2>" + esc(title) + "</h2></div>";
 }
@@ -2424,11 +2976,15 @@ function render7(head2, mount2) {
   const goHub = () => go(null);
   if (sub === "equipment") return equipment(mount2, head2, goHub);
   if (sub === "exercises") return exercises(mount2, head2, goHub);
-  if (sub === "plans") return plans2(mount2, head2, goHub, () => go("planner"));
+  if (sub === "plans") return plans(mount2, head2, goHub, () => go("planner"));
   if (sub === "planner") return render6(mount2, head2, backBar2, () => go("plans"));
   if (sub === "ai") return render4(mount2, head2, backBar2, goHub);
   if (sub === "update") return render5(mount2, head2, backBar2, goHub);
   if (sub === "lang") return language(mount2, head2, goHub);
+  if (sub === "rest") return restPrefs(mount2, head2, backBar2, goHub);
+  if (sub === "body") return bodyWeight(mount2, head2, backBar2, goHub);
+  if (sub === "reminders") return reminders(mount2, head2, backBar2, goHub);
+  if (sub === "legal") return legal(mount2, head2, backBar2, goHub);
   if (sub === "data") return data(mount2, head2, goHub);
   return hub(mount2, head2);
 }
@@ -2445,7 +3001,7 @@ function hub(mount2, head2) {
   const lang = LANGS.find((l) => l.id === S.lang);
   mount2.innerHTML = head2() + backBar2(t("nav.menu")) + '<div class="set-sec"><h2>' + esc(t("opt.overview")) + '</h2><div class="set-stat"><div><b>' + s2.total + "</b>" + esc(t("opt.totalUnits")) + "</div></div>" + (s2.first ? "<p>" + esc(t("opt.firstEntry", {
     date: longDate(new Date(s2.first.split("-")[0], s2.first.split("-")[1] - 1, s2.first.split("-")[2]))
-  })) + "</p>" : "") + "</div>" + entry2("ai", t("opt.ai"), t("opt.aiSub")) + entry2("lang", t("opt.language"), lang ? lang.label : S.lang) + entry2("equipment", t("opt.equipment"), t("opt.equipmentSub", { n: S.equipment.length })) + entry2("exercises", t("opt.exercises"), t("opt.exercisesSub", { n: visibleExercises().length })) + entry2("plans", t("opt.plans"), t("opt.plansSub", { n: S.plans.length })) + entry2("data", t("opt.data"), t("opt.dataSub")) + entry2("update", t("upd.title"), t("upd.titleSub")) + '<div class="tp-note">' + esc(t("opt.about", { app: APP_NAME, version: APP_VERSION })) + "</div>";
+  })) + "</p>" : "") + "</div>" + entry2("ai", t("opt.ai"), t("opt.aiSub")) + entry2("lang", t("opt.language"), lang ? lang.label : S.lang) + entry2("equipment", t("opt.equipment"), t("opt.equipmentSub", { n: S.equipment.length })) + entry2("exercises", t("opt.exercises"), t("opt.exercisesSub", { n: visibleExercises().length })) + entry2("plans", t("opt.plans"), t("opt.plansSub", { n: S.plans.length })) + entry2("rest", t("rest.title"), t("rest.on")) + entry2("body", t("body.title"), t("body.sub")) + entry2("reminders", t("rem.title"), t("rem.sub")) + entry2("data", t("opt.data"), t("opt.dataSub")) + entry2("legal", t("legal.title"), t("legal.sub")) + entry2("update", t("upd.title"), t("upd.titleSub")) + '<div class="tp-note">' + esc(t("opt.about", { app: APP_NAME, version: APP_VERSION })) + "</div>";
   byId("back").addEventListener(
     "click",
     () => document.dispatchEvent(new CustomEvent("goback"))
@@ -2458,14 +3014,14 @@ function language(mount2, head2, goHub) {
   byId("f-lang").addEventListener("change", (ev) => setLanguage(ev.target.value));
 }
 function data(mount2, head2, goHub) {
-  mount2.innerHTML = head2() + backBar2(t("data.title")) + '<p class="intro">' + esc(isNative() ? t("data.backupNative", { app: APP_NAME }) : t("data.backupWeb")) + '</p><button class="set-btn" id="exp">' + esc(t("data.backup")) + "</button>" + (backups.length ? '<p class="intro">' + esc(t("data.existing")) + '</p><div class="set-list">' + backups.slice(0, 12).map((b) => '<button data-imp="' + esc(b.name) + '">' + esc(b.name) + "</button>").join("") + "</div>" : "") + '<button class="set-btn" id="paste">' + esc(t("data.paste")) + '</button><h3 class="sec">' + esc(t("data.reset")) + '</h3><p class="intro">' + esc(t("data.resetSub")) + '</p><button class="set-btn warn" id="wipe">' + esc(t("data.resetBtn")) + "</button>";
+  mount2.innerHTML = head2() + backBar2(t("data.title")) + '<p class="intro">' + esc(isNative() ? t("data.backupNative", { app: APP_NAME }) : t("data.backupWeb")) + '</p><button class="set-btn" id="exp">' + esc(t("data.backup")) + "</button>" + (backups.length ? '<p class="intro">' + esc(t("data.existing")) + '</p><div class="set-list">' + backups.slice(0, 12).map((b) => '<button data-imp="' + esc(b.name) + '">' + esc(b.name) + "</button>").join("") + "</div>" : "") + '<button class="set-btn" id="paste">' + esc(t("data.paste")) + '</button><h3 class="sec">' + esc(t("csv.button")) + '</h3><p class="intro">' + esc(t("csv.hint")) + '</p><button class="set-btn" id="csv">' + esc(t("csv.button")) + '</button><h3 class="sec">' + esc(t("data.reset")) + '</h3><p class="intro">' + esc(t("data.resetSub")) + '</p><button class="set-btn warn" id="wipe">' + esc(t("data.resetBtn")) + "</button>";
   byId("back").addEventListener("click", goHub);
   byId("exp").addEventListener("click", async () => {
     try {
       const r = await exportBackup(S);
       toast(t("data.saved", { name: r.name }));
       await refresh();
-      rerender6();
+      rerender8();
     } catch (e) {
       toast(t("data.saveFailed", { msg: e.message }), true);
     }
@@ -2479,6 +3035,19 @@ function data(mount2, head2, goHub) {
       toast(t("data.restored"));
     } catch (e) {
       toast(t("data.readFailed", { msg: e.message }), true);
+    }
+  });
+  byId("csv").addEventListener("click", async () => {
+    try {
+      const aufloesen = (exId) => {
+        const w = weightLabel(exId, 0);
+        return { name: nameOf(exOf(exId)), unit: w.body ? "" : w.unit };
+      };
+      aufloesen.planName = (id) => nameOf(planOf(id));
+      const r = await exportCsv(S, aufloesen);
+      toast(t("csv.done", { name: r.name }));
+    } catch (e) {
+      toast(t("data.saveFailed", { msg: e.message }), true);
     }
   });
   byId("paste").addEventListener("click", async () => {
@@ -2498,6 +3067,34 @@ function data(mount2, head2, goHub) {
     resetSub();
     toast(t("data.resetDone"));
   });
+}
+
+// src/js/views/onboarding.js
+function pending() {
+  return !S.prefs.onboarded;
+}
+function show() {
+  dialog({
+    title: t("ob.title", { app: APP_NAME }),
+    html: "<p>" + esc(t("ob.p1")) + "</p><p>" + esc(t("ob.p2")) + "</p><h4>" + esc(t("ob.health")) + "</h4><p>" + esc(t("ob.healthText", { app: APP_NAME })) + "</p>",
+    actions: [
+      { label: t("ob.skip"), run: fertig2 },
+      {
+        label: t("ob.equip"),
+        primary: true,
+        run: () => {
+          fertig2();
+          document.dispatchEvent(new CustomEvent("goview", { detail: "options" }));
+          setTimeout(() => document.dispatchEvent(
+            new CustomEvent("gosub", { detail: "equipment" })
+          ), 120);
+        }
+      }
+    ]
+  });
+}
+function fertig2() {
+  setPref("onboarded", true);
 }
 
 // src/js/app.js
@@ -2571,7 +3168,7 @@ function wireServiceWorker() {
 setInterval(() => {
   if (refreshDay()) render8();
 }, 6e4);
-(async function start() {
+(async function start2() {
   try {
     await init();
   } catch (e) {
@@ -2580,4 +3177,5 @@ setInterval(() => {
   await wireNative();
   wireServiceWorker();
   render8();
+  if (pending()) show();
 })();

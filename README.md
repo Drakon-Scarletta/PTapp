@@ -14,6 +14,10 @@ installierbare APK.
 - **Training**: Sätze je Übung antippen (0 → 1 → 2 → 3 → wieder 0), Gewicht
   einstellen, Ampel für leicht / mittel / schwer. Wochenleiste, Zielanzahl je
   Woche, Vorschlag der nächsten Einheit, Umschalter für Nachtschichtwochen.
+  Unter jeder Übung steht, was beim letzten Mal geschafft wurde; ★ markiert eine
+  neue Bestleistung. Ein Tipp auf das Satz-Kästchen öffnet die **Wiederholungen
+  je Satz** samt Verlauf und Bestwert. Nach jedem Satz läuft auf Wunsch eine
+  **Pausen-Uhr**. Notiz und Dauer werden je Einheit mitgeschrieben.
 - **Verlauf**: Monatskalender, Tag antippen zeigt Übungen und Gewichte von damals.
 - **Menü** (der Knopf mit den drei Strichen):
   - Sprache Deutsch oder Englisch.
@@ -30,7 +34,11 @@ installierbare APK.
     oder von der KI erstellen lassen.
   - **KI**: Anbieter, Zugang und Modell — reine Verwaltung. Gearbeitet wird
     damit auf der Startseite (Chat) und unter Pläne (Plan erstellen lassen).
-  - **Daten**: sichern, wiederherstellen, alles löschen.
+  - **Pausen-Uhr**: an/aus und Länge.
+  - **Körpergewicht**: ein Wert je Tag, mit Verlauf.
+  - **Erinnerungen**: an gewählten Wochentagen zur gewählten Zeit (nur App).
+  - **Daten**: sichern, wiederherstellen, als CSV ausgeben, alles löschen.
+  - **Hinweis und Verantwortung**: wofür die App gedacht ist und was an die KI geht.
   - **Aktualisierung**: neue Fassung suchen, laden und installieren.
 - Läuft vollständig offline, auch die Schriften liegen in der App. Nur KI und
   Aktualisierung brauchen eine Verbindung.
@@ -51,11 +59,14 @@ dachboden/
     ai.js              Aufruf der KI-Anbieter (wird erst bei Bedarf geladen)
     ai-meta.js         Anbieterliste, ohne schwere Abhängigkeiten
     update.js          Versionsabgleich, Download, Installationsaufruf
+    rest.js            Pausen-Uhr, lebt außerhalb der Ansicht
+    reminder.js        geplante Benachrichtigungen
     app.js             Einstieg, Ansichtswechsel, Zurück-Taste
     catalog.js         Gerätetypen und Kombigeräte
     ex-catalog.js      Übungskatalog nach Muskelgruppe
     views/             home.js, plan.js, log.js, options.js, editors.js,
-                       aiview.js, planner.js, updateview.js
+                       aiview.js, planner.js, updateview.js, sets.js,
+                       misc.js, credits.js, onboarding.js
   www/                 was die App wirklich lädt
     index.html
     css/app.css        Gestaltung
@@ -170,6 +181,18 @@ Hantelbank-Set, Körpergewicht. Ein Bündel ist nur eine Liste von
 Katalogschlüsseln; beim Öffnen sind alle Teile angehakt, was der eigene Aufbau
 nicht hat, wird abgewählt. Bereits vorhandene Geräte erkennt die App am Namen,
 zeigt sie abgehakt und legt sie nicht doppelt an.
+
+## Was im Verlauf steht
+
+Ein Tag im Verlauf hält fest: welcher Plan, wie viele Sätze je Übung, die
+**Wiederholungen je Satz**, das Gewicht zum Zeitpunkt der Einheit, Start- und
+Endzeit sowie eine Notiz. Daraus entstehen „letztes Mal", die Bestleistung, die
+Verlaufskurven und die CSV-Ausgabe — ohne dass irgendwo doppelt gespeichert
+wird.
+
+Der Zustand liegt in Fassung 5. Ältere Stände werden beim Laden ergänzt, nicht
+ersetzt: fehlende Felder bekommen Vorgaben, Kennungen bleiben, der Verlauf
+bleibt lesbar.
 
 ## Herkunft von Übungen und Plänen
 

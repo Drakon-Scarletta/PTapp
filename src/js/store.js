@@ -10,8 +10,8 @@ import { detectLang } from './i18n.js';
 const KEY = 'training:v2';   // Schlüsselname bleibt, der Inhalt ist versioniert
 const FOLDER = 'PTapp';
 export const APP_NAME = 'PTapp';
-export const APP_VERSION = '1.9';
-const STATE_VERSION = 4;
+export const APP_VERSION = '2.0';
+const STATE_VERSION = 5;
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -28,7 +28,14 @@ export function freshState() {
     exercises: SEED_EXERCISES.map(e => ({ ...e, bands: e.bands ? [...e.bands] : undefined })),
     plans: SEED_PLANS.map(p => ({ ...p, items: p.items.map(i => ({ ...i })) })),
     ai: { provider: 'anthropic', model: '', keys: { anthropic: '', openai: '' } },
-    chat: []
+    chat: [],
+    body: [],                 // Körpergewicht: { d: 'JJJJ-MM-TT', kg: Zahl }
+    prefs: {
+      restOn: true,
+      restSec: 90,
+      onboarded: false,
+      reminder: { on: false, days: [0, 2, 4], hour: 18, minute: 0 }
+    }
   };
 }
 
@@ -75,6 +82,15 @@ function migrate(raw) {
   if (!s.ai.keys) s.ai.keys = { anthropic: '', openai: '' };
   if (!s.lang) s.lang = detectLang();
   if (!Array.isArray(s.chat)) s.chat = [];
+  if (!Array.isArray(s.body)) s.body = [];
+  // Muskelgruppen kamen später dazu - bei eingebauten Übungen nachtragen.
+  SEED_EXERCISES.forEach(seed => {
+    const vorhanden = s.exercises.find(e => e.id === seed.id);
+    if (vorhanden && !vorhanden.muscle && seed.muscle) vorhanden.muscle = seed.muscle;
+  });
+  const p = freshState().prefs;
+  s.prefs = Object.assign({}, p, s.prefs || {});
+  s.prefs.reminder = Object.assign({}, p.reminder, s.prefs.reminder || {});
 
   s.v = STATE_VERSION;
   return s;
@@ -100,7 +116,11 @@ export async function exportBackup(state) {
   const name = `ptapp-${stamp()}.json`;
 
   if (!isNative()) { downloadInBrowser(name, data); return { name, path: 'Download' }; }
+  return writeAndShare(name, data);
+}
 
+// Datei ablegen und das Teilen-Menü öffnen. Gemeinsam für Sicherung und Tabelle.
+async function writeAndShare(name, data) {
   let res = null, lastErr = null;
   for (const dir of DIRS) {
     try {
@@ -116,11 +136,50 @@ export async function exportBackup(state) {
 
   try {
     if ((await Share.canShare()).value) {
-      await Share.share({ title: `${APP_NAME} Backup`, url: res.uri, dialogTitle: `${APP_NAME} Backup` });
+      await Share.share({ title: APP_NAME, url: res.uri, dialogTitle: APP_NAME });
     }
   } catch (e) { /* Teilen abgebrochen ist kein Fehler */ }
 
   return { name, path: `${FOLDER}` };
+}
+
+// Die Einheiten als Tabelle, eine Zeile je Übung und Tag - zum Weiterrechnen
+// in einer Tabellenkalkulation.
+export async function exportCsv(state, resolve) {
+  const trenner = ';';
+  const zeilen = [['Datum', 'Plan', 'Uebung', 'Saetze', 'Wiederholungen', 'Gewicht', 'Einheit',
+    'Abgeschlossen', 'Dauer_min', 'Notiz'].join(trenner)];
+
+  Object.keys(state.log).sort().forEach(d => {
+    const e = state.log[d];
+    if (!e || !e.t) return;
+    const dauer = e.start && e.end ? Math.max(1, Math.round((e.end - e.start) / 60000)) : '';
+    Object.keys(e.t).forEach(exId => {
+      const info = resolve(exId, e);
+      zeilen.push([
+        d,
+        csv(resolve.planName(e.k)),
+        csv(info.name),
+        e.t[exId],
+        ((e.r && e.r[exId]) || []).join('/'),
+        e.w && e.w[exId] != null ? String(e.w[exId]).replace('.', ',') : '',
+        csv(info.unit),
+        e.done ? 'ja' : 'nein',
+        dauer,
+        csv(e.n || '')
+      ].join(trenner));
+    });
+  });
+
+  const data = '﻿' + zeilen.join('\r\n') + '\r\n';   // BOM für Excel
+  const name = `ptapp-${stamp()}.csv`;
+  if (!isNative()) { downloadInBrowser(name, data, 'text/csv'); return { name }; }
+  return writeAndShare(name, data);
+}
+
+function csv(text) {
+  const s = String(text == null ? '' : text);
+  return /[;"\r\n]/.test(s) ? '"' + s.split('"').join('""') + '"' : s;
 }
 
 export async function listBackups() {
@@ -163,9 +222,9 @@ async function ensureFolder(dir) {
   catch (e) { /* existiert bereits */ }
 }
 
-function downloadInBrowser(name, data) {
+function downloadInBrowser(name, data, typ) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([data], { type: typ || 'application/json' }));
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);

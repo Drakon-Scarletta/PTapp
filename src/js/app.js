@@ -10,6 +10,7 @@ import * as plan from './views/plan.js';
 import * as log from './views/log.js';
 import * as options from './views/options.js';
 import { toast, esc } from './ui.js';
+import * as onboarding from './views/onboarding.js';
 
 const VIEWS = { home, plan, log, options };
 // Die Reiter; die Optionen hängen am Menüknopf und stehen nicht dazwischen.
@@ -100,4 +101,5 @@ setInterval(() => { if (st.refreshDay()) render(); }, 60000);
   await wireNative();
   wireServiceWorker();
   render();
+  if (onboarding.pending()) onboarding.show();
 })();

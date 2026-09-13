@@ -183,9 +183,128 @@ export function toggleExercise(exId) {
   const n = setsDone(e, item) + 1;
   const wrapped = n > goal;
   e.t[exId] = wrapped ? 0 : n;
+  // Wiederholungen mitführen: der neue Satz bekommt einen Vorschlag, beim
+  // Zurücksetzen fällt die Liste weg.
+  e.r = e.r || {};
+  if (wrapped) delete e.r[exId];
+  else {
+    const liste = (e.r[exId] || []).slice(0, n - 1);
+    liste[n - 1] = suggestReps(exId, item, n - 1);
+    e.r[exId] = liste;
+  }
+  if (!e.start) e.start = Date.now();
   snapshotWeights(e, plan);
   persist();
   return !wrapped && n >= goal;
+}
+
+// Vorschlag für die Wiederholungen eines Satzes: was beim letzten Mal in
+// diesem Satz stand, sonst die obere Zahl aus der Vorgabe.
+export function suggestReps(exId, item, index) {
+  const frueher = lastPerformance(exId);
+  if (frueher && frueher.reps && frueher.reps[index]) return frueher.reps[index];
+  return targetReps(item);
+}
+
+export function targetReps(item) {
+  const zahlen = String(item && item.reps || '').match(/\d+/g);
+  if (!zahlen || zahlen.length < 2) return 10;
+  return parseInt(zahlen[zahlen.length - 1], 10) || 10;
+}
+
+export function repsOf(e, exId) {
+  return (e && e.r && e.r[exId]) || [];
+}
+
+export function setReps(exId, index, value) {
+  const plan = planOf(activePlan());
+  if (!plan) return;
+  const e = ensureEntry(plan.id);
+  e.r = e.r || {};
+  const liste = (e.r[exId] || []).slice();
+  liste[index] = Math.max(0, Math.min(999, parseInt(value, 10) || 0));
+  e.r[exId] = liste;
+  persist();
+}
+
+// ---- Was beim letzten Mal war ----
+export function lastPerformance(exId, vorDatum) {
+  const grenze = vorDatum || tk;
+  const tage = Object.keys(S.log).filter(d => d < grenze).sort();
+  for (let i = tage.length - 1; i >= 0; i--) {
+    const e = S.log[tage[i]];
+    if (!e || !e.t || e.t[exId] == null) continue;
+    return {
+      date: tage[i],
+      sets: setsDone(e, { ex: exId, sets: 99 }),
+      weight: e.w && e.w[exId] != null ? e.w[exId] : null,
+      reps: (e.r && e.r[exId]) || []
+    };
+  }
+  return null;
+}
+
+// Bestleistung: schwerstes Gewicht, bei Gleichstand die meisten Wiederholungen.
+export function personalRecord(exId) {
+  let best = null;
+  Object.keys(S.log).forEach(d => {
+    const e = S.log[d];
+    if (!e || !e.t || !e.t[exId]) return;
+    const w = e.w && e.w[exId] != null ? e.w[exId] : 0;
+    const reps = Math.max(0, ...((e.r && e.r[exId]) || [0]));
+    if (!best || w > best.weight || (w === best.weight && reps > best.reps)) {
+      best = { date: d, weight: w, reps };
+    }
+  });
+  return best;
+}
+
+// Verlauf einer Übung für die Kurve.
+export function exerciseHistory(exId, count) {
+  return Object.keys(S.log).sort()
+    .filter(d => S.log[d] && S.log[d].t && S.log[d].t[exId])
+    .slice(-(count || 20))
+    .map(d => ({
+      date: d,
+      weight: S.log[d].w && S.log[d].w[exId] != null ? S.log[d].w[exId] : 0,
+      reps: (S.log[d].r && S.log[d].r[exId]) || [],
+      sets: S.log[d].t[exId]
+    }));
+}
+
+// ---- Notiz und Dauer ----
+export function setNote(text) {
+  const plan = planOf(activePlan());
+  if (!plan) return;
+  const e = ensureEntry(plan.id);
+  e.n = text;
+  persist();
+}
+export function durationMinutes(e) {
+  if (!e || !e.start || !e.end) return null;
+  return Math.max(1, Math.round((e.end - e.start) / 60000));
+}
+
+// ---- Körpergewicht ----
+export function addBodyWeight(kg, date) {
+  const d = date || tk;
+  const wert = Math.round(parseFloat(kg) * 10) / 10;
+  if (!isFinite(wert) || wert <= 0) return false;
+  S.body = S.body.filter(b => b.d !== d);
+  S.body.push({ d, kg: wert });
+  S.body.sort((a, b) => a.d.localeCompare(b.d));
+  persist();
+  return true;
+}
+export function removeBodyWeight(d) {
+  S.body = S.body.filter(b => b.d !== d);
+  persist();
+}
+
+// ---- Einstellungen ----
+export function setPref(key, value) {
+  S.prefs[key] = value;
+  persist();
 }
 
 export function bumpWeight(exId, dir) {
@@ -211,6 +330,8 @@ export function finish() {
     if (!plan.night) S.next = plan.id;
   } else {
     e.done = true;
+    e.end = Date.now();
+    if (!e.start) e.start = e.end;
     S.next = nextRotating(plan.id);
   }
   sel = null;
@@ -249,10 +370,12 @@ export function updateEquipment(id, data) {
 }
 export function equipmentUsage(id) { return S.exercises.filter(e => e.equip === id && !e.hidden).length; }
 export function deleteEquipment(id) {
-  if (equipmentUsage(id)) return false;
-  S.equipment = S.equipment.filter(e => e.id !== id);
+  if (equipmentUsage(id)) return null;
+  const i = S.equipment.findIndex(e => e.id === id);
+  if (i < 0) return null;
+  const [eq] = S.equipment.splice(i, 1);
   persist();
-  return true;
+  return { art: 'equipment', index: i, eintrag: eq };
 }
 
 // ---- Übungen ----
@@ -276,15 +399,24 @@ export function usedInLog(id) {
 // Aus allen Plänen nehmen. Was im Verlauf steht, bleibt unsichtbar erhalten,
 // damit alte Einträge weiterhin einen Namen haben.
 export function deleteExercise(id) {
-  S.plans.forEach(p => { p.items = p.items.filter(i => i.ex !== id); });
+  const ausPlaenen = [];
+  S.plans.forEach(p => {
+    const i = p.items.findIndex(x => x.ex === id);
+    if (i >= 0) ausPlaenen.push({ plan: p.id, index: i, item: p.items[i] });
+    p.items = p.items.filter(x => x.ex !== id);
+  });
+  const i = S.exercises.findIndex(e => e.id === id);
+  const ex = S.exercises[i];
+  const gewicht = S.kg[id];
+  let versteckt = false;
   if (usedInLog(id)) {
-    const ex = exOf(id);
-    if (ex) ex.hidden = true;
-  } else {
-    S.exercises = S.exercises.filter(e => e.id !== id);
+    if (ex) { ex.hidden = true; versteckt = true; }
+  } else if (i >= 0) {
+    S.exercises.splice(i, 1);
     delete S.kg[id];
   }
   persist();
+  return { art: 'exercise', index: i, eintrag: ex, versteckt, gewicht, ausPlaenen };
 }
 
 // ---- Pläne ----
@@ -315,9 +447,58 @@ export function updatePlan(id, data) {
   if (data.focus != null) delete p.focusKey;
   persist();
 }
+export function duplicatePlan(id) {
+  const p = planOf(id);
+  if (!p) return null;
+  const kopie = {
+    ...p,
+    id: newId('pl', S.plans.map(x => x.id)),
+    short: nextShort(),
+    name: nameOf(p) + ' (2)',
+    focus: focusOf(p),
+    items: p.items.map(i => ({ ...i }))
+  };
+  delete kopie.key;
+  delete kopie.focusKey;
+  S.plans.splice(S.plans.indexOf(p) + 1, 0, kopie);
+  persist();
+  return kopie;
+}
+
+export function movePlan(id, dir) {
+  const i = S.plans.findIndex(p => p.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= S.plans.length) return;
+  const [p] = S.plans.splice(i, 1);
+  S.plans.splice(j, 0, p);
+  persist();
+}
+
 export function deletePlan(id) {
-  S.plans = S.plans.filter(p => p.id !== id);
+  const i = S.plans.findIndex(p => p.id === id);
+  if (i < 0) return null;
+  const [p] = S.plans.splice(i, 1);
   if (S.next === id) S.next = suggested();
+  persist();
+  return { art: 'plan', index: i, eintrag: p };
+}
+
+// Macht das letzte Löschen rückgängig.
+export function restore(snap) {
+  if (!snap || !snap.eintrag) return;
+  if (snap.art === 'equipment') {
+    S.equipment.splice(snap.index, 0, snap.eintrag);
+  } else if (snap.art === 'plan') {
+    S.plans.splice(snap.index, 0, snap.eintrag);
+  } else if (snap.art === 'exercise') {
+    if (snap.versteckt) delete snap.eintrag.hidden;
+    else if (snap.index >= 0) S.exercises.splice(snap.index, 0, snap.eintrag);
+    if (snap.gewicht != null) S.kg[snap.eintrag.id] = snap.gewicht;
+    snap.ausPlaenen.forEach(v => {
+      const p = planOf(v.plan);
+      if (p && !p.items.some(x => x.ex === snap.eintrag.id)) p.items.splice(v.index, 0, v.item);
+    });
+  }
   persist();
 }
 export function addPlanItem(planId, exId) {
