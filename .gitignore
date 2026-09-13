@@ -1,0 +1,30 @@
+# Abhängigkeiten
+node_modules/
+
+# Gebündelter Code (entsteht aus src/js per "npm run build")
+www/js/app.js
+www/js/app.js.map
+
+# Signatur und lokale Pfade - gehören NICHT ins Repository
+android/keystore.properties
+android/local.properties
+*.keystore
+*.jks
+
+# Build-Ergebnisse
+android/build/
+android/.gradle/
+android/app/build/
+android/app/release/
+android/capacitor-cordova-android-plugins/
+dist/
+
+# Von "cap sync" erzeugte Kopien
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+
+# Editor und System
+.idea/
+.DS_Store
+Thumbs.db

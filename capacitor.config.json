@@ -1,0 +1,15 @@
+{
+  "appId": "at.dachboden.training",
+  "appName": "PTapp",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#16140F"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#16140F",
+      "overlaysWebView": false
+    }
+  }
+}
