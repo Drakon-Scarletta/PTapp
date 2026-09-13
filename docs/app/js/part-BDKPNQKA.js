@@ -13398,9 +13398,40 @@ function anthropicClient(key) {
     defaultHeaders: { "anthropic-dangerous-direct-browser-access": "true" }
   });
 }
+function anthropicHeaders(key) {
+  return {
+    "Content-Type": "application/json",
+    "x-api-key": key,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true"
+  };
+}
+async function anthropicRaw(key, path2, body) {
+  const res = await fetch("https://api.anthropic.com" + path2, {
+    method: body ? "POST" : "GET",
+    headers: anthropicHeaders(key),
+    body: body ? JSON.stringify(body) : void 0
+  });
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(errText(data, res.status));
+  if (!data) throw new Error("leere Antwort");
+  return data;
+}
+function isApiError(e) {
+  return !!(e && (typeof e.status === "number" || e.name === "AuthenticationError"));
+}
+async function viaSdkOrRaw(key, sdkCall, ok, path2, body) {
+  try {
+    const res = await sdkCall();
+    if (ok(res)) return res;
+  } catch (e) {
+    if (isApiError(e)) throw e;
+  }
+  return anthropicRaw(key, path2, body);
+}
 async function viaAnthropic(opts, equipIds) {
   const client = anthropicClient(opts.key);
-  const res = await client.messages.create({
+  const body = {
     model: opts.model || providerOf("anthropic").defaultModel,
     max_tokens: 16e3,
     system: SYSTEM,
@@ -13414,7 +13445,14 @@ async function viaAnthropic(opts, equipIds) {
       role: "user",
       content: userPrompt(opts) + "\n\nReturn the result by calling the tool deliver_plan."
     }]
-  });
+  };
+  const res = await viaSdkOrRaw(
+    opts.key,
+    () => client.messages.create(body),
+    (r) => r && Array.isArray(r.content),
+    "/v1/messages",
+    body
+  );
   const call = res.content.find((b) => b.type === "tool_use");
   if (!call) {
     const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join(" ").trim();
@@ -13477,12 +13515,19 @@ async function chat(opts) {
     return text2.trim();
   }
   const client = anthropicClient(opts.key);
-  const res = await client.messages.create({
+  const body = {
     model: opts.model || providerOf("anthropic").defaultModel,
     max_tokens: 2e3,
     system,
     messages
-  });
+  };
+  const res = await viaSdkOrRaw(
+    opts.key,
+    () => client.messages.create(body),
+    (r) => r && Array.isArray(r.content),
+    "/v1/messages",
+    body
+  );
   const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
   if (!text) throw new Error(`unexpected answer (${res.stop_reason})`);
   return text;
@@ -13490,7 +13535,13 @@ async function chat(opts) {
 async function listModels(provider, key) {
   if (provider === "anthropic") {
     const client = anthropicClient(key);
-    const page = await client.models.list({ limit: 50 });
+    const page = await viaSdkOrRaw(
+      key,
+      () => client.models.list({ limit: 50 }),
+      (r) => r && Array.isArray(r.data),
+      "/v1/models?limit=50",
+      null
+    );
     return (page.data || []).map((m) => ({ id: m.id, label: m.display_name || m.id }));
   }
   const res = await fetch("https://api.openai.com/v1/models", {

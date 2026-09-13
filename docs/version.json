@@ -1,10 +1,10 @@
 {
-  "versionCode": 8,
-  "versionName": "1.7",
-  "apk": "PTapp-1.7.apk",
-  "size": 6671778,
+  "versionCode": 9,
+  "versionName": "1.8",
+  "apk": "PTapp-1.8.apk",
+  "size": 6672049,
   "notes": {
-    "de": "Neue Startseite mit Statistik, Planwahl und Trainer-Chat. Optionen liegen jetzt hinter dem Menüknopf. Übungskatalog mit 113 Übungen, Planerstellung durch die KI zog zu den Plänen um.",
-    "en": "New home screen with stats, plan picker and coach chat. Options moved behind the menu button. Exercise catalogue with 113 entries, AI plan building moved to Plans."
+    "de": "Behebt den Fehler beim Prüfen der KI-Verbindung in der App. Anfragen an Anthropic weichen jetzt auf einen direkten Weg aus, wenn die native HTTP-Brücke dem SDK dazwischenfunkt.",
+    "en": "Fixes the error when checking the AI connection in the app. Requests to Anthropic now fall back to a direct call when the native HTTP bridge gets in the SDK."
   }
 }

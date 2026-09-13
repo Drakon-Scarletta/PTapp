@@ -1,5 +1,5 @@
 // Erzeugt von build-site.mjs - nicht von Hand ändern.
-const CACHE = 'ptapp-1.7-mtzvvdg6';
+const CACHE = 'ptapp-1.8-mtzw5994';
 const ASSETS = [
   "./",
   "css/app.css",

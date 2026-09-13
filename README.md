@@ -257,7 +257,14 @@ des Schlüssels: in der App der App-Speicher, im Browser dessen eigener Speicher
 — auf einem geteilten Gerät also lieber die App.
 
 Der Anthropic-Teil nutzt das offizielle SDK, der OpenAI-Teil einen direkten
-HTTP-Aufruf. Beide erzwingen ein festes Antwortformat, damit die Antwort ohne
+HTTP-Aufruf. **Eine Falle dabei:** `CapacitorHttp` ersetzt in der App `fetch`
+durch eine native Brücke, und das SDK bekommt dadurch kein vollwertiges
+Response-Objekt — `models.list()` liefert dann `undefined`. Im Browser passiert
+das nicht, in der App schon. Deshalb geht jeder Anthropic-Aufruf zuerst über das
+SDK und fällt auf eine direkte Anfrage zurück, wenn dabei nichts Brauchbares
+herauskommt (`viaSdkOrRaw` in `ai.js`). Echte Fehler des Anbieters — falscher
+Schlüssel, kein Guthaben — werden vorher durchgereicht, damit sie nicht hinter
+dem Rückfallweg verschwinden. Beide erzwingen ein festes Antwortformat, damit die Antwort ohne
 Raten in die Datenstruktur der App passt. Weil das SDK knapp ein halbes Megabyte
 wiegt, liegt der ganze KI-Teil in einem eigenen Stück und wird erst beim Öffnen
 der Seite nachgeladen.

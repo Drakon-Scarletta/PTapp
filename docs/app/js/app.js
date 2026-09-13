@@ -194,7 +194,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "1.7";
+var APP_VERSION = "1.8";
 var STATE_VERSION = 4;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -913,7 +913,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-63NSOGNF.js");
+    const mod = await import("./part-BDKPNQKA.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2025,7 +2025,7 @@ async function runVerify() {
   verifying = true;
   rerender3();
   try {
-    const mod = await import("./part-63NSOGNF.js");
+    const mod = await import("./part-BDKPNQKA.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2305,7 +2305,7 @@ function render6(mount2, head2, backBar3, goBack) {
     result = null;
     rerender5();
     try {
-      const mod = await import("./part-63NSOGNF.js");
+      const mod = await import("./part-BDKPNQKA.js");
       result = await mod.generatePlan({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
