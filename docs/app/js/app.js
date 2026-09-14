@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-JLAQOZ7I.js";
+} from "./part-KKO23KJ4.js";
 import {
   Directory,
   Encoding
@@ -195,7 +195,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.3";
+var APP_VERSION = "2.4";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -1895,7 +1895,7 @@ function exercises(mount2, head2, goHub) {
     }
     return '<div class="lst">' + mitte + '<div class="row-act"><button class="mini" data-edit="' + ex.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + ex.id + '">' + esc(t("common.delete")) + "</button></div></div>";
   }).join("");
-  mount2.innerHTML = head2() + backBar(t("ex.title")) + '<p class="intro">' + esc(picking ? t("ex.multiHint") : t("ex.intro")) + "</p>" + (picking && liste.length ? pickBar() : "") + rows + (vonKi ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + (liste.length ? '<button class="set-btn" id="multi">' + esc(t(picking ? "ex.multiEnd" : "ex.multi")) + "</button>" : "") + (picking ? "" : '<button class="set-btn" id="add">+ ' + esc(t("ex.add")) + "</button>");
+  mount2.innerHTML = head2() + backBar(t("ex.title")) + '<p class="intro">' + esc(picking ? t("ex.multiHint") : t("ex.intro")) + "</p>" + (liste.length ? pickBar() : "") + rows + (vonKi ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + (picking ? "" : '<button class="set-btn" id="add">+ ' + esc(t("ex.add")) + "</button>");
   wireBack(goHub);
   const multi = byId("multi");
   if (multi) multi.addEventListener("click", () => {
@@ -1920,7 +1920,10 @@ function exercises(mount2, head2, goHub) {
   });
 }
 function pickBar() {
-  return '<div class="row-act pick-bar"><button class="mini" id="all">' + esc(t("ex.selAll")) + '</button><button class="mini" id="none">' + esc(t("ex.selNone")) + '</button><button class="mini warn" id="delsel"' + (chosen.size ? "" : " disabled") + ">" + esc(t("ex.delSel", { n: chosen.size })) + "</button></div>";
+  if (!picking) {
+    return '<div class="row-act pick-bar"><button class="mini" id="multi">' + esc(t("ex.multi")) + "</button></div>";
+  }
+  return '<div class="row-act pick-bar"><button class="mini" id="multi">' + esc(t("ex.multiEnd")) + '</button><button class="mini" id="all">' + esc(t("ex.selAll")) + '</button><button class="mini" id="none">' + esc(t("ex.selNone")) + '</button><button class="mini warn" id="delsel"' + (chosen.size ? "" : " disabled") + ">" + esc(t("ex.delSel", { n: chosen.size })) + "</button></div>";
 }
 function wirePicking(liste) {
   const knopf = byId("delsel");
@@ -2204,7 +2207,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-UPYRCQPA.js");
+    const mod = await import("./part-A4OYFLGZ.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2605,7 +2608,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-UPYRCQPA.js");
+    const mod = await import("./part-A4OYFLGZ.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2910,7 +2913,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-UPYRCQPA.js");
+      const mod = await import("./part-A4OYFLGZ.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),

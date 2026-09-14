@@ -377,7 +377,7 @@ select.in { appearance: none; background-image: none; }
 .lst.pick { justify-content: flex-start; gap: 12px; cursor: pointer; }
 .lst.pick input { width: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--signal); }
 .lst.pick .lst-m { flex: 1; }
-.pick-bar { margin-bottom: 10px; }
+.pick-bar { flex-wrap: wrap; margin-bottom: 10px; }
 .chk input { width: 20px; height: 20px; accent-color: var(--signal); }
 
 /* ---- Übungen innerhalb eines Plans ---- */

@@ -1,4 +1,8 @@
 {
+  "2.4": {
+    "de": "„Mehrere auswählen“ steht jetzt oben über der Übungsliste statt ganz unten — mit Fertig, Alle, Keine und dem Löschen-Knopf in einer Zeile.",
+    "en": "“Select several” now sits above the exercise list instead of at the very bottom — with Done, All, None and the delete button in one row."
+  },
   "2.3": {
     "de": "Übungen aufräumen geht jetzt in einem Rutsch: „Mehrere auswählen“, anhaken, alles auf einmal löschen — mit einem Rückgängig für die ganze Auswahl.",
     "en": "Tidying up exercises now works in one go: “Select several”, tick them, delete them all at once — with a single undo for the whole selection."

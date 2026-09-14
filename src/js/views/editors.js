@@ -309,12 +309,9 @@ export function exercises(mount, head, goHub) {
 
   mount.innerHTML = head() + backBar(t('ex.title')) +
     '<p class="intro">' + esc(picking ? t('ex.multiHint') : t('ex.intro')) + '</p>' +
-    (picking && liste.length ? pickBar() : '') +
+    (liste.length ? pickBar() : '') +
     rows +
     (vonKi ? '<p class="fld-h">✦ ' + esc(t('ex.legend')) + '</p>' : '') +
-    (liste.length
-      ? '<button class="set-btn" id="multi">' + esc(t(picking ? 'ex.multiEnd' : 'ex.multi')) + '</button>'
-      : '') +
     (picking ? '' : '<button class="set-btn" id="add">+ ' + esc(t('ex.add')) + '</button>');
 
   wireBack(goHub);
@@ -338,8 +335,15 @@ export function exercises(mount, head, goHub) {
   });
 }
 
+// Steht über der Liste, damit man sie nicht erst bis zum Ende durchscrollen
+// muss, um sie zu finden.
 function pickBar() {
+  if (!picking) {
+    return '<div class="row-act pick-bar">' +
+      '<button class="mini" id="multi">' + esc(t('ex.multi')) + '</button></div>';
+  }
   return '<div class="row-act pick-bar">' +
+    '<button class="mini" id="multi">' + esc(t('ex.multiEnd')) + '</button>' +
     '<button class="mini" id="all">' + esc(t('ex.selAll')) + '</button>' +
     '<button class="mini" id="none">' + esc(t('ex.selNone')) + '</button>' +
     '<button class="mini warn" id="delsel"' + (chosen.size ? '' : ' disabled') + '>' +
