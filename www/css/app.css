@@ -598,6 +598,12 @@ h3.sec.first { margin-top: 8px; padding-top: 0; border-top: 0; }
 }
 textarea.in { resize: vertical; min-height: 56px; font-family: 'Barlow', system-ui, sans-serif; }
 
+/* Auftrag und Antwort zum Kopieren: enger gesetzt, damit mehr davon zu sehen ist. */
+textarea.in.mono {
+  font-family: ui-monospace, Consolas, 'Courier New', monospace;
+  font-size: 12px; line-height: 1.45;
+}
+
 /* Solange die Pausen-Uhr läuft, bekommt die Seite unten Platz - sonst
    liegt die Leiste über den Übungen und fängt deren Tipps ab. */
 body.resting .tp-app { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }

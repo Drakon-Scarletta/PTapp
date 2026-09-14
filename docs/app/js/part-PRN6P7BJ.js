@@ -206,6 +206,27 @@ var DE = {
   "ai.accepted": "\xDCbernommen.",
   "ai.webKeyNote": "In der Browser-Fassung liegt der Schl\xFCssel im Speicher des Browsers. Auf einem geteilten oder fremden Ger\xE4t besser die installierte App benutzen.",
   "ai.failed": "Fehlgeschlagen: {msg}",
+  "man.section": "Ohne eigenen Zugang",
+  "man.sectionSub": "Es geht auch ganz ohne Schl\xFCssel und Guthaben: Die App schreibt den Auftrag als Text, du f\xFCgst ihn in eine beliebige KI ein und bringst die Antwort zur\xFCck.",
+  "man.button": "Auftrag zum Kopieren",
+  "man.title": "Kopieren und einf\xFCgen",
+  "man.intro": "Die App schreibt den Auftrag samt deiner Ger\xE4te und deiner W\xFCnsche als Text. Den f\xFCgst du in ein beliebiges KI-Chatfenster ein \u2014 ChatGPT, Claude, was du ohnehin benutzt \u2014 und bringst die Antwort hierher zur\xFCck. Sie wird genauso \xFCbernommen, als h\xE4tte die App selbst gefragt.",
+  "man.step1": "Unten Ziel, Einheiten und Erfahrung eintragen.",
+  "man.step2": "Auf \u201EAuftrag kopieren\u201C tippen und den Text im Chatfenster der KI einf\xFCgen.",
+  "man.step3": "Die Antwort der KI vollst\xE4ndig markieren und kopieren.",
+  "man.step4": "Zur\xFCck hierher, unten einf\xFCgen und auf \u201EAntwort lesen\u201C tippen.",
+  "man.copy": "Auftrag kopieren",
+  "man.copied": "Kopiert. Jetzt im Chatfenster der KI einf\xFCgen.",
+  "man.copyFailed": "Kopieren ging nicht. Unter \u201EText ansehen\u201C l\xE4sst er sich von Hand markieren.",
+  "man.show": "Text ansehen",
+  "man.answerTitle": "Antwort einf\xFCgen",
+  "man.answerSub": "Die Antwort der KI hier hineinlegen. Ein Satz davor oder danach st\xF6rt nicht \u2014 die App sucht sich den Plan heraus.",
+  "man.answerHint": "Antwort der KI \u2026",
+  "man.fromClipboard": "Aus Zwischenablage einf\xFCgen",
+  "man.read": "Antwort lesen",
+  "man.noAnswer": "Da steht noch nichts zum Lesen.",
+  "man.badAnswer": "Daraus konnte die App keinen Plan lesen. Kopiere die Antwort vollst\xE4ndig \u2014 und bitte die KI notfalls, nur das JSON auszugeben.",
+  "man.plannerOffline": "Ohne Verbindung geht es auch: Auftrag kopieren, in eine beliebige KI einf\xFCgen, Antwort hier einf\xFCgen.",
   "upd.title": "Aktualisierung",
   "upd.titleSub": "Nach einer neuen Fassung sehen",
   "upd.installed": "Installiert: Version {version}",
@@ -550,6 +571,27 @@ var EN = {
   "ai.accepted": "Saved.",
   "ai.webKeyNote": "In the browser version the key is kept in the browser storage. On a shared or borrowed device, prefer the installed app.",
   "ai.failed": "Failed: {msg}",
+  "man.section": "Without an account",
+  "man.sectionSub": "This works with no key and no credit: the app writes the request as text, you paste it into any AI and bring the answer back.",
+  "man.button": "Request to copy",
+  "man.title": "Copy and paste",
+  "man.intro": "The app writes the request, your equipment and your answers as one text. Paste it into any AI chat \u2014 ChatGPT, Claude, whatever you already use \u2014 and bring the reply back here. It is taken over exactly as if the app had asked itself.",
+  "man.step1": "Fill in goal, sessions and experience below.",
+  "man.step2": "Tap \u201CCopy request\u201D and paste the text into the AI chat.",
+  "man.step3": "Select the whole answer of the AI and copy it.",
+  "man.step4": "Come back here, paste it below and tap \u201CRead answer\u201D.",
+  "man.copy": "Copy request",
+  "man.copied": "Copied. Now paste it into the AI chat.",
+  "man.copyFailed": "Copying failed. Under \u201CShow text\u201D you can select it by hand.",
+  "man.show": "Show text",
+  "man.answerTitle": "Paste the answer",
+  "man.answerSub": "Put the answer of the AI in here. A sentence before or after does no harm \u2014 the app picks out the plan.",
+  "man.answerHint": "Answer of the AI \u2026",
+  "man.fromClipboard": "Paste from clipboard",
+  "man.read": "Read answer",
+  "man.noAnswer": "Nothing to read yet.",
+  "man.badAnswer": "No plan could be read from that. Copy the whole answer \u2014 and if needed ask the AI to output the JSON only.",
+  "man.plannerOffline": "It also works without a connection: copy the request, paste it into any AI, paste the answer here.",
   "upd.title": "Update",
   "upd.titleSub": "Look for a newer version",
   "upd.installed": "Installed: version {version}",
@@ -756,6 +798,93 @@ var PROVIDERS = [
 ];
 var providerOf = (id) => PROVIDERS.find((p) => p.id === id) || PROVIDERS[0];
 
+// src/js/prompt.js
+function schema(equipIds) {
+  return {
+    type: "object",
+    properties: {
+      exercises: {
+        type: "array",
+        description: "Every exercise used in the plans, listed once.",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            equipment: { type: "string", enum: equipIds },
+            hint: { type: "string", description: "One short technique cue, may be empty." }
+          },
+          required: ["name", "equipment", "hint"],
+          additionalProperties: false
+        }
+      },
+      plans: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            focus: { type: "string" },
+            night: { type: "boolean", description: "True only for a shortened fallback session." },
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  exercise: { type: "string", description: "Must match a name from exercises." },
+                  reps: { type: "string", description: 'For example "3 x 8-12".' },
+                  sets: { type: "integer" }
+                },
+                required: ["exercise", "reps", "sets"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["name", "focus", "night", "items"],
+          additionalProperties: false
+        }
+      }
+    },
+    required: ["exercises", "plans"],
+    additionalProperties: false
+  };
+}
+var SYSTEM = [
+  "You design strength training plans for one person training on the equipment they list.",
+  "Only use the equipment provided; never invent machines, barbells or dumbbells that are not listed.",
+  "Every exercise in a plan must appear in the exercises array, with the id of the equipment it is done on.",
+  "Keep a session to roughly five to eight exercises and order them from large muscle groups to small.",
+  "Write exercise names, focus texts and hints in the requested language."
+].join(" ");
+function userPrompt(opts) {
+  const lang2 = getLang() === "en" ? "English" : "German";
+  const equip = opts.equipment.map((e) => `- id "${e.id}": ${e.name} (${e.kindLabel})`).join("\n");
+  return [
+    `Language for all text: ${lang2}.`,
+    `Goal: ${opts.goal}.`,
+    `Experience: ${opts.level}.`,
+    `Sessions per week: ${opts.days}.`,
+    opts.notes ? `Additional notes from the trainee: ${opts.notes}` : "",
+    "",
+    "Available equipment:",
+    equip,
+    "",
+    `Produce ${opts.days <= 2 ? 1 : 2} to ${Math.min(opts.days, 4)} plans that rotate over the week,`,
+    "plus optionally one shortened session marked night=true for weeks with little time."
+  ].filter(Boolean).join("\n");
+}
+function manualPrompt(opts) {
+  const equipIds = opts.equipment.map((e) => e.id);
+  return [
+    SYSTEM,
+    "",
+    userPrompt(opts),
+    "",
+    "Answer with one JSON object and nothing else - no explanation before or after,",
+    "no code fence, no markdown. It must match this schema exactly:",
+    JSON.stringify(schema(equipIds), null, 2)
+  ].join("\n");
+}
+
 export {
   LANGS,
   setLang,
@@ -768,5 +897,9 @@ export {
   weekdayShort,
   longDate,
   PROVIDERS,
-  providerOf
+  providerOf,
+  schema,
+  SYSTEM,
+  userPrompt,
+  manualPrompt
 };

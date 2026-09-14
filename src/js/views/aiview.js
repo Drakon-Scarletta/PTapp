@@ -110,7 +110,7 @@ async function runVerify() {
 }
 
 // ---- Seite ----
-export function render(mount, head, backBar, goHub) {
+export function render(mount, head, backBar, goHub, goManual) {
   const prov = providerOf(st.S.ai.provider);
   const connected = !!keyOf();
   const modelOpts = models.length
@@ -128,7 +128,15 @@ export function render(mount, head, backBar, goHub) {
       ? field(t('ai.model'),
           '<span class="two">' + selectIn('f-model', modelOpts, st.S.ai.model || prov.defaultModel) +
           textIn('f-modelfree', st.S.ai.model || prov.defaultModel) + '</span>')
-      : '');
+      : '') +
+
+    // Der Weg ohne eigenen Zugang - erreichbar, ob verbunden oder nicht.
+    '<h3 class="sec">' + esc(t('man.section')) + '</h3>' +
+    '<p class="intro">' + esc(t('man.sectionSub')) + '</p>' +
+    '<button class="set-btn' + (connected ? '' : ' go') + '" id="manual">' +
+      esc(t('man.button')) + '</button>';
+
+  byId('manual').addEventListener('click', goManual);
 
   byId('back').addEventListener('click', goHub);
 

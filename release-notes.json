@@ -1,4 +1,8 @@
 {
+  "2.2": {
+    "de": "Pläne gehen jetzt auch ohne eigenen KI-Zugang: Die App schreibt den Auftrag samt Geräten als Text zum Kopieren, du fügst ihn in ein beliebiges KI-Chatfenster ein und die Antwort zurück in die App.",
+    "en": "Plans now work without an AI account of your own: the app writes the request and your equipment as text to copy, you paste it into any AI chat and paste the answer back into the app."
+  },
   "2.1": {
     "de": "Abhaken reagiert sofort statt erst nach dem Speichern, und die Pausen-Uhr legt sich nicht mehr über die Übungen.",
     "en": "Ticking a set reacts instantly instead of after saving, and the rest timer no longer covers the exercises."

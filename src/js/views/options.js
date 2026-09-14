@@ -8,14 +8,23 @@ import * as editors from './editors.js';
 import * as aiview from './aiview.js';
 import * as updateview from './updateview.js';
 import * as planner from './planner.js';
+import * as manual from './manual.js';
 import * as misc from './misc.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
 
 let sub = null;
 let backups = [];
+let manualFrom = 'planner';   // woher die Copy-und-Paste-Seite geöffnet wurde
 
-export function resetSub() { sub = null; editors.resetEditing(); aiview.reset(); updateview.reset(); planner.reset(); }
+export function resetSub() {
+  sub = null;
+  editors.resetEditing();
+  aiview.reset();
+  updateview.reset();
+  planner.reset();
+  manual.reset();
+}
 
 export async function refresh() {
   backups = await listBackups();
@@ -27,6 +36,7 @@ function go(next) {
   if (next !== 'ai') aiview.reset();
   if (next !== 'update') updateview.reset();
   if (next !== 'planner') planner.reset();
+  if (next !== 'manual') manual.reset();
   rerender();
 }
 
@@ -43,8 +53,16 @@ export function render(head, mount) {
   if (sub === 'equipment') return editors.equipment(mount, head, goHub);
   if (sub === 'exercises') return editors.exercises(mount, head, goHub);
   if (sub === 'plans') return editors.plans(mount, head, goHub, () => go('planner'));
-  if (sub === 'planner') return planner.render(mount, head, backBar, () => go('plans'));
-  if (sub === 'ai') return aiview.render(mount, head, backBar, goHub);
+  if (sub === 'planner') return planner.render(mount, head, backBar, () => go('plans'), f => {
+    manual.prefill(f);
+    manualFrom = 'planner';
+    go('manual');
+  });
+  if (sub === 'manual') return manual.render(mount, head, backBar, () => go(manualFrom));
+  if (sub === 'ai') return aiview.render(mount, head, backBar, goHub, () => {
+    manualFrom = 'ai';
+    go('manual');
+  });
   if (sub === 'update') return updateview.render(mount, head, backBar, goHub);
   if (sub === 'lang') return language(mount, head, goHub);
   if (sub === 'rest') return misc.restPrefs(mount, head, backBar, goHub);

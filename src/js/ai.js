@@ -3,86 +3,9 @@
 // In der App laufen die Aufrufe über die native HTTP-Schicht von Capacitor,
 // deshalb greifen dort die Browser-Beschränkungen nicht.
 import Anthropic from '@anthropic-ai/sdk';
-import { getLang } from './i18n.js';
 import { providerOf } from './ai-meta.js';
+import { SYSTEM, schema, userPrompt } from './prompt.js';
 
-
-// Was die KI zurückgeben muss. Wird bei beiden Anbietern erzwungen.
-function schema(equipIds) {
-  return {
-    type: 'object',
-    properties: {
-      exercises: {
-        type: 'array',
-        description: 'Every exercise used in the plans, listed once.',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            equipment: { type: 'string', enum: equipIds },
-            hint: { type: 'string', description: 'One short technique cue, may be empty.' }
-          },
-          required: ['name', 'equipment', 'hint'],
-          additionalProperties: false
-        }
-      },
-      plans: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            focus: { type: 'string' },
-            night: { type: 'boolean', description: 'True only for a shortened fallback session.' },
-            items: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  exercise: { type: 'string', description: 'Must match a name from exercises.' },
-                  reps: { type: 'string', description: 'For example "3 x 8-12".' },
-                  sets: { type: 'integer' }
-                },
-                required: ['exercise', 'reps', 'sets'],
-                additionalProperties: false
-              }
-            }
-          },
-          required: ['name', 'focus', 'night', 'items'],
-          additionalProperties: false
-        }
-      }
-    },
-    required: ['exercises', 'plans'],
-    additionalProperties: false
-  };
-}
-
-const SYSTEM = [
-  'You design strength training plans for one person training on the equipment they list.',
-  'Only use the equipment provided; never invent machines, barbells or dumbbells that are not listed.',
-  'Every exercise in a plan must appear in the exercises array, with the id of the equipment it is done on.',
-  'Keep a session to roughly five to eight exercises and order them from large muscle groups to small.',
-  'Write exercise names, focus texts and hints in the requested language.'
-].join(' ');
-
-function userPrompt(opts) {
-  const lang = getLang() === 'en' ? 'English' : 'German';
-  const equip = opts.equipment.map(e => `- id "${e.id}": ${e.name} (${e.kindLabel})`).join('\n');
-  return [
-    `Language for all text: ${lang}.`,
-    `Goal: ${opts.goal}.`,
-    `Experience: ${opts.level}.`,
-    `Sessions per week: ${opts.days}.`,
-    opts.notes ? `Additional notes from the trainee: ${opts.notes}` : '',
-    '',
-    'Available equipment:',
-    equip,
-    '',
-    `Produce ${opts.days <= 2 ? 1 : 2} to ${Math.min(opts.days, 4)} plans that rotate over the week,`,
-    'plus optionally one shortened session marked night=true for weeks with little time.'
-  ].filter(Boolean).join('\n');
-}
 
 export async function generatePlan(opts) {
   const equipIds = opts.equipment.map(e => e.id);

@@ -5,13 +5,14 @@ import {
   getLang,
   locale,
   longDate,
+  manualPrompt,
   monthName,
   num,
   providerOf,
   setLang,
   t,
   weekdayShort
-} from "./part-SPGIUINV.js";
+} from "./part-PRN6P7BJ.js";
 import {
   Directory,
   Encoding
@@ -194,7 +195,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.1";
+var APP_VERSION = "2.2";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -989,10 +990,10 @@ function clearChat() {
   S.chat = [];
   return persist();
 }
-function applyGenerated(result2) {
+function applyGenerated(result3) {
   let created = 0;
   const byName = new Map(S.exercises.map((e) => [nameOf(e).toLowerCase(), e.id]));
-  (result2.exercises || []).forEach((g) => {
+  (result3.exercises || []).forEach((g) => {
     const key = (g.name || "").toLowerCase();
     if (!key || byName.has(key)) return;
     const eq = equipOf(g.equipment) ? g.equipment : S.equipment[0] && S.equipment[0].id;
@@ -1007,7 +1008,7 @@ function applyGenerated(result2) {
     byName.set(key, ex.id);
     created++;
   });
-  (result2.plans || []).forEach((g) => {
+  (result3.plans || []).forEach((g) => {
     const items = (g.items || []).map((i) => ({ ex: byName.get((i.exercise || "").toLowerCase()), reps: i.reps || "3 \xD7 8\u201312", sets: i.sets || 3 })).filter((i) => i.ex);
     if (!items.length) return;
     S.plans.push({
@@ -2121,7 +2122,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-H2QCBWC5.js");
+    const mod = await import("./part-TA5OGIY5.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2382,7 +2383,7 @@ var options_exports = {};
 __export(options_exports, {
   backBar: () => backBar2,
   refresh: () => refresh,
-  render: () => render7,
+  render: () => render8,
   resetSub: () => resetSub
 });
 
@@ -2522,7 +2523,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-H2QCBWC5.js");
+    const mod = await import("./part-TA5OGIY5.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2536,14 +2537,16 @@ async function runVerify() {
     rerender4();
   }
 }
-function render4(mount2, head2, backBar3, goHub) {
+function render4(mount2, head2, backBar3, goHub, goManual) {
   const prov = providerOf(S.ai.provider);
   const connected2 = !!keyOf();
   const modelOpts = models.length ? models.map((m) => ({ id: m.id, label: m.label })) : [{ id: S.ai.model || prov.defaultModel, label: S.ai.model || prov.defaultModel }];
   mount2.innerHTML = head2() + backBar3(t("ai.title")) + '<p class="intro">' + esc(t("ai.intro")) + "</p>" + (isNative() ? "" : '<p class="intro">' + esc(t("ai.webKeyNote")) + "</p>") + field(t("ai.provider"), selectIn("f-prov", PROVIDERS.map((p) => ({ id: p.id, label: p.label })), S.ai.provider)) + connectionBlock(prov) + (connected2 ? field(
     t("ai.model"),
     '<span class="two">' + selectIn("f-model", modelOpts, S.ai.model || prov.defaultModel) + textIn("f-modelfree", S.ai.model || prov.defaultModel) + "</span>"
-  ) : "");
+  ) : "") + // Der Weg ohne eigenen Zugang - erreichbar, ob verbunden oder nicht.
+  '<h3 class="sec">' + esc(t("man.section")) + '</h3><p class="intro">' + esc(t("man.sectionSub")) + '</p><button class="set-btn' + (connected2 ? "" : " go") + '" id="manual">' + esc(t("man.button")) + "</button>";
+  byId("manual").addEventListener("click", goManual);
   byId("back").addEventListener("click", goHub);
   byId("f-prov").addEventListener("change", (ev) => {
     models = [];
@@ -2754,15 +2757,7 @@ async function runInstall() {
   }
 }
 
-// src/js/views/planner.js
-var rerender6 = () => document.dispatchEvent(new CustomEvent("rerender"));
-var busy2 = false;
-var result = null;
-var form = { goal: "muscle", days: 3, level: "some", notes: "" };
-function reset4() {
-  busy2 = false;
-  result = null;
-}
+// src/js/views/planform.js
 var goalOptions = () => [
   { id: "strength", label: t("ai.goalStrength") },
   { id: "muscle", label: t("ai.goalMuscle") },
@@ -2775,25 +2770,56 @@ var levelOptions = () => [
   { id: "pro", label: t("ai.levelPro") }
 ];
 var kindLabel = (eq) => eq.kind === "plates" ? t("equip.kindPlates") : eq.kind === "weight" ? t("equip.kindWeight") : t("equip.kindBody");
-function readForm() {
-  if (!byId("f-goal")) return;
-  form = {
+var emptyForm = () => ({ goal: "muscle", days: 3, level: "some", notes: "" });
+function formFields(form3) {
+  return field(t("ai.goal"), selectIn("f-goal", goalOptions(), form3.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form3.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form3.level)) + field(t("ai.notes"), textIn("f-notes", form3.notes));
+}
+function readForm(form3) {
+  if (!byId("f-goal")) return form3;
+  return {
     goal: byId("f-goal").value,
     days: parseInt(byId("f-days").value, 10) || 3,
     level: byId("f-level").value,
     notes: val("f-notes")
   };
 }
-function preview() {
-  const neue = (result.exercises || []).map((e) => "<li>" + esc(e.name) + ' <span class="lst-s">\u2014 ' + esc(nameOf(equipOf(e.equipment))) + "</span></li>").join("");
-  const plaene = (result.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
-  return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plaene + (neue ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result.exercises || []).length })) + '</p><ul class="plain">' + neue + "</ul>" : "") + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>";
+function equipListHtml() {
+  return '<h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>";
 }
-function render6(mount2, head2, backBar3, goBack) {
-  mount2.innerHTML = head2() + backBar3(t("pl.aiTitle")) + '<p class="intro">' + esc(t("ai.intro")) + '</p><h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>" + field(t("ai.goal"), selectIn("f-goal", goalOptions(), form.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form.level)) + field(t("ai.notes"), textIn("f-notes", form.notes)) + '<button class="set-btn' + (busy2 ? "" : " go") + '" id="gen"' + (busy2 ? " disabled" : "") + ">" + esc(busy2 ? t("ai.working") : t("ai.generate")) + "</button>" + (result ? preview() : "");
+function askOptions(form3) {
+  return {
+    goal: goalOptions().find((o) => o.id === form3.goal).label,
+    level: levelOptions().find((o) => o.id === form3.level).label,
+    days: form3.days,
+    notes: form3.notes,
+    equipment: S.equipment.map((e) => ({ id: e.id, name: nameOf(e), kindLabel: kindLabel(e) }))
+  };
+}
+function resultHtml(result3) {
+  const neue = (result3.exercises || []).map((e) => "<li>" + esc(e.name) + ' <span class="lst-s">\u2014 ' + esc(nameOf(equipOf(e.equipment))) + "</span></li>").join("");
+  const plaene = (result3.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
+  return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plaene + (neue ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result3.exercises || []).length })) + '</p><ul class="plain">' + neue + "</ul>" : "");
+}
+
+// src/js/views/planner.js
+var rerender6 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var busy2 = false;
+var result = null;
+var form = emptyForm();
+function reset4() {
+  busy2 = false;
+  result = null;
+}
+function render6(mount2, head2, backBar3, goBack, goManual) {
+  const connected2 = !!(S.ai.keys[S.ai.provider] || "").trim();
+  mount2.innerHTML = head2() + backBar3(t("pl.aiTitle")) + '<p class="intro">' + esc(t("ai.intro")) + "</p>" + (connected2 ? "" : '<p class="intro">' + esc(t("man.plannerOffline")) + "</p>") + equipListHtml() + formFields(form) + '<button class="set-btn' + (busy2 || !connected2 ? "" : " go") + '" id="gen"' + (busy2 ? " disabled" : "") + ">" + esc(busy2 ? t("ai.working") : t("ai.generate")) + '</button><button class="set-btn' + (connected2 ? "" : " go") + '" id="manual">' + esc(t("man.button")) + "</button>" + (result ? resultHtml(result) + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>" : "");
   byId("back").addEventListener("click", goBack);
+  byId("manual").addEventListener("click", () => {
+    form = readForm(form);
+    goManual(form);
+  });
   byId("gen").addEventListener("click", async () => {
-    readForm();
+    form = readForm(form);
     if (!S.equipment.length) {
       toast(t("ai.needEquip"), true);
       return;
@@ -2802,17 +2828,12 @@ function render6(mount2, head2, backBar3, goBack) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-H2QCBWC5.js");
-      result = await mod.generatePlan({
+      const mod = await import("./part-TA5OGIY5.js");
+      result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
-        model: S.ai.model || providerOf(S.ai.provider).defaultModel,
-        goal: goalOptions().find((o) => o.id === form.goal).label,
-        level: levelOptions().find((o) => o.id === form.level).label,
-        days: form.days,
-        notes: form.notes,
-        equipment: S.equipment.map((e) => ({ id: e.id, name: nameOf(e), kindLabel: kindLabel(e) }))
-      });
+        model: S.ai.model || providerOf(S.ai.provider).defaultModel
+      }, askOptions(form)));
     } catch (e) {
       showAiError(e, S.ai.provider);
     }
@@ -2831,7 +2852,155 @@ function render6(mount2, head2, backBar3, goBack) {
       rerender6();
     });
   }
-  on("#f-goal, #f-days, #f-level, #f-notes", readForm, "change");
+  on("#f-goal, #f-days, #f-level, #f-notes", () => {
+    form = readForm(form);
+  }, "change");
+}
+
+// src/js/views/manual.js
+var rerender7 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var form2 = emptyForm();
+var answer = "";
+var result2 = null;
+function reset5() {
+  answer = "";
+  result2 = null;
+}
+function prefill(next) {
+  if (next) form2 = Object.assign({}, next);
+}
+function promptText() {
+  return manualPrompt(askOptions(form2));
+}
+async function copy(text) {
+  try {
+    await Clipboard.write({ string: text });
+    return true;
+  } catch (e) {
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+  }
+  return ueberFeld(text);
+}
+function ueberFeld(text) {
+  const feld = document.createElement("textarea");
+  feld.value = text;
+  feld.setAttribute("readonly", "");
+  feld.style.cssText = "position:fixed;top:-1000px;opacity:0";
+  document.body.appendChild(feld);
+  feld.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch (e) {
+    ok = false;
+  }
+  feld.remove();
+  return ok;
+}
+function jsonAus(text) {
+  let s2 = String(text || "").trim();
+  const block = s2.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (block) s2 = block[1].trim();
+  const a = s2.indexOf("{");
+  const b = s2.lastIndexOf("}");
+  if (a < 0 || b <= a) throw new Error("no object");
+  return JSON.parse(s2.slice(a, b + 1));
+}
+function geraet(wert) {
+  const s2 = String(wert || "").trim();
+  if (equipOf(s2)) return s2;
+  const low = s2.toLowerCase();
+  const hit = S.equipment.find((e) => nameOf(e).toLowerCase() === low);
+  if (hit) return hit.id;
+  return S.equipment[0] && S.equipment[0].id || "";
+}
+function pruefe(roh) {
+  const exercises2 = (Array.isArray(roh.exercises) ? roh.exercises : []).filter((e) => e && e.name).map((e) => ({ name: String(e.name), equipment: geraet(e.equipment), hint: e.hint ? String(e.hint) : "" }));
+  const plans3 = (Array.isArray(roh.plans) ? roh.plans : []).map((p) => ({
+    name: p && p.name ? String(p.name) : "",
+    focus: p && p.focus ? String(p.focus) : "",
+    night: !!(p && p.night),
+    items: (p && Array.isArray(p.items) ? p.items : []).filter((i) => i && i.exercise).map((i) => ({
+      exercise: String(i.exercise),
+      reps: i.reps ? String(i.reps) : "3 \xD7 8\u201312",
+      sets: parseInt(i.sets, 10) || 3
+    }))
+  })).filter((p) => p.items.length);
+  if (!plans3.length) throw new Error("no plans");
+  return { exercises: exercises2, plans: plans3 };
+}
+function auswerten() {
+  try {
+    result2 = pruefe(jsonAus(answer));
+    rerender7();
+  } catch (e) {
+    result2 = null;
+    toast(t("man.badAnswer"), true);
+  }
+}
+function render7(mount2, head2, backBar3, goBack) {
+  const text = S.equipment.length ? promptText() : "";
+  mount2.innerHTML = head2() + backBar3(t("man.title")) + '<p class="intro">' + esc(t("man.intro")) + '</p><ol class="steps"><li>' + esc(t("man.step1")) + "</li><li>" + esc(t("man.step2")) + "</li><li>" + esc(t("man.step3")) + "</li><li>" + esc(t("man.step4")) + "</li></ol>" + equipListHtml() + formFields(form2) + (S.equipment.length ? '<button class="set-btn go" id="copy">' + esc(t("man.copy")) + '</button><details class="help"><summary>' + esc(t("man.show")) + '</summary><textarea class="in mono" id="f-prompt" rows="10" readonly>' + esc(text) + "</textarea></details>" : '<p class="intro">' + esc(t("ai.needEquip")) + "</p>") + '<h3 class="sec">' + esc(t("man.answerTitle")) + '</h3><p class="intro">' + esc(t("man.answerSub")) + '</p><textarea class="in mono" id="f-ans" rows="6" placeholder="' + esc(t("man.answerHint")) + '">' + esc(answer) + '</textarea><button class="set-btn" id="fromclip">' + esc(t("man.fromClipboard")) + '</button><button class="set-btn go" id="read">' + esc(t("man.read")) + "</button>" + (result2 ? resultHtml(result2) + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>" : "");
+  byId("back").addEventListener("click", goBack);
+  const copyBtn = byId("copy");
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    const ok = await copy(promptText());
+    toast(ok ? t("man.copied") : t("man.copyFailed"), !ok);
+    if (!ok) {
+      const box = document.querySelector("details.help");
+      if (box) box.open = true;
+      const feld = byId("f-prompt");
+      if (feld) {
+        feld.focus();
+        feld.select();
+      }
+    }
+  });
+  byId("fromclip").addEventListener("click", async () => {
+    try {
+      const { value } = await Clipboard.read();
+      answer = value || "";
+      if (!answer.trim()) {
+        toast(t("ai.pasteEmpty"), true);
+        return;
+      }
+      auswerten();
+    } catch (e) {
+      toast(t("ai.clipboardFailed"), true);
+    }
+  });
+  byId("f-ans").addEventListener("input", (ev) => {
+    answer = ev.target.value;
+  });
+  byId("read").addEventListener("click", () => {
+    answer = byId("f-ans").value;
+    if (!answer.trim()) {
+      toast(t("man.noAnswer"), true);
+      return;
+    }
+    auswerten();
+  });
+  if (result2) {
+    byId("accept").addEventListener("click", () => {
+      const n = applyGenerated(result2);
+      result2 = null;
+      answer = "";
+      toast(t("ai.accepted") + (n ? " " + t("ai.newExercises", { n }) : ""));
+      goBack();
+    });
+    byId("discard").addEventListener("click", () => {
+      result2 = null;
+      rerender7();
+    });
+  }
+  on("#f-goal, #f-days, #f-level, #f-notes", () => {
+    form2 = readForm(form2);
+    rerender7();
+  }, "change");
 }
 
 // node_modules/@capacitor/local-notifications/dist/esm/definitions.js
@@ -2893,7 +3062,7 @@ async function apply(reminder, texte) {
 }
 
 // src/js/views/misc.js
-var rerender7 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender8 = () => document.dispatchEvent(new CustomEvent("rerender"));
 function restPrefs(mount2, head2, backBar3, goHub) {
   mount2.innerHTML = head2() + backBar3(t("rest.title")) + checkIn("f-on", t("rest.on"), S.prefs.restOn) + field(t("rest.sec"), numIn("f-sec", S.prefs.restSec, "5", 5));
   byId("back").addEventListener("click", goHub);
@@ -2911,10 +3080,10 @@ function bodyWeight(mount2, head2, backBar3, goHub) {
   mount2.innerHTML = head2() + backBar3(t("body.title")) + '<p class="intro">' + esc(t("body.intro")) + '</p><div class="add-row"><input class="in" id="f-kg" type="number" inputmode="decimal" step="0.1" min="1" placeholder="' + esc(t("body.value")) + '"><button class="mini" id="addbody">' + esc(t("body.add")) + "</button></div>" + (S.body.length ? '<div class="bars">' + balken + "</div>" + (diff != null ? '<p class="intro">' + esc(t("body.change", { n: (diff > 0 ? "+" : "") + num(diff) })) + "</p>" : "") + zeilen : '<p class="intro">' + esc(t("body.empty")) + "</p>");
   byId("back").addEventListener("click", goHub);
   byId("addbody").addEventListener("click", () => {
-    if (addBodyWeight(val("f-kg"))) rerender7();
+    if (addBodyWeight(val("f-kg"))) rerender8();
   });
   byId("f-kg").addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter" && addBodyWeight(val("f-kg"))) rerender7();
+    if (ev.key === "Enter" && addBodyWeight(val("f-kg"))) rerender8();
   });
   on("[data-delbody]", (ev) => removeBodyWeight(ev.currentTarget.dataset.delbody));
 }
@@ -2953,15 +3122,17 @@ function legal(mount2, head2, backBar3, goHub) {
 }
 
 // src/js/views/options.js
-var rerender8 = () => document.dispatchEvent(new CustomEvent("rerender"));
+var rerender9 = () => document.dispatchEvent(new CustomEvent("rerender"));
 var sub = null;
 var backups = [];
+var manualFrom = "planner";
 function resetSub() {
   sub = null;
   resetEditing();
   reset2();
   reset3();
   reset4();
+  reset5();
 }
 async function refresh() {
   backups = await listBackups();
@@ -2972,19 +3143,28 @@ function go(next) {
   if (next !== "ai") reset2();
   if (next !== "update") reset3();
   if (next !== "planner") reset4();
-  rerender8();
+  if (next !== "manual") reset5();
+  rerender9();
 }
 document.addEventListener("gosub", (ev) => go(ev.detail));
 function backBar2(title) {
   return '<div class="sub-bar"><button class="mini" id="back">\u2039 ' + esc(t("common.back")) + "</button><h2>" + esc(title) + "</h2></div>";
 }
-function render7(head2, mount2) {
+function render8(head2, mount2) {
   const goHub = () => go(null);
   if (sub === "equipment") return equipment(mount2, head2, goHub);
   if (sub === "exercises") return exercises(mount2, head2, goHub);
   if (sub === "plans") return plans(mount2, head2, goHub, () => go("planner"));
-  if (sub === "planner") return render6(mount2, head2, backBar2, () => go("plans"));
-  if (sub === "ai") return render4(mount2, head2, backBar2, goHub);
+  if (sub === "planner") return render6(mount2, head2, backBar2, () => go("plans"), (f2) => {
+    prefill(f2);
+    manualFrom = "planner";
+    go("manual");
+  });
+  if (sub === "manual") return render7(mount2, head2, backBar2, () => go(manualFrom));
+  if (sub === "ai") return render4(mount2, head2, backBar2, goHub, () => {
+    manualFrom = "ai";
+    go("manual");
+  });
   if (sub === "update") return render5(mount2, head2, backBar2, goHub);
   if (sub === "lang") return language(mount2, head2, goHub);
   if (sub === "rest") return restPrefs(mount2, head2, backBar2, goHub);
@@ -3027,7 +3207,7 @@ function data(mount2, head2, goHub) {
       const r = await exportBackup(S);
       toast(t("data.saved", { name: r.name }));
       await refresh();
-      rerender8();
+      rerender9();
     } catch (e) {
       toast(t("data.saveFailed", { msg: e.message }), true);
     }
@@ -3116,7 +3296,7 @@ var mount = document.getElementById("app");
 function head() {
   return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-date">' + esc(today.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })) + '</div></div><div class="tp-nav">' + TABS.map(([v, key]) => '<button data-view="' + v + '" class="' + (v === view ? "sel" : "") + '">' + esc(t(key)) + "</button>").join("") + '<button data-view="options" class="burger' + (view === "options" ? " sel" : "") + '" aria-label="' + esc(t("nav.menu")) + '"><span></span><span></span><span></span></button></div>';
 }
-function render8() {
+function render9() {
   const scroll = window.scrollY;
   VIEWS[view].render(head, mount);
   document.querySelectorAll("[data-view]").forEach((b) => {
@@ -3128,11 +3308,11 @@ async function setView(v) {
   if (v === view) {
     if (v === "options") {
       resetSub();
-      render8();
+      render9();
     }
     if (v === "log") {
       resetSelection();
-      render8();
+      render9();
     }
     return;
   }
@@ -3144,12 +3324,12 @@ async function setView(v) {
     resetSub();
     await refresh();
   }
-  render8();
+  render9();
 }
-document.addEventListener("rerender", render8);
+document.addEventListener("rerender", render9);
 document.addEventListener("goview", (ev) => setView(ev.detail));
 document.addEventListener("goback", () => setView(lastTab));
-onChange(render8);
+onChange(render9);
 async function wireNative() {
   if (!Capacitor.isNativePlatform()) return;
   await App.addListener("backButton", () => {
@@ -3157,7 +3337,7 @@ async function wireNative() {
     else App.exitApp();
   });
   await App.addListener("appStateChange", ({ isActive }) => {
-    if (isActive && refreshDay()) render8();
+    if (isActive && refreshDay()) render9();
   });
   try {
     await StatusBar.setBackgroundColor({ color: "#16140F" });
@@ -3172,7 +3352,7 @@ function wireServiceWorker() {
   });
 }
 setInterval(() => {
-  if (refreshDay()) render8();
+  if (refreshDay()) render9();
 }, 6e4);
 (async function start2() {
   try {
@@ -3182,6 +3362,6 @@ setInterval(() => {
   }
   await wireNative();
   wireServiceWorker();
-  render8();
+  render9();
   if (pending()) show();
 })();

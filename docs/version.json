@@ -1,10 +1,10 @@
 {
-  "versionCode": 12,
-  "versionName": "2.1",
-  "apk": "PTapp-2.1.apk",
-  "size": 6697667,
+  "versionCode": 13,
+  "versionName": "2.2",
+  "apk": "PTapp-2.2.apk",
+  "size": 6700582,
   "notes": {
-    "de": "Abhaken reagiert sofort statt erst nach dem Speichern, und die Pausen-Uhr legt sich nicht mehr über die Übungen.",
-    "en": "Ticking a set reacts instantly instead of after saving, and the rest timer no longer covers the exercises."
+    "de": "Pläne gehen jetzt auch ohne eigenen KI-Zugang: Die App schreibt den Auftrag samt Geräten als Text zum Kopieren, du fügst ihn in ein beliebiges KI-Chatfenster ein und die Antwort zurück in die App.",
+    "en": "Plans now work without an AI account of your own: the app writes the request and your equipment as text to copy, you paste it into any AI chat and paste the answer back into the app."
   }
 }

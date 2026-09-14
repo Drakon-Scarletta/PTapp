@@ -34,6 +34,8 @@ installierbare APK.
     oder von der KI erstellen lassen.
   - **KI**: Anbieter, Zugang und Modell — reine Verwaltung. Gearbeitet wird
     damit auf der Startseite (Chat) und unter Pläne (Plan erstellen lassen).
+    Ohne eigenen Zugang geht es über *Auftrag zum Kopieren*: Text in ein
+    beliebiges KI-Chatfenster einfügen, Antwort zurück in die App.
   - **Pausen-Uhr**: an/aus und Länge.
   - **Körpergewicht**: ein Wert je Tag, mit Verlauf.
   - **Erinnerungen**: an gewählten Wochentagen zur gewählten Zeit (nur App).
@@ -58,6 +60,7 @@ dachboden/
     ui.js              DOM-Helfer, Meldungen, Formularbausteine
     ai.js              Aufruf der KI-Anbieter (wird erst bei Bedarf geladen)
     ai-meta.js         Anbieterliste, ohne schwere Abhängigkeiten
+    prompt.js          die Vorgabe an die KI und das Antwortschema
     update.js          Versionsabgleich, Download, Installationsaufruf
     rest.js            Pausen-Uhr, lebt außerhalb der Ansicht
     reminder.js        geplante Benachrichtigungen
@@ -65,8 +68,9 @@ dachboden/
     catalog.js         Gerätetypen und Kombigeräte
     ex-catalog.js      Übungskatalog nach Muskelgruppe
     views/             home.js, plan.js, log.js, options.js, editors.js,
-                       aiview.js, planner.js, updateview.js, sets.js,
-                       misc.js, credits.js, onboarding.js
+                       aiview.js, planner.js, manual.js, planform.js,
+                       updateview.js, sets.js, misc.js, credits.js,
+                       onboarding.js
   www/                 was die App wirklich lädt
     index.html
     css/app.css        Gestaltung
@@ -269,8 +273,9 @@ Nötig ist also ein **API-Schlüssel**, kein Chat-Abo:
 
 Ein ChatGPT-Plus- oder Claude-Abo funktioniert dafür nicht — das sind Konten für
 die Chat-Oberfläche. Ein API-Schlüssel ist ein eigenes Konto, das nach Verbrauch
-abgerechnet wird; ein Plan kostet Bruchteile eines Cents. Der Schlüssel geht an
-niemanden außer den gewählten Anbieter.
+abgerechnet wird; ein Plan kostet mit einem großen Modell etwa fünf bis fünfzehn
+Cent, mit einem kleinen ein Fünftel davon. Der Schlüssel geht an niemanden außer
+den gewählten Anbieter.
 
 Es funktioniert in beiden Fassungen. In der App laufen die Aufrufe über die
 native HTTP-Schicht von Capacitor (`CapacitorHttp`); im Browser gehen sie
@@ -291,6 +296,25 @@ dem Rückfallweg verschwinden. Beide erzwingen ein festes Antwortformat, damit d
 Raten in die Datenstruktur der App passt. Weil das SDK knapp ein halbes Megabyte
 wiegt, liegt der ganze KI-Teil in einem eigenen Stück und wird erst beim Öffnen
 der Seite nachgeladen.
+
+### Ohne eigenen Zugang: Kopieren und Einfügen
+
+Es geht auch ganz ohne Schlüssel und Guthaben. *KI → Auftrag zum Kopieren*
+(oder derselbe Knopf unter *Pläne → Plan erstellen lassen*) öffnet eine Seite,
+auf der dieselben Angaben abgefragt werden wie beim eingebauten Weg. Daraus
+schreibt die App einen Text: die Vorgabe, die Geräteliste mit Kennungen, die
+Wünsche und das Antwortschema. Der Text wandert per *Auftrag kopieren* in die
+Zwischenablage, von dort in ein beliebiges Chatfenster — ChatGPT, Claude, was
+auch immer der Nutzer ohnehin offen hat. Die Antwort kommt unten wieder in die
+App, *Antwort lesen* macht daraus denselben Vorschlag wie sonst, mit Vorschau
+und Übernehmen.
+
+Beide Wege benutzen dieselbe Vorgabe aus `prompt.js`; nur die Art der Zustellung
+unterscheidet sich. Weil ein Chatfenster kein festes Antwortformat erzwingen
+kann, steht das Schema im Text und die Auswertung ist nachsichtig: Codeblock
+ringsum, ein Satz davor oder danach, Gerätename statt Kennung, `"4"` statt `4` —
+all das wird gelesen (`manual.js`). Findet sich darin kein Plan, sagt die App
+das, statt etwas zu raten.
 
 ## Icon
 
