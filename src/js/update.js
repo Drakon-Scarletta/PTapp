@@ -31,7 +31,37 @@ export async function fetchLatest() {
 
 export async function check() {
   const [cur, latest] = await Promise.all([currentVersion(), fetchLatest()]);
-  return { cur, latest, newer: !!cur && latest.versionCode > cur.code };
+  const res = { cur, latest, newer: !!cur && latest.versionCode > cur.code };
+  merken(res);
+  return res;
+}
+
+// ---- Stiller Blick beim Öffnen der App ----
+// Ergebnis liegt hier; die Kopfzeile zeigt daraufhin ein Zeichen an.
+let neuere = null;
+let naechster = 0;                     // frühester Zeitpunkt für den nächsten Blick
+const ABSTAND = 6 * 60 * 60 * 1000;    // öfter als alle sechs Stunden lohnt nicht
+const NACHFASSEN = 15 * 60 * 1000;     // war kein Netz da, bald nochmal
+
+export function updateHint() { return neuere; }
+
+function merken(res) {
+  neuere = res.newer ? res.latest : null;
+  naechster = Date.now() + ABSTAND;
+}
+
+// Läuft im Hintergrund und schweigt bei Fehlern: ohne Netz, ohne erreichbare
+// Seite oder in der Web-Fassung gibt es eben keinen Hinweis.
+export async function checkQuietly(force) {
+  if (!canUpdate()) return null;
+  if (!navigator.onLine) return null;
+  if (!force && Date.now() < naechster) return neuere;
+  try {
+    await check();
+  } catch (e) {
+    naechster = Date.now() + NACHFASSEN;
+  }
+  return neuere;
 }
 
 // Filesystem.downloadFile gilt ab 7.1 als veraltet; der empfohlene Ersatz

@@ -47,7 +47,16 @@ html, body {
   border-bottom: 2px solid var(--timber-line);
 }
 .tp-head h1 { font-size: 26px; font-weight: 700; }
+.tp-when { display: flex; align-items: baseline; gap: 8px; }
 .tp-date { color: var(--muted); font-size: 14px; font-weight: 500; }
+
+/* Zeichen für eine neue Fassung, links neben dem Datum. */
+.upd-dot {
+  flex: 0 0 auto; cursor: pointer;
+  font-family: 'Barlow Condensed'; font-size: 15px; font-weight: 700; line-height: 1;
+  padding: 5px 9px; border-radius: 999px; border: 0;
+  background: var(--signal); color: var(--ink);
+}
 
 /* ---- Wochenleiste ---- */
 .tp-week { display: flex; gap: 5px; margin: 14px 0 4px; }

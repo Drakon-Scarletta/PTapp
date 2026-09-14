@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-KKO23KJ4.js";
+} from "./part-TY752RT6.js";
 import {
   Directory,
   Encoding
@@ -195,7 +195,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.4";
+var APP_VERSION = "2.5";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -2207,7 +2207,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-A4OYFLGZ.js");
+    const mod = await import("./part-BQ6YYNJM.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2608,7 +2608,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-A4OYFLGZ.js");
+    const mod = await import("./part-BQ6YYNJM.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2704,7 +2704,31 @@ async function fetchLatest() {
 }
 async function check() {
   const [cur, latest2] = await Promise.all([currentVersion(), fetchLatest()]);
-  return { cur, latest: latest2, newer: !!cur && latest2.versionCode > cur.code };
+  const res = { cur, latest: latest2, newer: !!cur && latest2.versionCode > cur.code };
+  merken(res);
+  return res;
+}
+var neuere = null;
+var naechster = 0;
+var ABSTAND = 6 * 60 * 60 * 1e3;
+var NACHFASSEN = 15 * 60 * 1e3;
+function updateHint() {
+  return neuere;
+}
+function merken(res) {
+  neuere = res.newer ? res.latest : null;
+  naechster = Date.now() + ABSTAND;
+}
+async function checkQuietly(force) {
+  if (!canUpdate()) return null;
+  if (!navigator.onLine) return null;
+  if (!force && Date.now() < naechster) return neuere;
+  try {
+    await check();
+  } catch (e) {
+    naechster = Date.now() + NACHFASSEN;
+  }
+  return neuere;
 }
 async function download(latest2, onProgress) {
   let handle = null;
@@ -2913,7 +2937,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-A4OYFLGZ.js");
+      const mod = await import("./part-BQ6YYNJM.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -3379,13 +3403,19 @@ var view = "home";
 var lastTab = "home";
 var mount = document.getElementById("app");
 function head() {
-  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-date">' + esc(today.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })) + '</div></div><div class="tp-nav">' + TABS.map(([v, key]) => '<button data-view="' + v + '" class="' + (v === view ? "sel" : "") + '">' + esc(t(key)) + "</button>").join("") + '<button data-view="options" class="burger' + (view === "options" ? " sel" : "") + '" aria-label="' + esc(t("nav.menu")) + '"><span></span><span></span><span></span></button></div>';
+  const neuere2 = updateHint();
+  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-when">' + (neuere2 ? '<button class="upd-dot" data-updbadge title="' + esc(t("upd.badge", { version: neuere2.versionName })) + '" aria-label="' + esc(t("upd.badge", { version: neuere2.versionName })) + '">\u2191</button>' : "") + '<div class="tp-date">' + esc(today.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })) + '</div></div></div><div class="tp-nav">' + TABS.map(([v, key]) => '<button data-view="' + v + '" class="' + (v === view ? "sel" : "") + '">' + esc(t(key)) + "</button>").join("") + '<button data-view="options" class="burger' + (view === "options" ? " sel" : "") + '" aria-label="' + esc(t("nav.menu")) + '"><span></span><span></span><span></span></button></div>';
 }
 function render9() {
   const scroll = window.scrollY;
   VIEWS[view].render(head, mount);
   document.querySelectorAll("[data-view]").forEach((b) => {
     b.addEventListener("click", () => setView(b.dataset.view));
+  });
+  const badge = document.querySelector("[data-updbadge]");
+  if (badge) badge.addEventListener("click", async () => {
+    await setView("options");
+    document.dispatchEvent(new CustomEvent("gosub", { detail: "update" }));
   });
   window.scrollTo(0, scroll);
 }
@@ -3422,7 +3452,9 @@ async function wireNative() {
     else App.exitApp();
   });
   await App.addListener("appStateChange", ({ isActive }) => {
-    if (isActive && refreshDay()) render9();
+    if (!isActive) return;
+    if (refreshDay()) render9();
+    nachUpdateSehen();
   });
   try {
     await StatusBar.setBackgroundColor({ color: "#16140F" });
@@ -3434,6 +3466,12 @@ function wireServiceWorker() {
   if (Capacitor.isNativePlatform()) return;
   if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return;
   navigator.serviceWorker.register("sw.js").catch(() => {
+  });
+}
+function nachUpdateSehen() {
+  const vorher = updateHint();
+  checkQuietly().then((neuere2) => {
+    if (neuere2 !== vorher) render9();
   });
 }
 setInterval(() => {
@@ -3449,4 +3487,5 @@ setInterval(() => {
   wireServiceWorker();
   render9();
   if (pending()) show();
+  nachUpdateSehen();
 })();

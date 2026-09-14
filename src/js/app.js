@@ -10,6 +10,7 @@ import * as plan from './views/plan.js';
 import * as log from './views/log.js';
 import * as options from './views/options.js';
 import { toast, esc } from './ui.js';
+import { updateHint, checkQuietly } from './update.js';
 import * as onboarding from './views/onboarding.js';
 
 const VIEWS = { home, plan, log, options };
@@ -24,8 +25,17 @@ let lastTab = 'home';          // wohin der Zurück-Pfeil aus dem Menü führt
 const mount = document.getElementById('app');
 
 function head() {
-  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1><div class="tp-date">' +
-    esc(st.today.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })) +
+  const neuere = updateHint();
+  return '<div class="tp-head"><h1>' + esc(APP_NAME) + '</h1>' +
+    '<div class="tp-when">' +
+      (neuere
+        ? '<button class="upd-dot" data-updbadge title="' +
+          esc(t('upd.badge', { version: neuere.versionName })) + '" aria-label="' +
+          esc(t('upd.badge', { version: neuere.versionName })) + '">↑</button>'
+        : '') +
+      '<div class="tp-date">' +
+      esc(st.today.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })) +
+      '</div>' +
     '</div></div>' +
     '<div class="tp-nav">' +
       TABS.map(([v, key]) =>
@@ -41,6 +51,11 @@ function render() {
   VIEWS[view].render(head, mount);
   document.querySelectorAll('[data-view]').forEach(b => {
     b.addEventListener('click', () => setView(b.dataset.view));
+  });
+  const badge = document.querySelector('[data-updbadge]');
+  if (badge) badge.addEventListener('click', async () => {
+    await setView('options');
+    document.dispatchEvent(new CustomEvent('gosub', { detail: 'update' }));
   });
   window.scrollTo(0, scroll);
 }
@@ -73,7 +88,10 @@ async function wireNative() {
     else CapApp.exitApp();
   });
   await CapApp.addListener('appStateChange', ({ isActive }) => {
-    if (isActive && st.refreshDay()) render();
+    if (!isActive) return;
+    if (st.refreshDay()) render();
+    // Kommt die App nach Stunden wieder nach vorn, lohnt der Blick erneut.
+    nachUpdateSehen();
   });
   try {
     await StatusBar.setBackgroundColor({ color: '#16140F' });
@@ -89,6 +107,13 @@ function wireServiceWorker() {
   navigator.serviceWorker.register('sw.js').catch(() => { /* z. B. lokaler Entwicklungsserver */ });
 }
 
+// Einmal beim Öffnen nachsehen, ob es eine neuere Fassung gibt. Das läuft
+// nebenher: erst wenn wirklich etwas da ist, wird neu gezeichnet.
+function nachUpdateSehen() {
+  const vorher = updateHint();
+  checkQuietly().then(neuere => { if (neuere !== vorher) render(); });
+}
+
 // Falls die App über Mitternacht offen bleibt.
 setInterval(() => { if (st.refreshDay()) render(); }, 60000);
 
@@ -102,4 +127,5 @@ setInterval(() => { if (st.refreshDay()) render(); }, 60000);
   wireServiceWorker();
   render();
   if (onboarding.pending()) onboarding.show();
+  nachUpdateSehen();
 })();

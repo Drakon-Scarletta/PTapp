@@ -1,4 +1,8 @@
 {
+  "2.5": {
+    "de": "Die App sieht beim Öffnen still nach, ob es eine neuere Fassung gibt. Ist eine da, erscheint oben neben dem Datum ein Pfeil, der direkt zur Aktualisierung führt.",
+    "en": "On opening, the app quietly checks for a newer version. If there is one, an arrow appears next to the date at the top, leading straight to the update page."
+  },
   "2.4": {
     "de": "„Mehrere auswählen“ steht jetzt oben über der Übungsliste statt ganz unten — mit Fertig, Alle, Keine und dem Löschen-Knopf in einer Zeile.",
     "en": "“Select several” now sits above the exercise list instead of at the very bottom — with Done, All, None and the delete button in one row."

@@ -1,5 +1,5 @@
 // Erzeugt von build-site.mjs - nicht von Hand ändern.
-const CACHE = 'ptapp-2.4-mu19ovxg';
+const CACHE = 'ptapp-2.5-mu19uup9';
 const ASSETS = [
   "./",
   "css/app.css",
@@ -24,7 +24,6 @@ const ASSETS = [
   "js/part-DA66V5EW.js",
   "js/part-ED4TTFRM.js",
   "js/part-JEYNSYVW.js",
-  "js/part-KKO23KJ4.js",
   "js/part-MJLH4ETE.js",
   "js/part-MOS4NO2Z.js",
   "js/part-MTR7NSI3.js",
@@ -32,6 +31,7 @@ const ASSETS = [
   "js/part-NTKUDOCD.js",
   "js/part-R7XNFKS3.js",
   "js/part-RW2RFTHW.js",
+  "js/part-TY752RT6.js",
   "js/part-UZ3PHKCF.js",
   "js/part-V4SJM3LU.js",
   "js/part-W64CD333.js",
