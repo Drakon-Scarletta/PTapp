@@ -70,5 +70,5 @@ export function render(mount, head, backBar, goBack, goManual) {
     byId('discard').addEventListener('click', () => { result = null; rerender(); });
   }
 
-  on('#f-goal, #f-days, #f-level, #f-notes', () => { form = readForm(form); }, 'change');
+  on('#f-int, #f-goal, #f-days, #f-level, #f-notes', () => { form = readForm(form); }, 'change');
 }

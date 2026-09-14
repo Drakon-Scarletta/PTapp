@@ -186,7 +186,7 @@ export function render(mount, head, backBar, goBack) {
     byId('discard').addEventListener('click', () => { result = null; rerender(); });
   }
 
-  on('#f-goal, #f-days, #f-level, #f-notes', () => {
+  on('#f-int, #f-goal, #f-days, #f-level, #f-notes', () => {
     form = readForm(form);
     rerender();
   }, 'change');

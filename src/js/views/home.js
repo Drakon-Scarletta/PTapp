@@ -31,6 +31,8 @@ function stats() {
       .toLocaleDateString(locale(), { day: 'numeric', month: 'long' })
     : null;
 
+  const erholung = st.recovery();
+
   return '<h3 class="sec first">' + esc(t('home.stats')) + '</h3>' +
     '<div class="stat-row">' +
       '<div class="stat"><b>' + done + '/' + ziel + '</b>' + esc(t('home.thisWeek')) + '</div>' +
@@ -40,7 +42,21 @@ function stats() {
     '<div class="bars" aria-hidden="true">' + balken + '</div>' +
     '<p class="intro">' + esc(t('home.lastWeeks')) + ' · ' +
       esc(letzte ? t('home.last', { plan: st.nameOf(letzte.plan), date: datum }) : t('home.never')) +
-    '</p>';
+    '</p>' +
+    (erholung ? '<p class="rec' + (erholung.ready ? ' ok' : '') + '">' +
+      esc(erholungsText(erholung)) + '</p>' : '');
+}
+
+// Wie lange die Muskeln nach der letzten Einheit noch Ruhe wollen.
+function erholungsText(r) {
+  const spanne = r.von === r.bis ? t('rec.span1', { n: r.von }) : t('rec.span', { von: r.von, bis: r.bis });
+  if (r.days === 0) return t('rec.today', { span: spanne });
+  if (!r.ready) {
+    return r.rest === 1
+      ? t('rec.wait1', { plan: st.nameOf(r.plan), span: spanne })
+      : t('rec.wait', { n: r.rest, plan: st.nameOf(r.plan), span: spanne });
+  }
+  return t('rec.ready', { n: r.days, span: spanne });
 }
 
 // Kurz erklärt, wie lange man zwischen den Sätzen wartet. Steht aufgeklappt

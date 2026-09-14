@@ -78,6 +78,8 @@ export function userPrompt(opts) {
     `Goal: ${opts.goal}.`,
     `Experience: ${opts.level}.`,
     `Sessions per week: ${opts.days}.`,
+    `Intensity: ${opts.intensity || 'mid'}. Use about ${opts.sets || 5} sets for each exercise`,
+    'and set the field "intensity" of every plan to exactly this value.',
     opts.notes ? `Additional notes from the trainee: ${opts.notes}` : '',
     '',
     'Available equipment:',

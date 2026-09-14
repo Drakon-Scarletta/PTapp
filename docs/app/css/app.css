@@ -278,6 +278,15 @@ html, body {
 .dt-n { font-family: 'Barlow Condensed'; font-size: 16px; font-weight: 600; color: var(--ink); }
 .dt-w { font-size: 12px; color: #6B6353; white-space: nowrap; }
 
+/* Empfohlene Erholung: im Training unter dem Abschluss, auf der Startseite
+   als eigene Zeile. */
+.tp-rec { font-size: 13px; color: #6B6353; margin: 10px 0 0; }
+.rec {
+  font-size: 13px; color: var(--decal-2); margin: 8px 0 0;
+  border-left: 3px solid var(--rule); padding-left: 9px;
+}
+.rec.ok { border-left-color: var(--done); }
+
 .tp-note { font-size: 12.5px; color: var(--muted); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--timber-line); }
 .tp-err { font-size: 12.5px; color: var(--rule); margin-top: 10px; }
 

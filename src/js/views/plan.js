@@ -19,6 +19,14 @@ function weekStrip() {
   return '<div class="tp-week">' + h + '</div>';
 }
 
+// Nach der Einheit: wie lange Pause bis zur nächsten.
+function erholungText(plan) {
+  const [von, bis] = st.recoveryFor(plan);
+  return von === bis
+    ? t('rec.after1', { n: von })
+    : t('rec.after', { von, bis });
+}
+
 function exerciseRow(item, e) {
   const ex = st.exOf(item.ex);
   const goal = item.sets || 3;
@@ -120,6 +128,7 @@ export function render(head, mount) {
       '<button class="tp-finish' + (e.done ? ' undo' : '') + '" id="fin"' +
         (!st.hasAnySet() && !e.done ? ' disabled' : '') + '>' +
         esc(e.done ? t('plan.undo') : t('plan.finish')) + '</button>' +
+      (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + '</p>' : '') +
     '</div></div>' +
 
     '<label class="fld"><span class="fld-l">' + esc(t('note.title')) + '</span>' +

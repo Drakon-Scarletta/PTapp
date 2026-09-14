@@ -42,6 +42,12 @@ installierbare APK.
     damit auf der Startseite (Chat) und unter Pläne (Plan erstellen lassen).
     Ohne eigenen Zugang geht es über *Auftrag zum Kopieren*: Text in ein
     beliebiges KI-Chatfenster einfügen, Antwort zurück in die App.
+  - **Erholung**: Nach einer Einheit zeigt die App, wie viele Tage Pause
+    sinnvoll sind (leicht 1, mittel 1–2, schwer 2–3 Tage — je nach Intensität
+    des Plans), auf der Startseite und im Training nach dem Abschließen.
+  - **Ampel je Übung**: grün, gelb oder rot zum eingestellten Gewicht. Eigene
+    Grenzen haben Vorrang; ohne sie misst die App an der Bestleistung
+    (unter 70 % grün, bis 90 % gelb, darüber rot).
   - **Pausen-Uhr**: an/aus und Länge. Hat der gewählte Plan eine Intensität,
     gilt deren Pause (leicht 45 s, mittel 90 s, schwer 180 s); auf der
     Startseite steht in einer Zeile, was üblich ist.

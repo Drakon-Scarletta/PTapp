@@ -1,4 +1,8 @@
 {
+  "3.0": {
+    "de": "Erholung: Die Startseite sagt, wie viele Tage Pause nach der letzten Einheit sinnvoll sind, und nach dem Abschließen steht es auch im Training. Die Ampel für leicht/mittel/schwer funktioniert jetzt ohne eingetragene Grenzen — gemessen an der eigenen Bestleistung. Beim Plan von der KI wählt man oben die Intensität, die über die Sätze je Übung entscheidet (3 / 5 / 8).",
+    "en": "Recovery: the start screen says how many days off make sense after the last session, and it also shows in training once you finish. The light/medium/hard dot now works without configured limits — measured against your own best. AI plan generation has an intensity choice at the top that decides the sets per exercise (3 / 5 / 8)."
+  },
   "2.9": {
     "de": "Übungen auf Zeit wie Plank: Antippen fragt nach der Dauer — zwei übliche Längen oder eine eigene —, zählt herunter, piept und hakt den Satz ab. Im Übungseditor lässt sich das für jede Übung ein- und ausschalten.",
     "en": "Timed exercises like the plank: tapping asks for the length — two usual ones or your own — counts down, beeps and ticks the set. The exercise editor can turn this on or off for any exercise."

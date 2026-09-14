@@ -21,10 +21,21 @@ export const levelOptions = () => [
 export const kindLabel = eq => eq.kind === 'plates' ? t('equip.kindPlates')
   : eq.kind === 'weight' ? t('equip.kindWeight') : t('equip.kindBody');
 
-export const emptyForm = () => ({ goal: 'muscle', days: 3, level: 'some', notes: '' });
+export const emptyForm = () => ({ goal: 'muscle', days: 3, level: 'some', intensity: 'mid', notes: '' });
+
+// Wie hart die Einheiten ausfallen sollen - das entscheidet zugleich, wie viele
+// Sätze je Übung im Plan stehen.
+export const SETS = { easy: 3, mid: 5, hard: 8 };
+
+export const intensityOptions = () => st.INTENSITIES.map(id => ({
+  id,
+  label: t('pl.int' + id) + ' · ' + t('ai.setsEach', { n: SETS[id] })
+}));
 
 export function formFields(form) {
-  return field(t('ai.goal'), selectIn('f-goal', goalOptions(), form.goal)) +
+  return field(t('pl.intensity'), selectIn('f-int', intensityOptions(), form.intensity || 'mid'),
+      t('ai.intensitySub')) +
+    field(t('ai.goal'), selectIn('f-goal', goalOptions(), form.goal)) +
     field(t('ai.days'), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form.days + '">') +
     field(t('ai.level'), selectIn('f-level', levelOptions(), form.level)) +
     field(t('ai.notes'), textIn('f-notes', form.notes));
@@ -36,6 +47,7 @@ export function readForm(form) {
     goal: byId('f-goal').value,
     days: parseInt(byId('f-days').value, 10) || 3,
     level: byId('f-level').value,
+    intensity: byId('f-int') ? byId('f-int').value : (form.intensity || 'mid'),
     notes: val('f-notes')
   };
 }
@@ -49,10 +61,13 @@ export function equipListHtml() {
 
 // Die Angaben, die die Vorgabe braucht - egal wer sie am Ende verschickt.
 export function askOptions(form) {
+  const stufe = st.INTENSITIES.includes(form.intensity) ? form.intensity : 'mid';
   return {
     goal: goalOptions().find(o => o.id === form.goal).label,
     level: levelOptions().find(o => o.id === form.level).label,
     days: form.days,
+    intensity: stufe,
+    sets: SETS[stufe],
     notes: form.notes,
     equipment: st.S.equipment.map(e => ({ id: e.id, name: st.nameOf(e), kindLabel: kindLabel(e) }))
   };

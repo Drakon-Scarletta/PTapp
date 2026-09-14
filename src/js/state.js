@@ -109,6 +109,37 @@ export function timesOf(ex) {
   return [s[0] || 30, s[1] || 60];
 }
 
+// ---- Erholung ----
+// Wie viele Tage Pause nach einer Einheit sinnvoll sind. Richtet sich nach der
+// Intensität des Plans; ohne Angabe gilt der mittlere Wert.
+const ERHOLUNG = { easy: [1, 1], mid: [1, 2], hard: [2, 3] };
+
+export function recoveryFor(plan) {
+  const stufe = intensityOf(plan);
+  return ERHOLUNG[stufe] || ERHOLUNG.mid;
+}
+
+// Stand der Erholung nach der letzten abgeschlossenen Einheit.
+// Gibt null zurück, solange noch nichts eingetragen ist.
+export function recovery() {
+  const letzte = lastSessions(1)[0];
+  if (!letzte) return null;
+  const [von, bis] = recoveryFor(letzte.plan);
+  const teile = letzte.date.split('-');
+  const tag = new Date(teile[0], teile[1] - 1, teile[2]);
+  const heute = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const tage = Math.round((heute - tag) / 86400000);
+  return {
+    plan: letzte.plan,
+    date: letzte.date,
+    days: tage,          // vergangene Tage seit der Einheit
+    von,
+    bis,
+    ready: tage >= von,  // ab hier spricht nichts dagegen
+    rest: Math.max(0, von - tage)
+  };
+}
+
 export function visibleExercises() { return S.exercises.filter(e => !e.hidden); }
 export function rotatingPlans() { return S.plans.filter(p => !p.night); }
 export function nightPlans() { return S.plans.filter(p => p.night); }
@@ -134,13 +165,25 @@ export function weightLabel(exId, value) {
   if (eq.kind === 'weight') return { main: num(v), unit: 'kg', sub: '', body: false };
   return { main: String(v), unit: t('plan.plates'), sub: num(v * (eq.plate || 4.5)) + ' kg', body: false };
 }
+// Ampel für die heutige Last. Eigene Grenzen haben Vorrang; ohne sie wird an
+// der bisherigen Bestleistung gemessen - so zeigt die Ampel auch bei Übungen
+// etwas an, für die niemand Grenzen eingetragen hat.
 export function band(exId) {
   const ex = exOf(exId);
-  if (!ex || !ex.bands || !ex.bands.length) return null;
   const n = S.kg[exId] || 0;
-  if (!n) return null;
-  if (n <= ex.bands[0]) return 'g';
-  if (n <= ex.bands[1]) return 'y';
+  if (!ex || !n) return null;
+
+  if (ex.bands && ex.bands.length >= 2) {
+    if (n <= ex.bands[0]) return 'g';
+    if (n <= ex.bands[1]) return 'y';
+    return 'r';
+  }
+
+  const best = personalRecord(exId);
+  if (!best || !best.weight) return null;   // ohne Vergleich keine Aussage
+  const anteil = n / best.weight;
+  if (anteil < 0.7) return 'g';
+  if (anteil < 0.9) return 'y';
   return 'r';
 }
 

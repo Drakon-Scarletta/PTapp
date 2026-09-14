@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-3H6FV5ZB.js";
+} from "./part-VDFPMXWI.js";
 import {
   Directory,
   Encoding
@@ -198,7 +198,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.9";
+var APP_VERSION = "3.0";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -516,6 +516,31 @@ function timesOf(ex) {
   const s2 = (ex && Array.isArray(ex.secs) ? ex.secs : []).map((n) => parseInt(n, 10)).filter((n) => n > 0);
   return [s2[0] || 30, s2[1] || 60];
 }
+var ERHOLUNG = { easy: [1, 1], mid: [1, 2], hard: [2, 3] };
+function recoveryFor(plan) {
+  const stufe = intensityOf(plan);
+  return ERHOLUNG[stufe] || ERHOLUNG.mid;
+}
+function recovery() {
+  const letzte = lastSessions(1)[0];
+  if (!letzte) return null;
+  const [von, bis] = recoveryFor(letzte.plan);
+  const teile = letzte.date.split("-");
+  const tag = new Date(teile[0], teile[1] - 1, teile[2]);
+  const heute = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const tage = Math.round((heute - tag) / 864e5);
+  return {
+    plan: letzte.plan,
+    date: letzte.date,
+    days: tage,
+    // vergangene Tage seit der Einheit
+    von,
+    bis,
+    ready: tage >= von,
+    // ab hier spricht nichts dagegen
+    rest: Math.max(0, von - tage)
+  };
+}
 function visibleExercises() {
   return S.exercises.filter((e) => !e.hidden);
 }
@@ -546,11 +571,18 @@ function weightLabel(exId, value) {
 }
 function band(exId) {
   const ex = exOf(exId);
-  if (!ex || !ex.bands || !ex.bands.length) return null;
   const n = S.kg[exId] || 0;
-  if (!n) return null;
-  if (n <= ex.bands[0]) return "g";
-  if (n <= ex.bands[1]) return "y";
+  if (!ex || !n) return null;
+  if (ex.bands && ex.bands.length >= 2) {
+    if (n <= ex.bands[0]) return "g";
+    if (n <= ex.bands[1]) return "y";
+    return "r";
+  }
+  const best = personalRecord(exId);
+  if (!best || !best.weight) return null;
+  const anteil = n / best.weight;
+  if (anteil < 0.7) return "g";
+  if (anteil < 0.9) return "y";
   return "r";
 }
 function isNight() {
@@ -2217,7 +2249,16 @@ function stats() {
   const balken = wochen.map((w) => '<div class="bar-col" title="' + esc(w.start) + '"><div class="bar-v' + (w.done >= w.target ? " full" : "") + '" style="height:' + Math.round(w.done / hoch * 100) + '%"></div></div>').join("");
   const letzte = lastSessions(1)[0];
   const datum2 = letzte ? new Date(letzte.date.split("-")[0], letzte.date.split("-")[1] - 1, letzte.date.split("-")[2]).toLocaleDateString(locale(), { day: "numeric", month: "long" }) : null;
-  return '<h3 class="sec first">' + esc(t("home.stats")) + '</h3><div class="stat-row"><div class="stat"><b>' + done + "/" + ziel + "</b>" + esc(t("home.thisWeek")) + '</div><div class="stat"><b>' + weekStreak() + "</b>" + esc(t("home.streak")) + '</div><div class="stat"><b>' + totalSessions() + "</b>" + esc(t("home.total")) + '</div></div><div class="bars" aria-hidden="true">' + balken + '</div><p class="intro">' + esc(t("home.lastWeeks")) + " \xB7 " + esc(letzte ? t("home.last", { plan: nameOf(letzte.plan), date: datum2 }) : t("home.never")) + "</p>";
+  const erholung = recovery();
+  return '<h3 class="sec first">' + esc(t("home.stats")) + '</h3><div class="stat-row"><div class="stat"><b>' + done + "/" + ziel + "</b>" + esc(t("home.thisWeek")) + '</div><div class="stat"><b>' + weekStreak() + "</b>" + esc(t("home.streak")) + '</div><div class="stat"><b>' + totalSessions() + "</b>" + esc(t("home.total")) + '</div></div><div class="bars" aria-hidden="true">' + balken + '</div><p class="intro">' + esc(t("home.lastWeeks")) + " \xB7 " + esc(letzte ? t("home.last", { plan: nameOf(letzte.plan), date: datum2 }) : t("home.never")) + "</p>" + (erholung ? '<p class="rec' + (erholung.ready ? " ok" : "") + '">' + esc(erholungsText(erholung)) + "</p>" : "");
+}
+function erholungsText(r) {
+  const spanne = r.von === r.bis ? t("rec.span1", { n: r.von }) : t("rec.span", { von: r.von, bis: r.bis });
+  if (r.days === 0) return t("rec.today", { span: spanne });
+  if (!r.ready) {
+    return r.rest === 1 ? t("rec.wait1", { plan: nameOf(r.plan), span: spanne }) : t("rec.wait", { n: r.rest, plan: nameOf(r.plan), span: spanne });
+  }
+  return t("rec.ready", { n: r.days, span: spanne });
 }
 function restInfo() {
   const zeile = (k, wert) => '<div class="tip"><span>' + esc(t(k)) + "</span><b>" + esc(wert) + "</b></div>";
@@ -2273,7 +2314,7 @@ async function send() {
   busy = true;
   await addChat("me", text2);
   try {
-    const mod = await import("./part-EGEEHXYW.js");
+    const mod = await import("./part-BTXPERRT.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2409,6 +2450,10 @@ function weekStrip() {
   }
   return '<div class="tp-week">' + h + "</div>";
 }
+function erholungText(plan) {
+  const [von, bis] = recoveryFor(plan);
+  return von === bis ? t("rec.after1", { n: von }) : t("rec.after", { von, bis });
+}
 function exerciseRow(item, e) {
   const ex = exOf(item.ex);
   const goal = item.sets || 3;
@@ -2438,7 +2483,7 @@ function render2(head2, mount2) {
   const pick = S.plans.map((p) => '<button data-pick="' + p.id + '" class="' + (p.id === planId ? "sel" : "") + (p.id === sug && p.id !== planId ? " sug" : "") + '"><span class="k">' + esc(p.short || "?") + "</span>" + esc(nameOf(p)) + "</button>").join("");
   const rows = plan.items.length ? plan.items.map((i) => exerciseRow(i, e)).join("") : '<div class="tp-ex"><div></div><div class="rp">' + esc(t("plan.emptyPlan")) + "</div><div></div></div>";
   const dauer = e.done ? durationMinutes(e) : e.start ? Math.max(1, Math.round((Date.now() - e.start) / 6e4)) : null;
-  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (intensityOf(plan) ? " \xB7 " + esc(t("pl.int" + intensityOf(plan))) : "") + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + '</button></div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
+  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (intensityOf(plan) ? " \xB7 " + esc(t("pl.int" + intensityOf(plan))) : "") + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + "</button>" + (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + "</p>" : "") + '</div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
   byId("nt").addEventListener("click", () => toggleNight());
   byId("fin").addEventListener("click", () => {
     haptic("medium");
@@ -2722,7 +2767,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-EGEEHXYW.js");
+    const mod = await import("./part-BTXPERRT.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2997,9 +3042,18 @@ var levelOptions = () => [
   { id: "pro", label: t("ai.levelPro") }
 ];
 var kindLabel = (eq) => eq.kind === "plates" ? t("equip.kindPlates") : eq.kind === "weight" ? t("equip.kindWeight") : t("equip.kindBody");
-var emptyForm = () => ({ goal: "muscle", days: 3, level: "some", notes: "" });
+var emptyForm = () => ({ goal: "muscle", days: 3, level: "some", intensity: "mid", notes: "" });
+var SETS = { easy: 3, mid: 5, hard: 8 };
+var intensityOptions2 = () => INTENSITIES.map((id) => ({
+  id,
+  label: t("pl.int" + id) + " \xB7 " + t("ai.setsEach", { n: SETS[id] })
+}));
 function formFields(form3) {
-  return field(t("ai.goal"), selectIn("f-goal", goalOptions(), form3.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form3.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form3.level)) + field(t("ai.notes"), textIn("f-notes", form3.notes));
+  return field(
+    t("pl.intensity"),
+    selectIn("f-int", intensityOptions2(), form3.intensity || "mid"),
+    t("ai.intensitySub")
+  ) + field(t("ai.goal"), selectIn("f-goal", goalOptions(), form3.goal)) + field(t("ai.days"), '<input class="in" id="f-days" type="number" min="1" max="7" value="' + form3.days + '">') + field(t("ai.level"), selectIn("f-level", levelOptions(), form3.level)) + field(t("ai.notes"), textIn("f-notes", form3.notes));
 }
 function readForm(form3) {
   if (!byId("f-goal")) return form3;
@@ -3007,6 +3061,7 @@ function readForm(form3) {
     goal: byId("f-goal").value,
     days: parseInt(byId("f-days").value, 10) || 3,
     level: byId("f-level").value,
+    intensity: byId("f-int") ? byId("f-int").value : form3.intensity || "mid",
     notes: val("f-notes")
   };
 }
@@ -3014,10 +3069,13 @@ function equipListHtml() {
   return '<h3 class="sec">' + esc(t("ai.equipUsed")) + '</h3><ul class="plain">' + S.equipment.map((e) => "<li>" + esc(nameOf(e)) + ' <span class="lst-s">\u2014 ' + esc(kindLabel(e)) + "</span></li>").join("") + "</ul>";
 }
 function askOptions(form3) {
+  const stufe = INTENSITIES.includes(form3.intensity) ? form3.intensity : "mid";
   return {
     goal: goalOptions().find((o) => o.id === form3.goal).label,
     level: levelOptions().find((o) => o.id === form3.level).label,
     days: form3.days,
+    intensity: stufe,
+    sets: SETS[stufe],
     notes: form3.notes,
     equipment: S.equipment.map((e) => ({ id: e.id, name: nameOf(e), kindLabel: kindLabel(e) }))
   };
@@ -3055,7 +3113,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-EGEEHXYW.js");
+      const mod = await import("./part-BTXPERRT.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -3079,7 +3137,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
       rerender6();
     });
   }
-  on("#f-goal, #f-days, #f-level, #f-notes", () => {
+  on("#f-int, #f-goal, #f-days, #f-level, #f-notes", () => {
     form = readForm(form);
   }, "change");
 }
@@ -3225,7 +3283,7 @@ function render7(mount2, head2, backBar3, goBack) {
       rerender7();
     });
   }
-  on("#f-goal, #f-days, #f-level, #f-notes", () => {
+  on("#f-int, #f-goal, #f-days, #f-level, #f-notes", () => {
     form2 = readForm(form2);
     rerender7();
   }, "change");
