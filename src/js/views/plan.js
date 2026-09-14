@@ -1,6 +1,6 @@
 import * as st from '../state.js';
 import { t, weekdayShort } from '../i18n.js';
-import { esc, on, byId, haptic, dialog, field } from '../ui.js';
+import { esc, on, byId, haptic, toast, dialog, field } from '../ui.js';
 import * as rest from '../rest.js';
 import { openSets, performanceText } from './sets.js';
 
@@ -17,6 +17,14 @@ function weekStrip() {
          (done ? esc(p ? p.short : '·') : '·') + '</div></div>';
   }
   return '<div class="tp-week">' + h + '</div>';
+}
+
+// Beschriftung des Stufenknopfes: Stufe und was sie an Sätzen bedeutet.
+// Nur das Wort: die Satzzahl steht ohnehin in jeder Zeile, und sie stimmt erst
+// nach dem Umstellen mit der Stufe überein.
+function stufenText(plan) {
+  const stufe = st.intensityOf(plan);
+  return stufe ? t('pl.int' + stufe) : t('plan.intOff');
 }
 
 // Nach der Einheit: wie lange Pause bis zur nächsten.
@@ -116,9 +124,11 @@ export function render(head, mount) {
       '<div class="tp-title"><div class="big">' + esc(plan.short || '') + '</div>' +
         '<div><div class="nm">' + esc(st.nameOf(plan)) + '</div>' +
         '<div class="fo">' + esc(st.focusOf(plan)) +
-          (st.intensityOf(plan) ? ' · ' + esc(t('pl.int' + st.intensityOf(plan))) : '') +
           (dauer ? ' · ' + esc(e.done ? t('dur.minutes', { n: dauer }) : t('dur.running', { n: dauer })) : '') +
-        '</div></div></div>' +
+        '</div></div>' +
+        '<button class="mini int" id="int" title="' + esc(t('plan.intSwitch')) + '">' +
+          esc(stufenText(plan)) + '</button>' +
+      '</div>' +
       rows +
       '<div class="tp-key">' +
         '<span><i class="dot g"></i>' + esc(t('plan.light')) + '</span>' +
@@ -139,6 +149,21 @@ export function render(head, mount) {
     '<div class="tp-note">' + esc(t('plan.note')) + '</div>';
 
   byId('nt').addEventListener('click', () => st.toggleNight());
+
+  // Eine Stufe weiter: leicht → mittel → schwer → leicht. Die Sätze je Übung
+  // ziehen mit; wer eigene Satzzahlen hatte, holt sie mit Rückgängig zurück.
+  byId('int').addEventListener('click', () => {
+    const naechste = st.nextIntensity(st.intensityOf(plan));
+    const snap = st.setIntensity(plan.id, naechste);
+    haptic('light');
+    toast(t('plan.intNow', {
+      label: t('pl.int' + naechste),
+      n: st.SETS_FOR[naechste]
+    }), false, {
+      label: t('undo.action'),
+      run: () => { st.restoreIntensity(snap); toast(t('undo.back')); }
+    });
+  });
   byId('fin').addEventListener('click', () => {
     haptic('medium');
     rest.stop();

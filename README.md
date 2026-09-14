@@ -42,6 +42,9 @@ installierbare APK.
     damit auf der Startseite (Chat) und unter Pläne (Plan erstellen lassen).
     Ohne eigenen Zugang geht es über *Auftrag zum Kopieren*: Text in ein
     beliebiges KI-Chatfenster einfügen, Antwort zurück in die App.
+  - **Intensität im Training**: kleiner Knopf am Plan, der zwischen leicht,
+    mittel und schwer wechselt und die Sätze je Übung mitzieht (3 / 5 / 8).
+    Rückgängig stellt eigene Satzzahlen wieder her.
   - **Erholung**: Nach einer Einheit zeigt die App, wie viele Tage Pause
     sinnvoll sind (leicht 1, mittel 1–2, schwer 2–3 Tage — je nach Intensität
     des Plans), auf der Startseite und im Training nach dem Abschließen.

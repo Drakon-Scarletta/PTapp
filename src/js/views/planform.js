@@ -24,8 +24,9 @@ export const kindLabel = eq => eq.kind === 'plates' ? t('equip.kindPlates')
 export const emptyForm = () => ({ goal: 'muscle', days: 3, level: 'some', intensity: 'mid', notes: '' });
 
 // Wie hart die Einheiten ausfallen sollen - das entscheidet zugleich, wie viele
-// Sätze je Übung im Plan stehen.
-export const SETS = { easy: 3, mid: 5, hard: 8 };
+// Sätze je Übung im Plan stehen. Die Tabelle steht im Zustand, damit der Knopf
+// im Training dieselbe benutzt.
+export const SETS = st.SETS_FOR;
 
 export const intensityOptions = () => st.INTENSITIES.map(id => ({
   id,

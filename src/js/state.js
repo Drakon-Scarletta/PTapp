@@ -90,10 +90,46 @@ export function sideLabel(side) {
 // beim eingestellten Wert der Pausen-Uhr.
 export const INTENSITIES = ['easy', 'mid', 'hard'];
 const PAUSEN = { easy: 45, mid: 90, hard: 180 };
+// Wie viele Sätze je Übung zu einer Stufe gehören.
+export const SETS_FOR = { easy: 3, mid: 5, hard: 8 };
 
 export function intensityOf(plan) {
   return plan && INTENSITIES.includes(plan.intensity) ? plan.intensity : '';
 }
+// Die nächste Stufe im Kreis - ohne Angabe geht es bei leicht los.
+export function nextIntensity(stufe) {
+  const i = INTENSITIES.indexOf(stufe);
+  return INTENSITIES[(i + 1) % INTENSITIES.length];
+}
+
+// Stufe umstellen und die Sätze je Übung mitziehen. Gibt einen Schnappschuss
+// zurück, damit eigene Satzzahlen nicht unwiederbringlich verloren gehen.
+export function setIntensity(id, stufe) {
+  const p = planOf(id);
+  if (!p) return null;
+  const snap = {
+    plan: id,
+    intensity: p.intensity,
+    items: p.items.map(i => ({ ex: i.ex, sets: i.sets }))
+  };
+  p.intensity = INTENSITIES.includes(stufe) ? stufe : undefined;
+  const n = SETS_FOR[p.intensity];
+  if (n) p.items.forEach(i => { i.sets = n; });
+  persist();
+  return snap;
+}
+
+export function restoreIntensity(snap) {
+  const p = snap && planOf(snap.plan);
+  if (!p) return;
+  p.intensity = snap.intensity;
+  snap.items.forEach(alt => {
+    const i = p.items.find(x => x.ex === alt.ex);
+    if (i) i.sets = alt.sets;
+  });
+  persist();
+}
+
 export function restForPlan(plan) {
   const stufe = intensityOf(plan);
   return stufe ? PAUSEN[stufe] : 0;

@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-VDFPMXWI.js";
+} from "./part-OR2YK2AJ.js";
 import {
   Directory,
   Encoding
@@ -198,7 +198,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "3.0";
+var APP_VERSION = "3.1";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -502,8 +502,39 @@ function sideLabel(side) {
 }
 var INTENSITIES = ["easy", "mid", "hard"];
 var PAUSEN = { easy: 45, mid: 90, hard: 180 };
+var SETS_FOR = { easy: 3, mid: 5, hard: 8 };
 function intensityOf(plan) {
   return plan && INTENSITIES.includes(plan.intensity) ? plan.intensity : "";
+}
+function nextIntensity(stufe) {
+  const i = INTENSITIES.indexOf(stufe);
+  return INTENSITIES[(i + 1) % INTENSITIES.length];
+}
+function setIntensity(id, stufe) {
+  const p = planOf(id);
+  if (!p) return null;
+  const snap = {
+    plan: id,
+    intensity: p.intensity,
+    items: p.items.map((i) => ({ ex: i.ex, sets: i.sets }))
+  };
+  p.intensity = INTENSITIES.includes(stufe) ? stufe : void 0;
+  const n = SETS_FOR[p.intensity];
+  if (n) p.items.forEach((i) => {
+    i.sets = n;
+  });
+  persist();
+  return snap;
+}
+function restoreIntensity(snap) {
+  const p = snap && planOf(snap.plan);
+  if (!p) return;
+  p.intensity = snap.intensity;
+  snap.items.forEach((alt) => {
+    const i = p.items.find((x) => x.ex === alt.ex);
+    if (i) i.sets = alt.sets;
+  });
+  persist();
 }
 function restForPlan(plan) {
   const stufe = intensityOf(plan);
@@ -2314,7 +2345,7 @@ async function send() {
   busy = true;
   await addChat("me", text2);
   try {
-    const mod = await import("./part-BTXPERRT.js");
+    const mod = await import("./part-SC7OD2OI.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2450,6 +2481,10 @@ function weekStrip() {
   }
   return '<div class="tp-week">' + h + "</div>";
 }
+function stufenText(plan) {
+  const stufe = intensityOf(plan);
+  return stufe ? t("pl.int" + stufe) : t("plan.intOff");
+}
 function erholungText(plan) {
   const [von, bis] = recoveryFor(plan);
   return von === bis ? t("rec.after1", { n: von }) : t("rec.after", { von, bis });
@@ -2483,8 +2518,23 @@ function render2(head2, mount2) {
   const pick = S.plans.map((p) => '<button data-pick="' + p.id + '" class="' + (p.id === planId ? "sel" : "") + (p.id === sug && p.id !== planId ? " sug" : "") + '"><span class="k">' + esc(p.short || "?") + "</span>" + esc(nameOf(p)) + "</button>").join("");
   const rows = plan.items.length ? plan.items.map((i) => exerciseRow(i, e)).join("") : '<div class="tp-ex"><div></div><div class="rp">' + esc(t("plan.emptyPlan")) + "</div><div></div></div>";
   const dauer = e.done ? durationMinutes(e) : e.start ? Math.max(1, Math.round((Date.now() - e.start) / 6e4)) : null;
-  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (intensityOf(plan) ? " \xB7 " + esc(t("pl.int" + intensityOf(plan))) : "") + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + "</button>" + (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + "</p>" : "") + '</div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
+  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + '</div></div><button class="mini int" id="int" title="' + esc(t("plan.intSwitch")) + '">' + esc(stufenText(plan)) + "</button></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + "</button>" + (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + "</p>" : "") + '</div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
   byId("nt").addEventListener("click", () => toggleNight());
+  byId("int").addEventListener("click", () => {
+    const naechste = nextIntensity(intensityOf(plan));
+    const snap = setIntensity(plan.id, naechste);
+    haptic("light");
+    toast(t("plan.intNow", {
+      label: t("pl.int" + naechste),
+      n: SETS_FOR[naechste]
+    }), false, {
+      label: t("undo.action"),
+      run: () => {
+        restoreIntensity(snap);
+        toast(t("undo.back"));
+      }
+    });
+  });
   byId("fin").addEventListener("click", () => {
     haptic("medium");
     stop();
@@ -2767,7 +2817,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-BTXPERRT.js");
+    const mod = await import("./part-SC7OD2OI.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -3043,7 +3093,7 @@ var levelOptions = () => [
 ];
 var kindLabel = (eq) => eq.kind === "plates" ? t("equip.kindPlates") : eq.kind === "weight" ? t("equip.kindWeight") : t("equip.kindBody");
 var emptyForm = () => ({ goal: "muscle", days: 3, level: "some", intensity: "mid", notes: "" });
-var SETS = { easy: 3, mid: 5, hard: 8 };
+var SETS = SETS_FOR;
 var intensityOptions2 = () => INTENSITIES.map((id) => ({
   id,
   label: t("pl.int" + id) + " \xB7 " + t("ai.setsEach", { n: SETS[id] })
@@ -3113,7 +3163,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-BTXPERRT.js");
+      const mod = await import("./part-SC7OD2OI.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),

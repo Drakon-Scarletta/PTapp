@@ -280,6 +280,13 @@ html, body {
 
 /* Empfohlene Erholung: im Training unter dem Abschluss, auf der Startseite
    als eigene Zeile. */
+/* Stufenknopf im Trainingskopf: sitzt rechts neben Namen und Schwerpunkt. */
+.tp-title { align-items: center; }
+.mini.int {
+  margin-left: auto; flex: 0 0 auto;
+  background: transparent; color: #6B6353; border-color: #C3BBA8;
+}
+
 .tp-rec { font-size: 13px; color: #6B6353; margin: 10px 0 0; }
 .rec {
   font-size: 13px; color: var(--decal-2); margin: 8px 0 0;

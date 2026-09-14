@@ -1,4 +1,8 @@
 {
+  "3.1": {
+    "de": "Im Training sitzt oben rechts am Plan ein kleiner Knopf für die Intensität: leicht → mittel → schwer. Er stellt die Sätze je Übung mit um (3 / 5 / 8) und damit auch Pausenlänge und empfohlene Erholung. Rückgängig holt eigene Satzzahlen zurück.",
+    "en": "In training there is a small intensity button at the top right of the plan: light → medium → hard. It switches the sets per exercise along (3 / 5 / 8), and with them the rest length and the recommended recovery. Undo brings custom set counts back."
+  },
   "3.0": {
     "de": "Erholung: Die Startseite sagt, wie viele Tage Pause nach der letzten Einheit sinnvoll sind, und nach dem Abschließen steht es auch im Training. Die Ampel für leicht/mittel/schwer funktioniert jetzt ohne eingetragene Grenzen — gemessen an der eigenen Bestleistung. Beim Plan von der KI wählt man oben die Intensität, die über die Sätze je Übung entscheidet (3 / 5 / 8).",
     "en": "Recovery: the start screen says how many days off make sense after the last session, and it also shows in training once you finish. The light/medium/hard dot now works without configured limits — measured against your own best. AI plan generation has an intensity choice at the top that decides the sets per exercise (3 / 5 / 8)."
