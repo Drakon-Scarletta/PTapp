@@ -29,7 +29,7 @@ export const SEED_EXERCISES = [
 
 export const SEED_PLANS = [
   {
-    id: 'A', short: 'A', key: 'planA', focusKey: 'focusA',
+    id: 'A', short: 'A', key: 'planA', focusKey: 'focusA', intensity: 'mid',
     items: [
       { ex: 'chestpress', reps: '3 × 8–12', sets: 3 },
       { ex: 'butterfly', reps: '3 × 10–15', sets: 3 },
@@ -41,7 +41,7 @@ export const SEED_PLANS = [
     ]
   },
   {
-    id: 'B', short: 'B', key: 'planB', focusKey: 'focusB',
+    id: 'B', short: 'B', key: 'planB', focusKey: 'focusB', intensity: 'mid',
     items: [
       { ex: 'lat', reps: '3 × 8–12', sets: 3 },
       { ex: 'lowrow', reps: '3 × 8–12', sets: 3 },
@@ -53,7 +53,7 @@ export const SEED_PLANS = [
     ]
   },
   {
-    id: 'C', short: 'C', key: 'planC', focusKey: 'focusC', night: true,
+    id: 'C', short: 'C', key: 'planC', focusKey: 'focusC', night: true, intensity: 'easy',
     items: [
       { ex: 'lat', reps: '2–3 × 10–12', sets: 3 },
       { ex: 'chestpress', reps: '2–3 × 10–12', sets: 3 },

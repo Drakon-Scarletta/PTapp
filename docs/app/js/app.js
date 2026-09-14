@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-U45ZNDYC.js";
+} from "./part-H6H5WROY.js";
 import {
   Directory,
   Encoding
@@ -80,6 +80,7 @@ var SEED_PLANS = [
     short: "A",
     key: "planA",
     focusKey: "focusA",
+    intensity: "mid",
     items: [
       { ex: "chestpress", reps: "3 \xD7 8\u201312", sets: 3 },
       { ex: "butterfly", reps: "3 \xD7 10\u201315", sets: 3 },
@@ -95,6 +96,7 @@ var SEED_PLANS = [
     short: "B",
     key: "planB",
     focusKey: "focusB",
+    intensity: "mid",
     items: [
       { ex: "lat", reps: "3 \xD7 8\u201312", sets: 3 },
       { ex: "lowrow", reps: "3 \xD7 8\u201312", sets: 3 },
@@ -111,6 +113,7 @@ var SEED_PLANS = [
     key: "planC",
     focusKey: "focusC",
     night: true,
+    intensity: "easy",
     items: [
       { ex: "lat", reps: "2\u20133 \xD7 10\u201312", sets: 3 },
       { ex: "chestpress", reps: "2\u20133 \xD7 10\u201312", sets: 3 },
@@ -195,7 +198,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.7";
+var APP_VERSION = "2.8";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -496,6 +499,15 @@ function sideLabel(side) {
   if (side === "arm") return t("plan.perArm");
   if (side === "alt") return t("plan.alt");
   return "";
+}
+var INTENSITIES = ["easy", "mid", "hard"];
+var PAUSEN = { easy: 45, mid: 90, hard: 180 };
+function intensityOf(plan) {
+  return plan && INTENSITIES.includes(plan.intensity) ? plan.intensity : "";
+}
+function restForPlan(plan) {
+  const stufe = intensityOf(plan);
+  return stufe ? PAUSEN[stufe] : 0;
 }
 function visibleExercises() {
   return S.exercises.filter((e) => !e.hidden);
@@ -1032,6 +1044,7 @@ function applyGenerated(result3) {
       short: nextShort(),
       name: g.name || t("common.new"),
       focus: g.focus || "",
+      intensity: INTENSITIES.includes(g.intensity) ? g.intensity : void 0,
       night: !!g.night,
       src: "ai",
       items
@@ -1677,6 +1690,14 @@ function muscleOf(key) {
   const c = EX_CATEGORIES.find((x) => x.items.some((i) => i.key === key));
   return c ? c.id : "";
 }
+function intensityOptions(withNone) {
+  const alle = INTENSITIES.map((id) => ({ id, label: t("pl.int" + id) }));
+  return withNone ? [{ id: "", label: t("pl.intNone") }].concat(alle) : alle;
+}
+function intensityLabel(plan) {
+  const stufe = intensityOf(plan);
+  return stufe ? t("pl.int" + stufe) : "";
+}
 function sideOptions() {
   return [
     { id: "", label: "\u2014" },
@@ -2059,6 +2080,10 @@ function exerciseForm(mount2, head2, goHub) {
     toast(t(ziel === "new" ? "common.added" : "common.saved", { name }));
   });
 }
+function intensityHint(stufe) {
+  const sek = restForPlan({ intensity: stufe });
+  return sek ? t("pl.intensityRest", { label: t("pl.int" + stufe), sec: sek }) : t("pl.intensitySub", { sec: S.prefs.restSec });
+}
 function exerciseStats(exId) {
   const best = personalRecord(exId);
   const verlauf2 = exerciseHistory(exId, 12);
@@ -2070,7 +2095,7 @@ function exerciseStats(exId) {
 }
 function plans(mount2, head2, goHub, openPlanner) {
   if (editing) return planForm(mount2, head2, goHub);
-  const rows = S.plans.map((p) => '<div class="lst"><div class="lst-m"><div class="lst-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + aiMark(p) + '</div><div class="lst-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + p.items.length + '</div></div><div class="row-act"><button class="mini" data-up="' + p.id + '" aria-label="' + esc(t("plan.moveUp")) + '">\u2191</button><button class="mini" data-down="' + p.id + '" aria-label="' + esc(t("plan.moveDown")) + '">\u2193</button><button class="mini" data-copy="' + p.id + '">' + esc(t("plan.copy")) + '</button><button class="mini" data-edit="' + p.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + p.id + '">' + esc(t("common.delete")) + "</button></div></div>").join("");
+  const rows = S.plans.map((p) => '<div class="lst"><div class="lst-m"><div class="lst-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + aiMark(p) + '</div><div class="lst-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + p.items.length + (intensityLabel(p) ? " \xB7 " + esc(intensityLabel(p)) : "") + '</div></div><div class="row-act"><button class="mini" data-up="' + p.id + '" aria-label="' + esc(t("plan.moveUp")) + '">\u2191</button><button class="mini" data-down="' + p.id + '" aria-label="' + esc(t("plan.moveDown")) + '">\u2193</button><button class="mini" data-copy="' + p.id + '">' + esc(t("plan.copy")) + '</button><button class="mini" data-edit="' + p.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + p.id + '">' + esc(t("common.delete")) + "</button></div></div>").join("");
   const verbunden = !!(S.ai.keys[S.ai.provider] || "").trim();
   mount2.innerHTML = head2() + backBar(t("pl.title")) + '<p class="intro">' + esc(t("pl.intro")) + "</p>" + rows + (S.plans.some((p) => p.src === "ai") ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + '<button class="set-btn" id="add">+ ' + esc(t("pl.add")) + '</button><button class="nav-row" id="ai"><span class="nav-n">\u2726 ' + esc(t("pl.aiCreate")) + '</span><span class="nav-s">' + esc(verbunden ? t("pl.aiCreateSub") : t("pl.aiNeedsKey")) + '</span><span class="nav-c">\u203A</span></button>';
   wireBack(goHub);
@@ -2084,6 +2109,7 @@ function plans(mount2, head2, goHub, openPlanner) {
   byId("add").addEventListener("click", () => {
     const p = addPlan({ name: t("common.new"), focus: "" });
     editing = p.id;
+    rerender2();
   });
   on("[data-copy]", (ev) => {
     duplicatePlan(ev.currentTarget.dataset.copy);
@@ -2113,8 +2139,11 @@ function planForm(mount2, head2, goHub) {
     return '<div class="pi"><div class="pi-n">' + esc(nameOf(ex)) + '</div><div class="pi-f"><input class="in tiny" data-reps="' + i.ex + '" value="' + esc(i.reps || "") + '" aria-label="' + esc(t("pl.reps")) + '"><input class="in tiny num" type="number" min="1" max="10" data-sets="' + i.ex + '" value="' + (i.sets || 3) + '" aria-label="' + esc(t("pl.setCount")) + '"><select class="in tiny" data-side="' + i.ex + '" aria-label="' + esc(t("plan.side")) + '">' + sideOptions().map((o) => '<option value="' + o.id + '"' + (o.id === (i.side || "") ? " selected" : "") + ">" + esc(o.label) + "</option>").join("") + '</select></div><div class="row-act"><button class="mini" data-up="' + i.ex + '" aria-label="' + esc(t("pl.up")) + '">\u2191</button><button class="mini" data-down="' + i.ex + '" aria-label="' + esc(t("pl.down")) + '">\u2193</button><button class="mini warn" data-rm="' + i.ex + '">\xD7</button></div></div>';
   }).join("");
   const free = visibleExercises().filter((e) => !p.items.some((i) => i.ex === e.id));
-  mount2.innerHTML = head2() + backBar(nameOf(p)) + field(t("pl.name"), textIn("f-name", nameOf(p))) + field(t("pl.short"), textIn("f-short", p.short || ""), t("pl.shortSub")) + field(t("pl.focus"), textIn("f-focus", focusOf(p))) + checkIn("f-night", t("pl.night"), !!p.night) + '<p class="fld-h">' + esc(t("pl.nightSub")) + '</p><button class="set-btn" id="save">' + esc(t("common.save")) + '</button><h3 class="sec">' + esc(t("pl.items")) + "</h3>" + (items || '<p class="intro">' + esc(t("pl.empty")) + "</p>") + (free.length ? '<div class="add-row">' + selectIn("f-add", free.map((e) => ({ id: e.id, label: nameOf(e) })), free[0].id) + '<button class="mini" id="additem">+ ' + esc(t("pl.addItem")) + "</button></div>" : '<p class="intro">' + esc(visibleExercises().length ? "" : t("pl.noExercises")) + "</p>");
+  mount2.innerHTML = head2() + backBar(nameOf(p)) + field(t("pl.name"), textIn("f-name", nameOf(p))) + field(t("pl.short"), textIn("f-short", p.short || ""), t("pl.shortSub")) + field(t("pl.focus"), textIn("f-focus", focusOf(p))) + field(t("pl.intensity"), selectIn("f-int", intensityOptions(true), intensityOf(p))) + '<p class="fld-h" id="int-h">' + esc(intensityHint(intensityOf(p))) + "</p>" + checkIn("f-night", t("pl.night"), !!p.night) + '<p class="fld-h">' + esc(t("pl.nightSub")) + '</p><button class="set-btn" id="save">' + esc(t("common.save")) + '</button><h3 class="sec">' + esc(t("pl.items")) + "</h3>" + (items || '<p class="intro">' + esc(t("pl.empty")) + "</p>") + (free.length ? '<div class="add-row">' + selectIn("f-add", free.map((e) => ({ id: e.id, label: nameOf(e) })), free[0].id) + '<button class="mini" id="additem">+ ' + esc(t("pl.addItem")) + "</button></div>" : '<p class="intro">' + esc(visibleExercises().length ? "" : t("pl.noExercises")) + "</p>");
   wireBack(rerender2);
+  byId("f-int").addEventListener("change", (ev) => {
+    byId("int-h").textContent = intensityHint(ev.target.value);
+  });
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
     if (!name) {
@@ -2125,6 +2154,7 @@ function planForm(mount2, head2, goHub) {
       name,
       short: val("f-short").slice(0, 2) || p.short,
       focus: val("f-focus"),
+      intensity: byId("f-int").value || void 0,
       night: byId("f-night").checked
     };
     updatePlan(p.id, daten);
@@ -2166,6 +2196,10 @@ function stats() {
   const datum2 = letzte ? new Date(letzte.date.split("-")[0], letzte.date.split("-")[1] - 1, letzte.date.split("-")[2]).toLocaleDateString(locale(), { day: "numeric", month: "long" }) : null;
   return '<h3 class="sec first">' + esc(t("home.stats")) + '</h3><div class="stat-row"><div class="stat"><b>' + done + "/" + ziel + "</b>" + esc(t("home.thisWeek")) + '</div><div class="stat"><b>' + weekStreak() + "</b>" + esc(t("home.streak")) + '</div><div class="stat"><b>' + totalSessions() + "</b>" + esc(t("home.total")) + '</div></div><div class="bars" aria-hidden="true">' + balken + '</div><p class="intro">' + esc(t("home.lastWeeks")) + " \xB7 " + esc(letzte ? t("home.last", { plan: nameOf(letzte.plan), date: datum2 }) : t("home.never")) + "</p>";
 }
+function restInfo() {
+  const zeile = (k, wert) => '<div class="tip"><span>' + esc(t(k)) + "</span><b>" + esc(wert) + "</b></div>";
+  return '<details class="help"><summary>' + esc(t("home.restInfo")) + "</summary><p>" + esc(t("home.restIntro")) + "</p>" + zeile("home.restHard", t("home.restHardT")) + zeile("home.restMid", t("home.restMidT")) + zeile("home.restEasy", t("home.restEasyT")) + '<p class="fld-h">' + esc(t("home.restWhere", { sec: S.prefs.restSec })) + "</p></details>";
+}
 function muscles() {
   const zaehler = /* @__PURE__ */ new Map();
   Object.values(S.log).forEach((e) => {
@@ -2187,7 +2221,7 @@ function plans2() {
   if (!S.plans.length) return '<p class="intro">' + esc(t("home.noPlans")) + "</p>";
   const sug = suggested();
   const counts = perPlanCounts();
-  return S.plans.map((p) => '<button class="nav-row' + (p.id === sug ? " due" : "") + '" data-start="' + esc(p.id) + '"><span class="nav-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + (p.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "") + '</span><span class="nav-s">' + esc(focusOf(p) || "\u2014") + " \xB7 " + (counts.get(p.id) || 0) + '\xD7</span><span class="nav-c">\u203A</span></button>').join("");
+  return S.plans.map((p) => '<button class="nav-row' + (p.id === sug ? " due" : "") + '" data-start="' + esc(p.id) + '"><span class="nav-n"><span class="tag">' + esc(p.short || "?") + "</span> " + esc(nameOf(p)) + (p.src === "ai" ? ' <span class="ai-mark" title="' + esc(t("ex.aiMade")) + '">\u2726</span>' : "") + '</span><span class="nav-s">' + esc(focusOf(p) || "\u2014") + (intensityLabel(p) ? " \xB7 " + esc(intensityLabel(p)) : "") + " \xB7 " + (counts.get(p.id) || 0) + '\xD7</span><span class="nav-c">\u203A</span></button>').join("");
 }
 function coach() {
   if (!connected()) {
@@ -2216,7 +2250,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-DC4CR6AK.js");
+    const mod = await import("./part-L4N6L24L.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2233,7 +2267,7 @@ async function send() {
   }
 }
 function render(head2, mount2) {
-  mount2.innerHTML = head2() + stats() + muscles() + '<h3 class="sec">' + esc(t("home.pickPlan")) + '</h3><p class="intro">' + esc(t("home.pickPlanSub")) + "</p>" + plans2() + coach();
+  mount2.innerHTML = head2() + stats() + restInfo() + muscles() + '<h3 class="sec">' + esc(t("home.pickPlan")) + '</h3><p class="intro">' + esc(t("home.pickPlanSub")) + "</p>" + plans2() + coach();
   on("[data-start]", (ev) => {
     selectPlan(ev.currentTarget.dataset.start);
     document.dispatchEvent(new CustomEvent("goview", { detail: "plan" }));
@@ -2373,7 +2407,7 @@ function render2(head2, mount2) {
   const pick = S.plans.map((p) => '<button data-pick="' + p.id + '" class="' + (p.id === planId ? "sel" : "") + (p.id === sug && p.id !== planId ? " sug" : "") + '"><span class="k">' + esc(p.short || "?") + "</span>" + esc(nameOf(p)) + "</button>").join("");
   const rows = plan.items.length ? plan.items.map((i) => exerciseRow(i, e)).join("") : '<div class="tp-ex"><div></div><div class="rp">' + esc(t("plan.emptyPlan")) + "</div><div></div></div>";
   const dauer = e.done ? durationMinutes(e) : e.start ? Math.max(1, Math.round((Date.now() - e.start) / 6e4)) : null;
-  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + '</button></div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
+  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (intensityOf(plan) ? " \xB7 " + esc(t("pl.int" + intensityOf(plan))) : "") + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + "</div></div></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + '</button></div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
   byId("nt").addEventListener("click", () => toggleNight());
   byId("fin").addEventListener("click", () => {
     haptic("medium");
@@ -2403,7 +2437,7 @@ function tick(exId) {
   if (fertig3) haptic("light");
   const e = entry();
   if (S.prefs.restOn && setsDone(e, { ex: exId, sets: 99 }) > 0) {
-    start(S.prefs.restSec);
+    start(restForPlan(planOf(activePlan())) || S.prefs.restSec);
   }
 }
 
@@ -2617,7 +2651,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-DC4CR6AK.js");
+    const mod = await import("./part-L4N6L24L.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2919,7 +2953,7 @@ function askOptions(form3) {
 }
 function resultHtml(result3) {
   const neue = (result3.exercises || []).map((e) => "<li>" + esc(e.name) + ' <span class="lst-s">\u2014 ' + esc(nameOf(equipOf(e.equipment))) + "</span></li>").join("");
-  const plaene = (result3.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
+  const plaene = (result3.plans || []).map((p) => '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc((p.name || "?").slice(0, 1)) + '</div><div><div class="nm">' + esc(p.name || "") + '</div><div class="fo">' + esc(p.focus || "") + (p.intensity ? " \xB7 " + esc(t("pl.int" + p.intensity)) : "") + "</div></div></div>" + (p.items || []).map((i) => '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '\xD7</span><span class="dt-n">' + esc(i.exercise) + '</span><span class="dt-w">' + esc(i.reps || "") + "</span></div>").join("") + "</div></div>").join("");
   return '<h3 class="sec">' + esc(t("ai.result")) + "</h3>" + plaene + (neue ? '<p class="intro">' + esc(t("ai.newExercises", { n: (result3.exercises || []).length })) + '</p><ul class="plain">' + neue + "</ul>" : "");
 }
 
@@ -2950,7 +2984,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-DC4CR6AK.js");
+      const mod = await import("./part-L4N6L24L.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -3045,6 +3079,7 @@ function pruefe(roh) {
   const plans3 = (Array.isArray(roh.plans) ? roh.plans : []).map((p) => ({
     name: p && p.name ? String(p.name) : "",
     focus: p && p.focus ? String(p.focus) : "",
+    intensity: p && INTENSITIES.includes(p.intensity) ? p.intensity : void 0,
     night: !!(p && p.night),
     items: (p && Array.isArray(p.items) ? p.items : []).filter((i) => i && i.exercise).map((i) => ({
       exercise: String(i.exercise),

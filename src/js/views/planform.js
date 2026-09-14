@@ -67,7 +67,8 @@ export function resultHtml(result) {
     '<div class="tp-card"><div class="tp-card-in">' +
     '<div class="tp-title"><div class="big">' + esc((p.name || '?').slice(0, 1)) + '</div>' +
     '<div><div class="nm">' + esc(p.name || '') + '</div>' +
-    '<div class="fo">' + esc(p.focus || '') + '</div></div></div>' +
+    '<div class="fo">' + esc(p.focus || '') +
+      (p.intensity ? ' · ' + esc(t('pl.int' + p.intensity)) : '') + '</div></div></div>' +
     (p.items || []).map(i =>
       '<div class="dt-row"><span class="dt-m">' + (i.sets || 3) + '×</span>' +
       '<span class="dt-n">' + esc(i.exercise) + '</span>' +

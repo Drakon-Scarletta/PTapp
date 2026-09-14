@@ -452,6 +452,15 @@ select.in { appearance: none; background-image: none; }
 }
 .help p { font-size: 13.5px; color: #C9C2B1; margin: 0; line-height: 1.5; }
 
+/* Kurze Gegenüberstellung in einem Hinweis: links wofür, rechts wie lange. */
+.help .tip {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  font-size: 13.5px; color: #C9C2B1;
+  padding: 7px 0; border-bottom: 1px solid var(--timber-line);
+}
+.help .tip:last-of-type { border-bottom: 0; }
+.help .tip b { color: var(--signal); white-space: nowrap; }
+
 /* ---- Geräte-Katalog ---- */
 #f-search { margin-bottom: 10px; }
 .cat { margin-bottom: 16px; }

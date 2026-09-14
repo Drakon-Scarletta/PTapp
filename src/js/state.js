@@ -85,6 +85,20 @@ export function sideLabel(side) {
   return '';
 }
 
+// ---- Intensität eines Plans ----
+// Drei Stufen, dazu die Pausenlänge, die dazu passt. Ohne Angabe bleibt es
+// beim eingestellten Wert der Pausen-Uhr.
+export const INTENSITIES = ['easy', 'mid', 'hard'];
+const PAUSEN = { easy: 45, mid: 90, hard: 180 };
+
+export function intensityOf(plan) {
+  return plan && INTENSITIES.includes(plan.intensity) ? plan.intensity : '';
+}
+export function restForPlan(plan) {
+  const stufe = intensityOf(plan);
+  return stufe ? PAUSEN[stufe] : 0;
+}
+
 export function visibleExercises() { return S.exercises.filter(e => !e.hidden); }
 export function rotatingPlans() { return S.plans.filter(p => !p.night); }
 export function nightPlans() { return S.plans.filter(p => p.night); }
@@ -663,6 +677,7 @@ export function applyGenerated(result) {
       short: nextShort(),
       name: g.name || t('common.new'),
       focus: g.focus || '',
+      intensity: INTENSITIES.includes(g.intensity) ? g.intensity : undefined,
       night: !!g.night,
       src: 'ai',
       items

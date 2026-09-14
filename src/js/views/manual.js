@@ -82,6 +82,7 @@ function pruefe(roh) {
     .map(p => ({
       name: p && p.name ? String(p.name) : '',
       focus: p && p.focus ? String(p.focus) : '',
+      intensity: p && st.INTENSITIES.includes(p.intensity) ? p.intensity : undefined,
       night: !!(p && p.night),
       items: (p && Array.isArray(p.items) ? p.items : [])
         .filter(i => i && i.exercise)

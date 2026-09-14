@@ -33,13 +33,15 @@ installierbare APK.
     anhaken und in einem Zug entfernen — ein Rückgängig holt die ganze
     Auswahl zurück.
   - **Pläne** selbst zusammenstellen: Übungen, Sätze, Wiederholungen,
-    Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender —
-    oder von der KI erstellen lassen.
+    Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender,
+    Intensität (leicht / mittel / schwer) — oder von der KI erstellen lassen.
   - **KI**: Anbieter, Zugang und Modell — reine Verwaltung. Gearbeitet wird
     damit auf der Startseite (Chat) und unter Pläne (Plan erstellen lassen).
     Ohne eigenen Zugang geht es über *Auftrag zum Kopieren*: Text in ein
     beliebiges KI-Chatfenster einfügen, Antwort zurück in die App.
-  - **Pausen-Uhr**: an/aus und Länge.
+  - **Pausen-Uhr**: an/aus und Länge. Hat der gewählte Plan eine Intensität,
+    gilt deren Pause (leicht 45 s, mittel 90 s, schwer 180 s); auf der
+    Startseite steht in einer Zeile, was üblich ist.
   - **Körpergewicht**: ein Wert je Tag, mit Verlauf.
   - **Erinnerungen**: an gewählten Wochentagen zur gewählten Zeit (nur App).
   - **Daten**: sichern, wiederherstellen, als CSV ausgeben, alles löschen.

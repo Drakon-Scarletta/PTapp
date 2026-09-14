@@ -3,7 +3,7 @@ import * as st from '../state.js';
 import { t, locale } from '../i18n.js';
 import { providerOf } from '../ai-meta.js';
 import { showAiError } from './credits.js';
-import { muscleLabel } from './editors.js';
+import { muscleLabel, intensityLabel } from './editors.js';
 import { esc, on, byId, val, toast, confirmBox } from '../ui.js';
 
 const rerender = () => document.dispatchEvent(new CustomEvent('rerender'));
@@ -43,6 +43,20 @@ function stats() {
     '</p>';
 }
 
+// Kurz erklärt, wie lange man zwischen den Sätzen wartet. Steht aufgeklappt
+// nur da, wenn man es wissen will.
+function restInfo() {
+  const zeile = (k, wert) => '<div class="tip"><span>' + esc(t(k)) + '</span>' +
+    '<b>' + esc(wert) + '</b></div>';
+  return '<details class="help"><summary>' + esc(t('home.restInfo')) + '</summary>' +
+    '<p>' + esc(t('home.restIntro')) + '</p>' +
+    zeile('home.restHard', t('home.restHardT')) +
+    zeile('home.restMid', t('home.restMidT')) +
+    zeile('home.restEasy', t('home.restEasyT')) +
+    '<p class="fld-h">' + esc(t('home.restWhere', { sec: st.S.prefs.restSec })) + '</p>' +
+    '</details>';
+}
+
 // Wie oft welche Muskelgruppe drankam - zeigt Schieflagen.
 function muscles() {
   const zaehler = new Map();
@@ -77,7 +91,9 @@ function plans() {
     '<button class="nav-row' + (p.id === sug ? ' due' : '') + '" data-start="' + esc(p.id) + '">' +
       '<span class="nav-n"><span class="tag">' + esc(p.short || '?') + '</span> ' + esc(st.nameOf(p)) +
         (p.src === 'ai' ? ' <span class="ai-mark" title="' + esc(t('ex.aiMade')) + '">✦</span>' : '') + '</span>' +
-      '<span class="nav-s">' + esc(st.focusOf(p) || '—') + ' · ' + (counts.get(p.id) || 0) + '×</span>' +
+      '<span class="nav-s">' + esc(st.focusOf(p) || '—') +
+        (intensityLabel(p) ? ' · ' + esc(intensityLabel(p)) : '') +
+        ' · ' + (counts.get(p.id) || 0) + '×</span>' +
       '<span class="nav-c">›</span></button>').join('');
 }
 
@@ -151,7 +167,7 @@ async function send() {
 }
 
 export function render(head, mount) {
-  mount.innerHTML = head() + stats() + muscles() +
+  mount.innerHTML = head() + stats() + restInfo() + muscles() +
     '<h3 class="sec">' + esc(t('home.pickPlan')) + '</h3>' +
     '<p class="intro">' + esc(t('home.pickPlanSub')) + '</p>' +
     plans() +

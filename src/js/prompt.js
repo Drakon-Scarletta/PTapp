@@ -31,6 +31,11 @@ export function schema(equipIds) {
           properties: {
             name: { type: 'string' },
             focus: { type: 'string' },
+            intensity: {
+              type: 'string',
+              enum: ['easy', 'mid', 'hard'],
+              description: 'How demanding the session is: easy, mid or hard.'
+            },
             night: { type: 'boolean', description: 'True only for a shortened fallback session.' },
             items: {
               type: 'array',
@@ -46,7 +51,7 @@ export function schema(equipIds) {
               }
             }
           },
-          required: ['name', 'focus', 'night', 'items'],
+          required: ['name', 'focus', 'intensity', 'night', 'items'],
           additionalProperties: false
         }
       }
@@ -61,6 +66,7 @@ export const SYSTEM = [
   'Only use the equipment provided; never invent machines, barbells or dumbbells that are not listed.',
   'Every exercise in a plan must appear in the exercises array, with the id of the equipment it is done on.',
   'Keep a session to roughly five to eight exercises and order them from large muscle groups to small.',
+  'Give every plan an intensity: easy for light high-rep work, mid for hypertrophy, hard for heavy low-rep work.',
   'Write exercise names, focus texts and hints in the requested language.'
 ].join(' ');
 

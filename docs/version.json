@@ -1,10 +1,10 @@
 {
-  "versionCode": 18,
-  "versionName": "2.7",
-  "apk": "PTapp-2.7.apk",
-  "size": 6702110,
+  "versionCode": 19,
+  "versionName": "2.8",
+  "apk": "PTapp-2.8.apk",
+  "size": 6703601,
   "notes": {
-    "de": "Der Blick nach einer neuen Fassung passiert jetzt bei jedem Hereinschauen — beim Start und jedes Mal, wenn die App aus dem Hintergrund zurückkommt. Vorher wartete sie nach einem erfolglosen Blick sechs Stunden bis zum nächsten.",
-    "en": "The check for a newer version now happens every time you come back — at start and whenever the app returns from the background. Before, it waited six hours after an unsuccessful look."
+    "de": "Auf der Startseite steht jetzt kurz, wie lange man zwischen den Sätzen pausiert. Pläne haben eine Intensität — leicht, mittel oder schwer —, die zugleich die Pausenlänge für diesen Plan bestimmt.",
+    "en": "The start screen now says briefly how long to rest between sets. Plans have an intensity — light, medium or hard — which also sets the rest length for that plan."
   }
 }

@@ -35,6 +35,17 @@ function muscleOf(key) {
   return c ? c.id : '';
 }
 
+export function intensityOptions(withNone) {
+  const alle = st.INTENSITIES.map(id => ({ id, label: t('pl.int' + id) }));
+  return withNone ? [{ id: '', label: t('pl.intNone') }].concat(alle) : alle;
+}
+
+// Kurzer Zusatz für die Listen: „mittel“, oder nichts ohne Angabe.
+export function intensityLabel(plan) {
+  const stufe = st.intensityOf(plan);
+  return stufe ? t('pl.int' + stufe) : '';
+}
+
 function sideOptions() {
   return [
     { id: '', label: '—' },
@@ -527,6 +538,14 @@ function exerciseForm(mount, head, goHub) {
   });
 }
 
+// Was die Stufe für die Pause zwischen den Sätzen bedeutet.
+function intensityHint(stufe) {
+  const sek = st.restForPlan({ intensity: stufe });
+  return sek
+    ? t('pl.intensityRest', { label: t('pl.int' + stufe), sec: sek })
+    : t('pl.intensitySub', { sec: st.S.prefs.restSec });
+}
+
 // Bestleistung und die letzten Einheiten einer Übung.
 function exerciseStats(exId) {
   const best = st.personalRecord(exId);
@@ -558,7 +577,8 @@ export function plans(mount, head, goHub, openPlanner) {
     '<div class="lst"><div class="lst-m">' +
     '<div class="lst-n"><span class="tag">' + esc(p.short || '?') + '</span> ' +
       esc(st.nameOf(p)) + aiMark(p) + '</div>' +
-    '<div class="lst-s">' + esc(st.focusOf(p) || '—') + ' · ' + p.items.length + '</div></div>' +
+    '<div class="lst-s">' + esc(st.focusOf(p) || '—') + ' · ' + p.items.length +
+      (intensityLabel(p) ? ' · ' + esc(intensityLabel(p)) : '') + '</div></div>' +
     '<div class="row-act">' +
     '<button class="mini" data-up="' + p.id + '" aria-label="' + esc(t('plan.moveUp')) + '">↑</button>' +
     '<button class="mini" data-down="' + p.id + '" aria-label="' + esc(t('plan.moveDown')) + '">↓</button>' +
@@ -586,6 +606,7 @@ export function plans(mount, head, goHub, openPlanner) {
   byId('add').addEventListener('click', () => {
     const p = st.addPlan({ name: t('common.new'), focus: '' });
     editing = p.id;
+    rerender();          // das Anlegen zeichnete die Liste, jetzt das Formular
   });
   on('[data-copy]', ev => {
     st.duplicatePlan(ev.currentTarget.dataset.copy);
@@ -632,6 +653,8 @@ function planForm(mount, head, goHub) {
     field(t('pl.name'), textIn('f-name', st.nameOf(p))) +
     field(t('pl.short'), textIn('f-short', p.short || ''), t('pl.shortSub')) +
     field(t('pl.focus'), textIn('f-focus', st.focusOf(p))) +
+    field(t('pl.intensity'), selectIn('f-int', intensityOptions(true), st.intensityOf(p))) +
+    '<p class="fld-h" id="int-h">' + esc(intensityHint(st.intensityOf(p))) + '</p>' +
     checkIn('f-night', t('pl.night'), !!p.night) +
     '<p class="fld-h">' + esc(t('pl.nightSub')) + '</p>' +
     '<button class="set-btn" id="save">' + esc(t('common.save')) + '</button>' +
@@ -644,6 +667,9 @@ function planForm(mount, head, goHub) {
       : '<p class="intro">' + esc(st.visibleExercises().length ? '' : t('pl.noExercises')) + '</p>');
 
   wireBack(rerender);
+  byId('f-int').addEventListener('change', ev => {
+    byId('int-h').textContent = intensityHint(ev.target.value);
+  });
   byId('save').addEventListener('click', () => {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }
@@ -651,6 +677,7 @@ function planForm(mount, head, goHub) {
       name,
       short: val('f-short').slice(0, 2) || p.short,
       focus: val('f-focus'),
+      intensity: byId('f-int').value || undefined,
       night: byId('f-night').checked
     };
     st.updatePlan(p.id, daten);

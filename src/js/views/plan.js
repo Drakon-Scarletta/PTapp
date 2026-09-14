@@ -108,6 +108,7 @@ export function render(head, mount) {
       '<div class="tp-title"><div class="big">' + esc(plan.short || '') + '</div>' +
         '<div><div class="nm">' + esc(st.nameOf(plan)) + '</div>' +
         '<div class="fo">' + esc(st.focusOf(plan)) +
+          (st.intensityOf(plan) ? ' · ' + esc(t('pl.int' + st.intensityOf(plan))) : '') +
           (dauer ? ' · ' + esc(e.done ? t('dur.minutes', { n: dauer }) : t('dur.running', { n: dauer })) : '') +
         '</div></div></div>' +
       rows +
@@ -157,6 +158,8 @@ function tick(exId) {
   if (fertig) haptic('light');
   const e = st.entry();
   if (st.S.prefs.restOn && st.setsDone(e, { ex: exId, sets: 99 }) > 0) {
-    rest.start(st.S.prefs.restSec);
+    // Hat der Plan eine Intensität, bestimmt sie die Pause; sonst gilt die
+    // eingestellte Dauer aus dem Menü.
+    rest.start(st.restForPlan(st.planOf(st.activePlan())) || st.S.prefs.restSec);
   }
 }

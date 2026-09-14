@@ -25,6 +25,15 @@ var DE = {
   "home.clearChatAsk": "Das ganze Gespr\xE4ch l\xF6schen?",
   "home.costHint": "Jede Frage kostet ein paar Cent vom Guthaben beim Anbieter.",
   "home.you": "Du",
+  "home.restInfo": "Pausen: schwer 2\u20133 min \xB7 mittel 60\u201390 s \xB7 leicht 30\u201360 s",
+  "home.restIntro": "Faustregel: Je schwerer der Satz, desto l\xE4nger die Pause. Zu kurz kostet Kraft im n\xE4chsten Satz, zu lang k\xFChlt aus.",
+  "home.restHard": "Schwer, wenige Wiederholungen",
+  "home.restHardT": "2\u20133 Minuten",
+  "home.restMid": "Mittel, Muskelaufbau",
+  "home.restMidT": "60\u201390 Sekunden",
+  "home.restEasy": "Leicht, viele Wiederholungen",
+  "home.restEasyT": "30\u201360 Sekunden",
+  "home.restWhere": "Die Uhr startet nach jedem abgehakten Satz. Hat der Plan eine Intensit\xE4t, gilt deren Pause, sonst die eingestellten {sec} Sekunden \u2014 beides im Men\xFC unter Pausen-Uhr und bei den Pl\xE4nen \xE4nderbar.",
   "ex.pick": "\xDCbung ausw\xE4hlen",
   "ex.pickHint": "Bekannte \xDCbungen, nach Muskelgruppe geordnet.",
   "ex.onlyMine": "Nur \xDCbungen f\xFCr meine Ger\xE4te",
@@ -143,6 +152,13 @@ var DE = {
   "pl.shortSub": "Ein bis zwei Zeichen f\xFCr Wochenleiste und Kalender.",
   "pl.focus": "Schwerpunkt",
   "pl.night": "Plan f\xFCr Nachtschichtwochen",
+  "pl.intensity": "Intensit\xE4t",
+  "pl.intNone": "ohne Angabe",
+  "pl.inteasy": "leicht",
+  "pl.intmid": "mittel",
+  "pl.inthard": "schwer",
+  "pl.intensityRest": "Stufe {label}: Die Pausen-Uhr l\xE4uft in diesem Plan {sec} Sekunden.",
+  "pl.intensitySub": "Ohne Angabe gilt die eingestellte Dauer von {sec} Sekunden.",
   "pl.nightSub": "Wird in solchen Wochen vorgeschlagen und nicht in den normalen Wechsel aufgenommen.",
   "pl.items": "\xDCbungen im Plan",
   "pl.addItem": "\xDCbung hinzuf\xFCgen",
@@ -401,6 +417,15 @@ var EN = {
   "home.clearChatAsk": "Clear the whole conversation?",
   "home.costHint": "Every question costs a few cents of your balance with the provider.",
   "home.you": "You",
+  "home.restInfo": "Rest: hard 2\u20133 min \xB7 medium 60\u201390 s \xB7 light 30\u201360 s",
+  "home.restIntro": "Rule of thumb: the heavier the set, the longer the rest. Too short costs strength in the next set, too long lets you cool down.",
+  "home.restHard": "Heavy, few reps",
+  "home.restHardT": "2\u20133 minutes",
+  "home.restMid": "Medium, muscle building",
+  "home.restMidT": "60\u201390 seconds",
+  "home.restEasy": "Light, many reps",
+  "home.restEasyT": "30\u201360 seconds",
+  "home.restWhere": "The timer starts after every set you tick. If the plan has an intensity, its rest applies, otherwise the {sec} seconds you set \u2014 both can be changed under Rest timer and in the plans.",
   "ex.pick": "Choose an exercise",
   "ex.pickHint": "Known exercises, grouped by muscle.",
   "ex.onlyMine": "Only exercises for my equipment",
@@ -519,6 +544,13 @@ var EN = {
   "pl.shortSub": "One or two characters for the week bar and the calendar.",
   "pl.focus": "Focus",
   "pl.night": "Plan for night shift weeks",
+  "pl.intensity": "Intensity",
+  "pl.intNone": "not set",
+  "pl.inteasy": "light",
+  "pl.intmid": "medium",
+  "pl.inthard": "hard",
+  "pl.intensityRest": "Level {label}: the rest timer runs {sec} seconds in this plan.",
+  "pl.intensitySub": "Without a level the set length of {sec} seconds applies.",
   "pl.nightSub": "Suggested in those weeks and left out of the normal rotation.",
   "pl.items": "Exercises in this plan",
   "pl.addItem": "Add exercise",
@@ -846,6 +878,11 @@ function schema(equipIds) {
           properties: {
             name: { type: "string" },
             focus: { type: "string" },
+            intensity: {
+              type: "string",
+              enum: ["easy", "mid", "hard"],
+              description: "How demanding the session is: easy, mid or hard."
+            },
             night: { type: "boolean", description: "True only for a shortened fallback session." },
             items: {
               type: "array",
@@ -861,7 +898,7 @@ function schema(equipIds) {
               }
             }
           },
-          required: ["name", "focus", "night", "items"],
+          required: ["name", "focus", "intensity", "night", "items"],
           additionalProperties: false
         }
       }
@@ -875,6 +912,7 @@ var SYSTEM = [
   "Only use the equipment provided; never invent machines, barbells or dumbbells that are not listed.",
   "Every exercise in a plan must appear in the exercises array, with the id of the equipment it is done on.",
   "Keep a session to roughly five to eight exercises and order them from large muscle groups to small.",
+  "Give every plan an intensity: easy for light high-rep work, mid for hypertrophy, hard for heavy low-rep work.",
   "Write exercise names, focus texts and hints in the requested language."
 ].join(" ");
 function userPrompt(opts) {
