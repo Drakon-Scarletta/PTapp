@@ -371,6 +371,8 @@ const DE = {
   'common.edit': 'Bearbeiten',
   'common.deleteAsk': '"{name}" löschen?',
   'common.nameMissing': 'Bitte einen Namen eingeben.',
+  'common.added': '„{name}“ angelegt.',
+  'common.saved': '„{name}“ gespeichert.',
   'common.none': 'ohne',
   'common.new': 'Neu',
 
@@ -774,6 +776,8 @@ const EN = {
   'common.edit': 'Edit',
   'common.deleteAsk': 'Delete "{name}"?',
   'common.nameMissing': 'Please enter a name.',
+  'common.added': '“{name}” added.',
+  'common.saved': '“{name}” saved.',
   'common.none': 'none',
   'common.new': 'New',
 

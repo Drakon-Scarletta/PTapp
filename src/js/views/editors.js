@@ -130,6 +130,10 @@ function bundleForm(mount, head, goHub) {
   byId('addsel').addEventListener('click', () => {
     const gewaehlt = zaehlen().map(c => c.dataset.part);
     if (!gewaehlt.length) { toast(t('equip.bundleNone'), true); return; }
+    // Siehe Formular: erst zurück zur Liste, dann anlegen.
+    bundle = null;
+    editing = null;
+    picked = null;
     let neu = 0, schon = 0;
     const namen = st.S.equipment.map(e => st.nameOf(e).toLowerCase());
     gewaehlt.forEach(key => {
@@ -143,9 +147,7 @@ function bundleForm(mount, head, goHub) {
       namen.push(catName(item).toLowerCase());
       neu++;
     });
-    bundle = null;
-    editing = null;
-    picked = null;
+    rerender();
     toast(t('equip.bundleDone', { n: neu }) +
       (schon ? ' ' + t('equip.bundleSkipped', { n: schon }) : ''));
   });
@@ -248,9 +250,15 @@ function equipmentForm(mount, head, goHub) {
     const data = { name, kind };
     if (kind === 'plates') data.plate = parseFloat(val('f-plate')) || 4.5;
     if (kind === 'weight') data.step = parseFloat(val('f-step')) || 2.5;
-    if (editing === 'new') st.addEquipment(data); else st.updateEquipment(editing, data);
+
+    // Erst die Ansicht zurückstellen, dann schreiben: das Speichern zeichnet
+    // sofort neu, und das soll schon die Liste sein, nicht wieder dieses
+    // Formular.
+    const ziel = editing;
     editing = null;
     picked = null;
+    if (ziel === 'new') st.addEquipment(data); else st.updateEquipment(ziel, data);
+    toast(t(ziel === 'new' ? 'common.added' : 'common.saved', { name }));
   });
 }
 
@@ -494,20 +502,28 @@ function exerciseForm(mount, head, goHub) {
     if (!name) { toast(t('common.nameMissing'), true); return; }
     const b1 = parseFloat(val('f-b1')), b2 = parseFloat(val('f-b2'));
 
+    // Alles aus dem Formular lesen, bevor geschrieben wird - das erste
+    // Speichern zeichnet die Seite neu, danach gibt es diese Felder nicht mehr.
     let equip = byId('f-equip').value;
+    const muskel = byId('f-muscle').value || undefined;
     const mitAnlegen = byId('f-addeq');
-    if (fehlendesGeraet && mitAnlegen && mitAnlegen.checked) {
-      const daten = { name: catName(fehlendesGeraet), kind: fehlendesGeraet.kind };
-      if (fehlendesGeraet.kind === 'plates') daten.plate = st.S.pw;
-      if (fehlendesGeraet.kind === 'weight') daten.step = fehlendesGeraet.step || 2.5;
+    const auchGeraet = fehlendesGeraet && mitAnlegen && mitAnlegen.checked ? fehlendesGeraet : null;
+
+    const ziel = editing;
+    editing = null;
+    pickedEx = null;
+
+    if (auchGeraet) {
+      const daten = { name: catName(auchGeraet), kind: auchGeraet.kind };
+      if (auchGeraet.kind === 'plates') daten.plate = st.S.pw;
+      if (auchGeraet.kind === 'weight') daten.step = auchGeraet.step || 2.5;
       equip = st.addEquipment(daten).id;
     }
 
-    const data = { name, equip, muscle: byId('f-muscle').value || undefined };
+    const data = { name, equip, muscle: muskel };
     data.bands = (isFinite(b1) && isFinite(b2)) ? [b1, b2] : undefined;
-    if (editing === 'new') st.addExercise(data); else st.updateExercise(editing, data);
-    editing = null;
-    pickedEx = null;
+    if (ziel === 'new') st.addExercise(data); else st.updateExercise(ziel, data);
+    toast(t(ziel === 'new' ? 'common.added' : 'common.saved', { name }));
   });
 }
 
@@ -631,12 +647,16 @@ function planForm(mount, head, goHub) {
   byId('save').addEventListener('click', () => {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }
-    st.updatePlan(p.id, {
+    const daten = {
       name,
       short: val('f-short').slice(0, 2) || p.short,
       focus: val('f-focus'),
       night: byId('f-night').checked
-    });
+    };
+    st.updatePlan(p.id, daten);
+    // Hier wird nicht zurückgesprungen: die Übungen des Plans stehen darunter
+    // und werden meist gleich weiterbearbeitet.
+    toast(t('common.saved', { name }));
   });
   if (byId('additem')) {
     byId('additem').addEventListener('click', () => st.addPlanItem(p.id, byId('f-add').value));

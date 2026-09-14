@@ -1,10 +1,10 @@
 {
-  "versionCode": 16,
-  "versionName": "2.5",
-  "apk": "PTapp-2.5.apk",
-  "size": 6701930,
+  "versionCode": 17,
+  "versionName": "2.6",
+  "apk": "PTapp-2.6.apk",
+  "size": 6702053,
   "notes": {
-    "de": "Die App sieht beim Öffnen still nach, ob es eine neuere Fassung gibt. Ist eine da, erscheint oben neben dem Datum ein Pfeil, der direkt zur Aktualisierung führt.",
-    "en": "On opening, the app quietly checks for a newer version. If there is one, an arrow appears next to the date at the top, leading straight to the update page."
+    "de": "Nach dem Speichern eines Geräts oder einer Übung geht es wieder zurück zur Liste, mit einer Bestätigung. Vorher blieb das Formular stehen, obwohl der Eintrag schon angelegt war.",
+    "en": "After saving a piece of equipment or an exercise the app returns to the list and confirms it. Before, the form stayed open even though the entry had been created."
   }
 }

@@ -160,8 +160,10 @@ function data(mount, head, goHub) {
     const name = ev.currentTarget.dataset.imp;
     if (!confirmBox(t('data.restoreAsk', { name }))) return;
     try {
-      await st.replaceState(await readBackup(name));
+      const daten = await readBackup(name);
+      // Erst die Ansicht zurückstellen: das Übernehmen zeichnet sofort neu.
       resetSub();
+      await st.replaceState(daten);
       toast(t('data.restored'));
     } catch (e) {
       toast(t('data.readFailed', { msg: e.message }), true);
@@ -187,8 +189,9 @@ function data(mount, head, goHub) {
     const text = window.prompt(t('data.pastePrompt'));
     if (!text) return;
     try {
-      await st.replaceState(parseBackup(text));
+      const daten = parseBackup(text);
       resetSub();
+      await st.replaceState(daten);
       toast(t('data.restored'));
     } catch (e) {
       toast(t('data.badFile'), true);
@@ -197,8 +200,8 @@ function data(mount, head, goHub) {
 
   byId('wipe').addEventListener('click', async () => {
     if (!confirmBox(t('data.resetAsk'))) return;
-    await st.replaceState(freshState());
     resetSub();
+    await st.replaceState(freshState());
     toast(t('data.resetDone'));
   });
 }

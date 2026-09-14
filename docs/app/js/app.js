@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-TY752RT6.js";
+} from "./part-U45ZNDYC.js";
 import {
   Directory,
   Encoding
@@ -195,7 +195,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.5";
+var APP_VERSION = "2.6";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -1761,6 +1761,9 @@ function bundleForm(mount2, head2, goHub) {
       toast(t("equip.bundleNone"), true);
       return;
     }
+    bundle = null;
+    editing = null;
+    picked = null;
     let neu = 0, schon = 0;
     const namen = S.equipment.map((e) => nameOf(e).toLowerCase());
     gewaehlt.forEach((key) => {
@@ -1777,9 +1780,7 @@ function bundleForm(mount2, head2, goHub) {
       namen.push(catName(item).toLowerCase());
       neu++;
     });
-    bundle = null;
-    editing = null;
-    picked = null;
+    rerender2();
     toast(t("equip.bundleDone", { n: neu }) + (schon ? " " + t("equip.bundleSkipped", { n: schon }) : ""));
   });
 }
@@ -1850,10 +1851,12 @@ function equipmentForm(mount2, head2, goHub) {
     const data2 = { name, kind };
     if (kind === "plates") data2.plate = parseFloat(val("f-plate")) || 4.5;
     if (kind === "weight") data2.step = parseFloat(val("f-step")) || 2.5;
-    if (editing === "new") addEquipment(data2);
-    else updateEquipment(editing, data2);
+    const ziel = editing;
     editing = null;
     picked = null;
+    if (ziel === "new") addEquipment(data2);
+    else updateEquipment(ziel, data2);
+    toast(t(ziel === "new" ? "common.added" : "common.saved", { name }));
   });
 }
 function undoableMany(snaps) {
@@ -2037,19 +2040,23 @@ function exerciseForm(mount2, head2, goHub) {
     }
     const b1 = parseFloat(val("f-b1")), b2 = parseFloat(val("f-b2"));
     let equip = byId("f-equip").value;
+    const muskel = byId("f-muscle").value || void 0;
     const mitAnlegen = byId("f-addeq");
-    if (fehlendesGeraet && mitAnlegen && mitAnlegen.checked) {
-      const daten = { name: catName(fehlendesGeraet), kind: fehlendesGeraet.kind };
-      if (fehlendesGeraet.kind === "plates") daten.plate = S.pw;
-      if (fehlendesGeraet.kind === "weight") daten.step = fehlendesGeraet.step || 2.5;
-      equip = addEquipment(daten).id;
-    }
-    const data2 = { name, equip, muscle: byId("f-muscle").value || void 0 };
-    data2.bands = isFinite(b1) && isFinite(b2) ? [b1, b2] : void 0;
-    if (editing === "new") addExercise(data2);
-    else updateExercise(editing, data2);
+    const auchGeraet = fehlendesGeraet && mitAnlegen && mitAnlegen.checked ? fehlendesGeraet : null;
+    const ziel = editing;
     editing = null;
     pickedEx = null;
+    if (auchGeraet) {
+      const daten = { name: catName(auchGeraet), kind: auchGeraet.kind };
+      if (auchGeraet.kind === "plates") daten.plate = S.pw;
+      if (auchGeraet.kind === "weight") daten.step = auchGeraet.step || 2.5;
+      equip = addEquipment(daten).id;
+    }
+    const data2 = { name, equip, muscle: muskel };
+    data2.bands = isFinite(b1) && isFinite(b2) ? [b1, b2] : void 0;
+    if (ziel === "new") addExercise(data2);
+    else updateExercise(ziel, data2);
+    toast(t(ziel === "new" ? "common.added" : "common.saved", { name }));
   });
 }
 function exerciseStats(exId) {
@@ -2114,12 +2121,14 @@ function planForm(mount2, head2, goHub) {
       toast(t("common.nameMissing"), true);
       return;
     }
-    updatePlan(p.id, {
+    const daten = {
       name,
       short: val("f-short").slice(0, 2) || p.short,
       focus: val("f-focus"),
       night: byId("f-night").checked
-    });
+    };
+    updatePlan(p.id, daten);
+    toast(t("common.saved", { name }));
   });
   if (byId("additem")) {
     byId("additem").addEventListener("click", () => addPlanItem(p.id, byId("f-add").value));
@@ -2207,7 +2216,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-BQ6YYNJM.js");
+    const mod = await import("./part-DC4CR6AK.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2608,7 +2617,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-BQ6YYNJM.js");
+    const mod = await import("./part-DC4CR6AK.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2937,7 +2946,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-BQ6YYNJM.js");
+      const mod = await import("./part-DC4CR6AK.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -3325,8 +3334,9 @@ function data(mount2, head2, goHub) {
     const name = ev.currentTarget.dataset.imp;
     if (!confirmBox(t("data.restoreAsk", { name }))) return;
     try {
-      await replaceState(await readBackup(name));
+      const daten = await readBackup(name);
       resetSub();
+      await replaceState(daten);
       toast(t("data.restored"));
     } catch (e) {
       toast(t("data.readFailed", { msg: e.message }), true);
@@ -3349,8 +3359,9 @@ function data(mount2, head2, goHub) {
     const text = window.prompt(t("data.pastePrompt"));
     if (!text) return;
     try {
-      await replaceState(parseBackup(text));
+      const daten = parseBackup(text);
       resetSub();
+      await replaceState(daten);
       toast(t("data.restored"));
     } catch (e) {
       toast(t("data.badFile"), true);
@@ -3358,8 +3369,8 @@ function data(mount2, head2, goHub) {
   });
   byId("wipe").addEventListener("click", async () => {
     if (!confirmBox(t("data.resetAsk"))) return;
-    await replaceState(freshState());
     resetSub();
+    await replaceState(freshState());
     toast(t("data.resetDone"));
   });
 }
