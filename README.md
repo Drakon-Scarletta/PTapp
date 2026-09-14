@@ -29,6 +29,9 @@ installierbare APK.
   - **Übungen** aus einem Katalog von 113 bekannten Übungen wählen, nach
     Muskelgruppe geordnet und auf die eigenen Geräte filterbar — fehlt das
     passende Gerät, wird es auf Wunsch gleich mit angelegt. Oder frei benennen.
+  - **Übungen auf Zeit** (Plank, Wandsitzen, Farmer's Walk …): Antippen fragt
+    nach der Dauer, zählt herunter, piept und hakt den Satz ab. Je Übung
+    einstellbar, mit zwei üblichen Längen.
   - **Übungen** lassen sich einzeln löschen oder über *Mehrere auswählen*
     anhaken und in einem Zug entfernen — ein Rückgängig holt die ganze
     Auswahl zurück.

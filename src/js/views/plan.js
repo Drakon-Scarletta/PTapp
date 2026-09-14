@@ -1,6 +1,6 @@
 import * as st from '../state.js';
 import { t, weekdayShort } from '../i18n.js';
-import { esc, on, byId, haptic } from '../ui.js';
+import { esc, on, byId, haptic, dialog, field } from '../ui.js';
 import * as rest from '../rest.js';
 import { openSets, performanceText } from './sets.js';
 
@@ -152,8 +152,25 @@ export function render(head, mount) {
   }, 'keydown');
 }
 
-// Satz abhaken und, falls eingeschaltet, die Pause starten.
+// Antippen einer Zeile. Übungen auf Zeit fragen erst nach der Dauer, alle
+// anderen werden gleich abgehakt.
 function tick(exId) {
+  const ex = st.exOf(exId);
+  if (st.isTimed(ex) && nochOffen(exId)) return zeitFenster(exId, ex);
+  abhaken(exId);
+}
+
+// Ist noch ein Satz offen? Am Ende der Sätze setzt ein Tipp zurück - dafür
+// braucht es keine Uhr.
+function nochOffen(exId) {
+  const plan = st.planOf(st.activePlan());
+  const item = plan && plan.items.find(i => i.ex === exId);
+  if (!item) return false;
+  return st.setsDone(st.entry(), item) < (item.sets || 3);
+}
+
+// Satz abhaken und, falls eingeschaltet, die Pause starten.
+function abhaken(exId) {
   const fertig = st.toggleExercise(exId);
   if (fertig) haptic('light');
   const e = st.entry();
@@ -162,4 +179,32 @@ function tick(exId) {
     // eingestellte Dauer aus dem Menü.
     rest.start(st.restForPlan(st.planOf(st.activePlan())) || st.S.prefs.restSec);
   }
+}
+
+// Zwei übliche Längen, eine eigene, oder ohne Uhr abhaken.
+function zeitFenster(exId, ex) {
+  const [a, b] = st.timesOf(ex);
+  let feld = null;
+  const starte = sek => {
+    const dauer = Math.max(5, Math.min(900, parseInt(sek, 10) || a));
+    rest.start(dauer, {
+      label: st.nameOf(ex),
+      onDone: () => abhaken(exId)
+    });
+  };
+
+  dialog({
+    title: st.nameOf(ex),
+    text: t('timer.ask'),
+    html: field(t('timer.own'),
+      '<input class="in" id="t-sec" type="number" inputmode="numeric" min="5" max="900" value="' + a + '">'),
+    actions: [
+      { label: t('timer.start', { sec: a }), primary: true, run: () => starte(a) },
+      { label: t('timer.start', { sec: b }), run: () => starte(b) },
+      { label: t('timer.startOwn'), run: () => starte(feld && feld.value) },
+      { label: t('timer.tickOnly'), run: () => abhaken(exId) },
+      { label: t('common.cancel') }
+    ],
+    onOpen: el => { feld = el.querySelector('#t-sec'); }
+  });
 }

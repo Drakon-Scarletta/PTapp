@@ -314,6 +314,7 @@ export function exercises(mount, head, goHub) {
       '<div class="lst-n">' + esc(st.nameOf(ex)) + aiMark(ex) + '</div>' +
       '<div class="lst-s">' + esc(st.nameOf(eq)) + ' · ' +
       esc(inPlans ? t(inPlans === 1 ? 'ex.inPlans1' : 'ex.inPlans', { n: inPlans }) : t('ex.notInPlan')) +
+      (st.isTimed(ex) ? ' · ' + esc(t('ex.isTimed')) : '') +
       '</div></div>';
 
     if (picking) {
@@ -481,7 +482,9 @@ function exerciseForm(mount, head, goHub) {
     ? {
         equip: vorhanden ? vorhanden.id : (st.S.equipment[0] && st.S.equipment[0].id),
         name: ausKatalog ? exName(ausKatalog) : '',
-        muscle: ausKatalog ? muscleOf(ausKatalog.key) : ''
+        muscle: ausKatalog ? muscleOf(ausKatalog.key) : '',
+        timed: !!(ausKatalog && ausKatalog.time),
+        secs: ausKatalog && ausKatalog.time ? ausKatalog.time : undefined
       }
     : st.exOf(editing);
   if (!ex) { editing = null; return exercises(mount, head, goHub); }
@@ -504,14 +507,32 @@ function exerciseForm(mount, head, goHub) {
       '<span class="two">' + numIn('f-b1', bands[0] == null ? '' : bands[0], '0.5', 0) +
       numIn('f-b2', bands[1] == null ? '' : bands[1], '0.5', 0) + '</span>',
       t('ex.bandsSub')) +
+    checkIn('f-timed', t('ex.timed'), !!ex.timed) +
+    '<p class="fld-h">' + esc(t('ex.timedSub')) + '</p>' +
+    '<div id="f-times"></div>' +
     '<button class="set-btn" id="save">' + esc(t('common.save')) + '</button>' +
     (editing === 'new' ? '' : exerciseStats(editing));
+
+  // Die beiden Zeiten gibt es nur, wenn die Übung auf Zeit geht.
+  const zeiten = st.timesOf(ex);
+  const zeitFelder = () => {
+    byId('f-times').innerHTML = byId('f-timed').checked
+      ? field(t('ex.times'),
+          '<span class="two">' + numIn('f-t1', zeiten[0], '5', 5) +
+          numIn('f-t2', zeiten[1], '5', 5) + '</span>',
+          t('ex.timesSub'))
+      : '';
+  };
+  zeitFelder();
+  byId('f-timed').addEventListener('change', zeitFelder);
 
   wireBack(rerender);
   byId('save').addEventListener('click', () => {
     const name = val('f-name');
     if (!name) { toast(t('common.nameMissing'), true); return; }
     const b1 = parseFloat(val('f-b1')), b2 = parseFloat(val('f-b2'));
+    const aufZeit = byId('f-timed').checked;
+    const t1 = parseInt(val('f-t1'), 10), t2 = parseInt(val('f-t2'), 10);
 
     // Alles aus dem Formular lesen, bevor geschrieben wird - das erste
     // Speichern zeichnet die Seite neu, danach gibt es diese Felder nicht mehr.
@@ -533,6 +554,8 @@ function exerciseForm(mount, head, goHub) {
 
     const data = { name, equip, muscle: muskel };
     data.bands = (isFinite(b1) && isFinite(b2)) ? [b1, b2] : undefined;
+    data.timed = aufZeit || undefined;
+    data.secs = aufZeit ? [t1 > 0 ? t1 : 30, t2 > 0 ? t2 : 60] : undefined;
     if (ziel === 'new') st.addExercise(data); else st.updateExercise(ziel, data);
     toast(t(ziel === 'new' ? 'common.added' : 'common.saved', { name }));
   });

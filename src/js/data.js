@@ -23,7 +23,7 @@ export const SEED_EXERCISES = [
   { id: 'armset', key: 'armset', muscle: 'arms', equip: 'stack', bands: [3, 5] },
   { id: 'split', key: 'split', muscle: 'legs', equip: 'body', hintKey: 'hintSplit' },
   { id: 'calf', key: 'calf', muscle: 'legs', equip: 'body' },
-  { id: 'plank', key: 'plank', muscle: 'core', equip: 'body' },
+  { id: 'plank', key: 'plank', muscle: 'core', equip: 'body', timed: true, secs: [30, 60] },
   { id: 'hipraise', key: 'hipraise', muscle: 'legs', equip: 'body' }
 ];
 

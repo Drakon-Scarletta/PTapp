@@ -7,6 +7,8 @@ import { esc } from './ui.js';
 let rest = 0;          // verbleibende Sekunden
 let timer = null;
 let el = null;
+let text = '';         // Beschriftung: Pause oder der Name einer Übung
+let danach = null;     // was nach dem Ablauf passiert (Übung auf Zeit)
 
 function ton() {
   // Kurzer Piepser aus dem Browser selbst - kein Tonfile nötig.
@@ -26,9 +28,12 @@ function ton() {
 }
 
 function fertig() {
+  const aufgabe = danach;
   stop();
   ton();
   try { Haptics.impact({ style: ImpactStyle.Medium }); } catch (e) { /* egal */ }
+  // Erst nach dem Aufräumen: die Aufgabe startet oft gleich die nächste Uhr.
+  if (aufgabe) aufgabe();
 }
 
 function zeichne() {
@@ -41,7 +46,7 @@ function zeichne() {
   const m = Math.floor(rest / 60), s = rest % 60;
   el.innerHTML =
     '<div class="rest-t">' + m + ':' + String(s).padStart(2, '0') + '</div>' +
-    '<div class="rest-l">' + esc(t('rest.running')) + '</div>' +
+    '<div class="rest-l">' + esc(text || t('rest.running')) + '</div>' +
     '<button class="mini" data-rest="30">+30 s</button>' +
     '<button class="mini" data-rest="skip">' + esc(t('rest.skip')) + '</button>';
   el.querySelectorAll('[data-rest]').forEach(b => {
@@ -52,9 +57,12 @@ function zeichne() {
   });
 }
 
-export function start(seconds) {
+// opts: { label, onDone } - ohne beides ist es die gewöhnliche Pause.
+export function start(seconds, opts) {
   stop();
   rest = Math.max(5, seconds || 90);
+  text = (opts && opts.label) || '';
+  danach = (opts && opts.onDone) || null;
   zeichne();
   timer = setInterval(() => {
     rest--;
@@ -67,6 +75,8 @@ export function stop() {
   if (timer) clearInterval(timer);
   timer = null;
   rest = 0;
+  text = '';
+  danach = null;
   if (el) { el.remove(); el = null; }
   document.body.classList.remove('resting');
 }

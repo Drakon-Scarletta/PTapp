@@ -99,6 +99,16 @@ export function restForPlan(plan) {
   return stufe ? PAUSEN[stufe] : 0;
 }
 
+// ---- Übungen auf Zeit ----
+// Plank und Verwandte werden gehalten, nicht gezählt. Zwei übliche Längen,
+// die dritte tippt man im Fenster selbst ein.
+export function isTimed(ex) { return !!(ex && ex.timed); }
+export function timesOf(ex) {
+  const s = (ex && Array.isArray(ex.secs) ? ex.secs : [])
+    .map(n => parseInt(n, 10)).filter(n => n > 0);
+  return [s[0] || 30, s[1] || 60];
+}
+
 export function visibleExercises() { return S.exercises.filter(e => !e.hidden); }
 export function rotatingPlans() { return S.plans.filter(p => !p.night); }
 export function nightPlans() { return S.plans.filter(p => p.night); }

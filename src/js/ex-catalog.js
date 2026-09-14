@@ -1,6 +1,8 @@
 // Katalog bekannter Übungen, nach Muskelgruppe geordnet.
 // `eq` verweist auf einen Schlüssel aus dem Gerätekatalog (catalog.js) - daran
 // erkennt die App, ob das passende Gerät schon angelegt ist.
+// `time` steht bei Übungen, die man auf Zeit hält statt zu zählen: die beiden
+// üblichen Längen in Sekunden.
 import { getLang } from './i18n.js';
 
 export const EX_CATEGORIES = [
@@ -62,7 +64,7 @@ export const EX_CATEGORIES = [
       { key: 'lunge', de: 'Ausfallschritt', en: 'Lunge', eq: 'dumbbells' },
       { key: 'walkingLunge', de: 'Gehender Ausfallschritt', en: 'Walking lunge', eq: 'dumbbells' },
       { key: 'stepUp', de: 'Aufsteigen auf den Kasten', en: 'Step-up', eq: 'plyoBox' },
-      { key: 'wallSit', de: 'Wandsitzen', en: 'Wall sit', eq: 'floor' },
+      { key: 'wallSit', de: 'Wandsitzen', en: 'Wall sit', eq: 'floor', time: [30, 60] },
       { key: 'calfRaiseSeatedEx', de: 'Wadenheben sitzend', en: 'Seated calf raise', eq: 'calfRaiseSeated' },
       { key: 'calfRaiseStandingEx', de: 'Wadenheben stehend', en: 'Standing calf raise', eq: 'calfRaiseStanding' },
       { key: 'calfRaiseStep', de: 'Wadenheben auf der Stufe', en: 'Calf raise on a step', eq: 'stepPlatform' },
@@ -108,7 +110,7 @@ export const EX_CATEGORIES = [
       { key: 'tricepsDips', de: 'Trizeps-Dips', en: 'Triceps dips', eq: 'dipBars' },
       { key: 'tricepsMachineEx', de: 'Trizeps an der Maschine', en: 'Machine triceps extension', eq: 'tricepsMachine' },
       { key: 'wristCurl', de: 'Handgelenkcurl', en: 'Wrist curl', eq: 'dumbbells' },
-      { key: 'farmersCarry', de: 'Farmer’s Walk', en: "Farmer's carry", eq: 'dumbbells' }
+      { key: 'farmersCarry', de: 'Farmer’s Walk', en: "Farmer's carry", eq: 'dumbbells', time: [30, 60] }
     ]
   },
   {
@@ -118,10 +120,10 @@ export const EX_CATEGORIES = [
       { key: 'bicycleCrunch', de: 'Fahrrad-Crunch', en: 'Bicycle crunch', eq: 'mat' },
       { key: 'cableAbCrunchEx', de: 'Bauchcrunch am Kabel', en: 'Cable ab crunch', eq: 'cableAbCrunch' },
       { key: 'abCrunchMachineEx', de: 'Bauchmaschine', en: 'Machine ab crunch', eq: 'abCrunchMachine' },
-      { key: 'plankEx', de: 'Plank', en: 'Plank', eq: 'mat' },
-      { key: 'sidePlank', de: 'Seitlicher Plank', en: 'Side plank', eq: 'mat' },
+      { key: 'plankEx', de: 'Plank', en: 'Plank', eq: 'mat', time: [30, 60] },
+      { key: 'sidePlank', de: 'Seitlicher Plank', en: 'Side plank', eq: 'mat', time: [20, 45] },
       { key: 'deadBug', de: 'Dead Bug', en: 'Dead bug', eq: 'mat' },
-      { key: 'hollowHold', de: 'Hollow Hold', en: 'Hollow hold', eq: 'mat' },
+      { key: 'hollowHold', de: 'Hollow Hold', en: 'Hollow hold', eq: 'mat', time: [20, 40] },
       { key: 'legRaiseHanging', de: 'Hängendes Beinheben', en: 'Hanging leg raise', eq: 'pullupBar' },
       { key: 'legRaiseCaptain', de: 'Beinheben an der Station', en: 'Captain’s chair leg raise', eq: 'captainsChair' },
       { key: 'russianTwist', de: 'Russian Twist', en: 'Russian twist', eq: 'medicineBall' },

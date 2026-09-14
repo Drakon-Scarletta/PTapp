@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-H6H5WROY.js";
+} from "./part-3H6FV5ZB.js";
 import {
   Directory,
   Encoding
@@ -71,7 +71,7 @@ var SEED_EXERCISES = [
   { id: "armset", key: "armset", muscle: "arms", equip: "stack", bands: [3, 5] },
   { id: "split", key: "split", muscle: "legs", equip: "body", hintKey: "hintSplit" },
   { id: "calf", key: "calf", muscle: "legs", equip: "body" },
-  { id: "plank", key: "plank", muscle: "core", equip: "body" },
+  { id: "plank", key: "plank", muscle: "core", equip: "body", timed: true, secs: [30, 60] },
   { id: "hipraise", key: "hipraise", muscle: "legs", equip: "body" }
 ];
 var SEED_PLANS = [
@@ -198,7 +198,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.8";
+var APP_VERSION = "2.9";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -359,8 +359,8 @@ async function exportCsv(state2, resolve) {
   }
   return writeAndShare(name, data2);
 }
-function csv(text) {
-  const s2 = String(text == null ? "" : text);
+function csv(text2) {
+  const s2 = String(text2 == null ? "" : text2);
   return /[;"\r\n]/.test(s2) ? '"' + s2.split('"').join('""') + '"' : s2;
 }
 async function listBackups() {
@@ -394,8 +394,8 @@ async function readBackup(name) {
   }
   throw lastErr || new Error("Datei nicht gefunden");
 }
-function parseBackup(text) {
-  const obj = JSON.parse(text);
+function parseBackup(text2) {
+  const obj = JSON.parse(text2);
   const state2 = obj && obj.state ? obj.state : obj;
   if (!state2 || typeof state2 !== "object" || !("log" in state2)) throw new Error("kein g\xFCltiges Format");
   return migrate(state2);
@@ -508,6 +508,13 @@ function intensityOf(plan) {
 function restForPlan(plan) {
   const stufe = intensityOf(plan);
   return stufe ? PAUSEN[stufe] : 0;
+}
+function isTimed(ex) {
+  return !!(ex && ex.timed);
+}
+function timesOf(ex) {
+  const s2 = (ex && Array.isArray(ex.secs) ? ex.secs : []).map((n) => parseInt(n, 10)).filter((n) => n > 0);
+  return [s2[0] || 30, s2[1] || 60];
 }
 function visibleExercises() {
   return S.exercises.filter((e) => !e.hidden);
@@ -693,11 +700,11 @@ function exerciseHistory(exId, count) {
     sets: S.log[d].t[exId]
   }));
 }
-function setNote(text) {
+function setNote(text2) {
   const plan = planOf(activePlan());
   if (!plan) return;
   const e = ensureEntry(plan.id);
-  e.n = text;
+  e.n = text2;
   persist();
 }
 function durationMinutes(e) {
@@ -1009,8 +1016,8 @@ function lastSessions(count) {
   return Object.keys(S.log).filter((d) => S.log[d] && S.log[d].done).sort().slice(-count).reverse().map((d) => ({ date: d, plan: planOf(S.log[d].k) }));
 }
 var CHAT_MAX = 40;
-function addChat(role, text) {
-  S.chat.push({ role, text, at: Date.now() });
+function addChat(role, text2) {
+  S.chat.push({ role, text: text2, at: Date.now() });
   if (S.chat.length > CHAT_MAX) S.chat = S.chat.slice(-CHAT_MAX);
   return persist();
 }
@@ -1092,9 +1099,9 @@ function toast(msg, bad = false, action) {
   const el2 = document.createElement("div");
   el2.className = "toast" + (bad ? " bad" : "");
   el2.setAttribute("role", "status");
-  const text = document.createElement("span");
-  text.textContent = msg;
-  el2.appendChild(text);
+  const text2 = document.createElement("span");
+  text2.textContent = msg;
+  el2.appendChild(text2);
   if (action) {
     const btn = document.createElement("button");
     btn.className = "toast-a";
@@ -1115,15 +1122,15 @@ async function haptic(style = "light") {
   } catch (e) {
   }
 }
-function confirmBox(text) {
-  return window.confirm(text);
+function confirmBox(text2) {
+  return window.confirm(text2);
 }
-function dialog({ title, text, html, actions, onOpen }) {
+function dialog({ title, text: text2, html, actions, onOpen }) {
   const alt = document.querySelector(".overlay");
   if (alt) alt.remove();
   const el2 = document.createElement("div");
   el2.className = "overlay";
-  el2.innerHTML = '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><h3>' + esc(title) + "</h3>" + (text ? "<p>" + esc(text) + "</p>" : "") + (html || "") + '<div class="dlg-a">' + actions.map((a, i) => '<button class="set-btn' + (a.primary ? " go" : "") + '" data-act="' + i + '">' + esc(a.label) + "</button>").join("") + "</div></div>";
+  el2.innerHTML = '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><h3>' + esc(title) + "</h3>" + (text2 ? "<p>" + esc(text2) + "</p>" : "") + (html || "") + '<div class="dlg-a">' + actions.map((a, i) => '<button class="set-btn' + (a.primary ? " go" : "") + '" data-act="' + i + '">' + esc(a.label) + "</button>").join("") + "</div></div>";
   const close = () => {
     el2.remove();
     document.removeEventListener("keydown", onKey);
@@ -1493,7 +1500,7 @@ var EX_CATEGORIES = [
       { key: "lunge", de: "Ausfallschritt", en: "Lunge", eq: "dumbbells" },
       { key: "walkingLunge", de: "Gehender Ausfallschritt", en: "Walking lunge", eq: "dumbbells" },
       { key: "stepUp", de: "Aufsteigen auf den Kasten", en: "Step-up", eq: "plyoBox" },
-      { key: "wallSit", de: "Wandsitzen", en: "Wall sit", eq: "floor" },
+      { key: "wallSit", de: "Wandsitzen", en: "Wall sit", eq: "floor", time: [30, 60] },
       { key: "calfRaiseSeatedEx", de: "Wadenheben sitzend", en: "Seated calf raise", eq: "calfRaiseSeated" },
       { key: "calfRaiseStandingEx", de: "Wadenheben stehend", en: "Standing calf raise", eq: "calfRaiseStanding" },
       { key: "calfRaiseStep", de: "Wadenheben auf der Stufe", en: "Calf raise on a step", eq: "stepPlatform" },
@@ -1543,7 +1550,7 @@ var EX_CATEGORIES = [
       { key: "tricepsDips", de: "Trizeps-Dips", en: "Triceps dips", eq: "dipBars" },
       { key: "tricepsMachineEx", de: "Trizeps an der Maschine", en: "Machine triceps extension", eq: "tricepsMachine" },
       { key: "wristCurl", de: "Handgelenkcurl", en: "Wrist curl", eq: "dumbbells" },
-      { key: "farmersCarry", de: "Farmer\u2019s Walk", en: "Farmer's carry", eq: "dumbbells" }
+      { key: "farmersCarry", de: "Farmer\u2019s Walk", en: "Farmer's carry", eq: "dumbbells", time: [30, 60] }
     ]
   },
   {
@@ -1555,10 +1562,10 @@ var EX_CATEGORIES = [
       { key: "bicycleCrunch", de: "Fahrrad-Crunch", en: "Bicycle crunch", eq: "mat" },
       { key: "cableAbCrunchEx", de: "Bauchcrunch am Kabel", en: "Cable ab crunch", eq: "cableAbCrunch" },
       { key: "abCrunchMachineEx", de: "Bauchmaschine", en: "Machine ab crunch", eq: "abCrunchMachine" },
-      { key: "plankEx", de: "Plank", en: "Plank", eq: "mat" },
-      { key: "sidePlank", de: "Seitlicher Plank", en: "Side plank", eq: "mat" },
+      { key: "plankEx", de: "Plank", en: "Plank", eq: "mat", time: [30, 60] },
+      { key: "sidePlank", de: "Seitlicher Plank", en: "Side plank", eq: "mat", time: [20, 45] },
       { key: "deadBug", de: "Dead Bug", en: "Dead bug", eq: "mat" },
-      { key: "hollowHold", de: "Hollow Hold", en: "Hollow hold", eq: "mat" },
+      { key: "hollowHold", de: "Hollow Hold", en: "Hollow hold", eq: "mat", time: [20, 40] },
       { key: "legRaiseHanging", de: "H\xE4ngendes Beinheben", en: "Hanging leg raise", eq: "pullupBar" },
       { key: "legRaiseCaptain", de: "Beinheben an der Station", en: "Captain\u2019s chair leg raise", eq: "captainsChair" },
       { key: "russianTwist", de: "Russian Twist", en: "Russian twist", eq: "medicineBall" },
@@ -1913,7 +1920,7 @@ function exercises(mount2, head2, goHub) {
   const rows = liste.map((ex) => {
     const eq = equipOf(ex.equip);
     const inPlans = exerciseUsage(ex.id);
-    const mitte = '<div class="lst-m"><div class="lst-n">' + esc(nameOf(ex)) + aiMark(ex) + '</div><div class="lst-s">' + esc(nameOf(eq)) + " \xB7 " + esc(inPlans ? t(inPlans === 1 ? "ex.inPlans1" : "ex.inPlans", { n: inPlans }) : t("ex.notInPlan")) + "</div></div>";
+    const mitte = '<div class="lst-m"><div class="lst-n">' + esc(nameOf(ex)) + aiMark(ex) + '</div><div class="lst-s">' + esc(nameOf(eq)) + " \xB7 " + esc(inPlans ? t(inPlans === 1 ? "ex.inPlans1" : "ex.inPlans", { n: inPlans }) : t("ex.notInPlan")) + (isTimed(ex) ? " \xB7 " + esc(t("ex.isTimed")) : "") + "</div></div>";
     if (picking) {
       return '<label class="lst pick"><input type="checkbox" data-pick="' + ex.id + '"' + (chosen.has(ex.id) ? " checked" : "") + ">" + mitte + "</label>";
     }
@@ -2038,7 +2045,9 @@ function exerciseForm(mount2, head2, goHub) {
   const ex = editing === "new" ? {
     equip: vorhanden ? vorhanden.id : S.equipment[0] && S.equipment[0].id,
     name: ausKatalog ? exName(ausKatalog) : "",
-    muscle: ausKatalog ? muscleOf(ausKatalog.key) : ""
+    muscle: ausKatalog ? muscleOf(ausKatalog.key) : "",
+    timed: !!(ausKatalog && ausKatalog.time),
+    secs: ausKatalog && ausKatalog.time ? ausKatalog.time : void 0
   } : exOf(editing);
   if (!ex) {
     editing = null;
@@ -2051,7 +2060,17 @@ function exerciseForm(mount2, head2, goHub) {
     t("ex.bands"),
     '<span class="two">' + numIn("f-b1", bands[0] == null ? "" : bands[0], "0.5", 0) + numIn("f-b2", bands[1] == null ? "" : bands[1], "0.5", 0) + "</span>",
     t("ex.bandsSub")
-  ) + '<button class="set-btn" id="save">' + esc(t("common.save")) + "</button>" + (editing === "new" ? "" : exerciseStats(editing));
+  ) + checkIn("f-timed", t("ex.timed"), !!ex.timed) + '<p class="fld-h">' + esc(t("ex.timedSub")) + '</p><div id="f-times"></div><button class="set-btn" id="save">' + esc(t("common.save")) + "</button>" + (editing === "new" ? "" : exerciseStats(editing));
+  const zeiten = timesOf(ex);
+  const zeitFelder = () => {
+    byId("f-times").innerHTML = byId("f-timed").checked ? field(
+      t("ex.times"),
+      '<span class="two">' + numIn("f-t1", zeiten[0], "5", 5) + numIn("f-t2", zeiten[1], "5", 5) + "</span>",
+      t("ex.timesSub")
+    ) : "";
+  };
+  zeitFelder();
+  byId("f-timed").addEventListener("change", zeitFelder);
   wireBack(rerender2);
   byId("save").addEventListener("click", () => {
     const name = val("f-name");
@@ -2060,6 +2079,8 @@ function exerciseForm(mount2, head2, goHub) {
       return;
     }
     const b1 = parseFloat(val("f-b1")), b2 = parseFloat(val("f-b2"));
+    const aufZeit = byId("f-timed").checked;
+    const t1 = parseInt(val("f-t1"), 10), t2 = parseInt(val("f-t2"), 10);
     let equip = byId("f-equip").value;
     const muskel = byId("f-muscle").value || void 0;
     const mitAnlegen = byId("f-addeq");
@@ -2075,6 +2096,8 @@ function exerciseForm(mount2, head2, goHub) {
     }
     const data2 = { name, equip, muscle: muskel };
     data2.bands = isFinite(b1) && isFinite(b2) ? [b1, b2] : void 0;
+    data2.timed = aufZeit || void 0;
+    data2.secs = aufZeit ? [t1 > 0 ? t1 : 30, t2 > 0 ? t2 : 60] : void 0;
     if (ziel === "new") addExercise(data2);
     else updateExercise(ziel, data2);
     toast(t(ziel === "new" ? "common.added" : "common.saved", { name }));
@@ -2244,13 +2267,13 @@ function context() {
   ].join("\n");
 }
 async function send() {
-  const text = val("c-msg");
-  if (!text) return;
+  const text2 = val("c-msg");
+  if (!text2) return;
   draft = "";
   busy = true;
-  await addChat("me", text);
+  await addChat("me", text2);
   try {
-    const mod = await import("./part-L4N6L24L.js");
+    const mod = await import("./part-EGEEHXYW.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2300,6 +2323,8 @@ __export(plan_exports, {
 var rest = 0;
 var timer = null;
 var el = null;
+var text = "";
+var danach = null;
 function ton() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2318,12 +2343,14 @@ function ton() {
   }
 }
 function fertig() {
+  const aufgabe = danach;
   stop();
   ton();
   try {
     Haptics.impact({ style: ImpactStyle.Medium });
   } catch (e) {
   }
+  if (aufgabe) aufgabe();
 }
 function zeichne() {
   if (!el) {
@@ -2333,7 +2360,7 @@ function zeichne() {
     document.body.classList.add("resting");
   }
   const m = Math.floor(rest / 60), s2 = rest % 60;
-  el.innerHTML = '<div class="rest-t">' + m + ":" + String(s2).padStart(2, "0") + '</div><div class="rest-l">' + esc(t("rest.running")) + '</div><button class="mini" data-rest="30">+30 s</button><button class="mini" data-rest="skip">' + esc(t("rest.skip")) + "</button>";
+  el.innerHTML = '<div class="rest-t">' + m + ":" + String(s2).padStart(2, "0") + '</div><div class="rest-l">' + esc(text || t("rest.running")) + '</div><button class="mini" data-rest="30">+30 s</button><button class="mini" data-rest="skip">' + esc(t("rest.skip")) + "</button>";
   el.querySelectorAll("[data-rest]").forEach((b) => {
     b.addEventListener("click", () => {
       if (b.dataset.rest === "skip") stop();
@@ -2344,9 +2371,11 @@ function zeichne() {
     });
   });
 }
-function start(seconds) {
+function start(seconds, opts) {
   stop();
   rest = Math.max(5, seconds || 90);
+  text = opts && opts.label || "";
+  danach = opts && opts.onDone || null;
   zeichne();
   timer = setInterval(() => {
     rest--;
@@ -2358,6 +2387,8 @@ function stop() {
   if (timer) clearInterval(timer);
   timer = null;
   rest = 0;
+  text = "";
+  danach = null;
   if (el) {
     el.remove();
     el = null;
@@ -2433,12 +2464,52 @@ function render2(head2, mount2) {
   }, "keydown");
 }
 function tick(exId) {
+  const ex = exOf(exId);
+  if (isTimed(ex) && nochOffen(exId)) return zeitFenster(exId, ex);
+  abhaken(exId);
+}
+function nochOffen(exId) {
+  const plan = planOf(activePlan());
+  const item = plan && plan.items.find((i) => i.ex === exId);
+  if (!item) return false;
+  return setsDone(entry(), item) < (item.sets || 3);
+}
+function abhaken(exId) {
   const fertig3 = toggleExercise(exId);
   if (fertig3) haptic("light");
   const e = entry();
   if (S.prefs.restOn && setsDone(e, { ex: exId, sets: 99 }) > 0) {
     start(restForPlan(planOf(activePlan())) || S.prefs.restSec);
   }
+}
+function zeitFenster(exId, ex) {
+  const [a, b] = timesOf(ex);
+  let feld = null;
+  const starte = (sek) => {
+    const dauer = Math.max(5, Math.min(900, parseInt(sek, 10) || a));
+    start(dauer, {
+      label: nameOf(ex),
+      onDone: () => abhaken(exId)
+    });
+  };
+  dialog({
+    title: nameOf(ex),
+    text: t("timer.ask"),
+    html: field(
+      t("timer.own"),
+      '<input class="in" id="t-sec" type="number" inputmode="numeric" min="5" max="900" value="' + a + '">'
+    ),
+    actions: [
+      { label: t("timer.start", { sec: a }), primary: true, run: () => starte(a) },
+      { label: t("timer.start", { sec: b }), run: () => starte(b) },
+      { label: t("timer.startOwn"), run: () => starte(feld && feld.value) },
+      { label: t("timer.tickOnly"), run: () => abhaken(exId) },
+      { label: t("common.cancel") }
+    ],
+    onOpen: (el2) => {
+      feld = el2.querySelector("#t-sec");
+    }
+  });
 }
 
 // src/js/views/log.js
@@ -2563,14 +2634,14 @@ var ClipboardWeb = class extends WebPlugin {
     if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.readText) {
       throw this.unavailable("Reading from clipboard not supported in this browser");
     }
-    const text = await navigator.clipboard.readText();
-    return { value: text, type: "text/plain" };
+    const text2 = await navigator.clipboard.readText();
+    return { value: text2, type: "text/plain" };
   }
-  async writeText(text) {
+  async writeText(text2) {
     if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.writeText) {
       throw this.unavailable("Writting to clipboard not supported in this browser");
     }
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(text2);
   }
   _getBlobData(clipboardBlob, type) {
     return new Promise((resolve, reject) => {
@@ -2651,7 +2722,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-L4N6L24L.js");
+    const mod = await import("./part-EGEEHXYW.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2984,7 +3055,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-L4N6L24L.js");
+      const mod = await import("./part-EGEEHXYW.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -3028,22 +3099,22 @@ function prefill(next) {
 function promptText() {
   return manualPrompt(askOptions(form2));
 }
-async function copy(text) {
+async function copy(text2) {
   try {
-    await Clipboard.write({ string: text });
+    await Clipboard.write({ string: text2 });
     return true;
   } catch (e) {
   }
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(text2);
     return true;
   } catch (e) {
   }
-  return ueberFeld(text);
+  return ueberFeld(text2);
 }
-function ueberFeld(text) {
+function ueberFeld(text2) {
   const feld = document.createElement("textarea");
-  feld.value = text;
+  feld.value = text2;
   feld.setAttribute("readonly", "");
   feld.style.cssText = "position:fixed;top:-1000px;opacity:0";
   document.body.appendChild(feld);
@@ -3057,8 +3128,8 @@ function ueberFeld(text) {
   feld.remove();
   return ok;
 }
-function jsonAus(text) {
-  let s2 = String(text || "").trim();
+function jsonAus(text2) {
+  let s2 = String(text2 || "").trim();
   const block = s2.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (block) s2 = block[1].trim();
   const a = s2.indexOf("{");
@@ -3100,8 +3171,8 @@ function auswerten() {
   }
 }
 function render7(mount2, head2, backBar3, goBack) {
-  const text = S.equipment.length ? promptText() : "";
-  mount2.innerHTML = head2() + backBar3(t("man.title")) + '<p class="intro">' + esc(t("man.intro")) + '</p><ol class="steps"><li>' + esc(t("man.step1")) + "</li><li>" + esc(t("man.step2")) + "</li><li>" + esc(t("man.step3")) + "</li><li>" + esc(t("man.step4")) + "</li></ol>" + equipListHtml() + formFields(form2) + (S.equipment.length ? '<button class="set-btn go" id="copy">' + esc(t("man.copy")) + '</button><details class="help"><summary>' + esc(t("man.show")) + '</summary><textarea class="in mono" id="f-prompt" rows="10" readonly>' + esc(text) + "</textarea></details>" : '<p class="intro">' + esc(t("ai.needEquip")) + "</p>") + '<h3 class="sec">' + esc(t("man.answerTitle")) + '</h3><p class="intro">' + esc(t("man.answerSub")) + '</p><textarea class="in mono" id="f-ans" rows="6" placeholder="' + esc(t("man.answerHint")) + '">' + esc(answer) + '</textarea><button class="set-btn" id="fromclip">' + esc(t("man.fromClipboard")) + '</button><button class="set-btn go" id="read">' + esc(t("man.read")) + "</button>" + (result2 ? resultHtml(result2) + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>" : "");
+  const text2 = S.equipment.length ? promptText() : "";
+  mount2.innerHTML = head2() + backBar3(t("man.title")) + '<p class="intro">' + esc(t("man.intro")) + '</p><ol class="steps"><li>' + esc(t("man.step1")) + "</li><li>" + esc(t("man.step2")) + "</li><li>" + esc(t("man.step3")) + "</li><li>" + esc(t("man.step4")) + "</li></ol>" + equipListHtml() + formFields(form2) + (S.equipment.length ? '<button class="set-btn go" id="copy">' + esc(t("man.copy")) + '</button><details class="help"><summary>' + esc(t("man.show")) + '</summary><textarea class="in mono" id="f-prompt" rows="10" readonly>' + esc(text2) + "</textarea></details>" : '<p class="intro">' + esc(t("ai.needEquip")) + "</p>") + '<h3 class="sec">' + esc(t("man.answerTitle")) + '</h3><p class="intro">' + esc(t("man.answerSub")) + '</p><textarea class="in mono" id="f-ans" rows="6" placeholder="' + esc(t("man.answerHint")) + '">' + esc(answer) + '</textarea><button class="set-btn" id="fromclip">' + esc(t("man.fromClipboard")) + '</button><button class="set-btn go" id="read">' + esc(t("man.read")) + "</button>" + (result2 ? resultHtml(result2) + '<button class="set-btn go" id="accept">' + esc(t("ai.accept")) + '</button><button class="set-btn" id="discard">' + esc(t("ai.discard")) + "</button>" : "");
   byId("back").addEventListener("click", goBack);
   const copyBtn = byId("copy");
   if (copyBtn) copyBtn.addEventListener("click", async () => {
@@ -3395,10 +3466,10 @@ function data(mount2, head2, goHub) {
     }
   });
   byId("paste").addEventListener("click", async () => {
-    const text = window.prompt(t("data.pastePrompt"));
-    if (!text) return;
+    const text2 = window.prompt(t("data.pastePrompt"));
+    if (!text2) return;
     try {
-      const daten = parseBackup(text);
+      const daten = parseBackup(text2);
       resetSub();
       await replaceState(daten);
       toast(t("data.restored"));

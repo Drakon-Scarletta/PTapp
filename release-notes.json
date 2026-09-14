@@ -1,4 +1,8 @@
 {
+  "2.9": {
+    "de": "Übungen auf Zeit wie Plank: Antippen fragt nach der Dauer — zwei übliche Längen oder eine eigene —, zählt herunter, piept und hakt den Satz ab. Im Übungseditor lässt sich das für jede Übung ein- und ausschalten.",
+    "en": "Timed exercises like the plank: tapping asks for the length — two usual ones or your own — counts down, beeps and ticks the set. The exercise editor can turn this on or off for any exercise."
+  },
   "2.8": {
     "de": "Auf der Startseite steht jetzt kurz, wie lange man zwischen den Sätzen pausiert. Pläne haben eine Intensität — leicht, mittel oder schwer —, die zugleich die Pausenlänge für diesen Plan bestimmt.",
     "en": "The start screen now says briefly how long to rest between sets. Plans have an intensity — light, medium or hard — which also sets the rest length for that plan."
