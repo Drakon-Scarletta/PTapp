@@ -195,7 +195,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.6";
+var APP_VERSION = "2.7";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -2719,8 +2719,8 @@ async function check() {
 }
 var neuere = null;
 var naechster = 0;
-var ABSTAND = 6 * 60 * 60 * 1e3;
-var NACHFASSEN = 15 * 60 * 1e3;
+var laeuft = false;
+var ABSTAND = 60 * 1e3;
 function updateHint() {
   return neuere;
 }
@@ -2731,11 +2731,15 @@ function merken(res) {
 async function checkQuietly(force) {
   if (!canUpdate()) return null;
   if (!navigator.onLine) return null;
+  if (laeuft) return neuere;
   if (!force && Date.now() < naechster) return neuere;
+  laeuft = true;
   try {
     await check();
   } catch (e) {
-    naechster = Date.now() + NACHFASSEN;
+    naechster = Date.now() + ABSTAND;
+  } finally {
+    laeuft = false;
   }
   return neuere;
 }
@@ -3467,6 +3471,9 @@ async function wireNative() {
     if (refreshDay()) render9();
     nachUpdateSehen();
   });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") nachUpdateSehen();
+  });
   try {
     await StatusBar.setBackgroundColor({ color: "#16140F" });
     await StatusBar.setStyle({ style: Style.Dark });
@@ -3481,8 +3488,10 @@ function wireServiceWorker() {
 }
 function nachUpdateSehen() {
   const vorher = updateHint();
-  checkQuietly().then((neuere2) => {
-    if (neuere2 !== vorher) render9();
+  checkQuietly().then((jetzt) => {
+    const alt = vorher ? vorher.versionCode : 0;
+    const neu = jetzt ? jetzt.versionCode : 0;
+    if (alt !== neu) render9();
   });
 }
 setInterval(() => {

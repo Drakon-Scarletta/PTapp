@@ -1,4 +1,8 @@
 {
+  "2.7": {
+    "de": "Der Blick nach einer neuen Fassung passiert jetzt bei jedem Hereinschauen — beim Start und jedes Mal, wenn die App aus dem Hintergrund zurückkommt. Vorher wartete sie nach einem erfolglosen Blick sechs Stunden bis zum nächsten.",
+    "en": "The check for a newer version now happens every time you come back — at start and whenever the app returns from the background. Before, it waited six hours after an unsuccessful look."
+  },
   "2.6": {
     "de": "Nach dem Speichern eines Geräts oder einer Übung geht es wieder zurück zur Liste, mit einer Bestätigung. Vorher blieb das Formular stehen, obwohl der Eintrag schon angelegt war.",
     "en": "After saving a piece of equipment or an exercise the app returns to the list and confirms it. Before, the form stayed open even though the entry had been created."

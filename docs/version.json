@@ -1,10 +1,10 @@
 {
-  "versionCode": 17,
-  "versionName": "2.6",
-  "apk": "PTapp-2.6.apk",
-  "size": 6702053,
+  "versionCode": 18,
+  "versionName": "2.7",
+  "apk": "PTapp-2.7.apk",
+  "size": 6702110,
   "notes": {
-    "de": "Nach dem Speichern eines Geräts oder einer Übung geht es wieder zurück zur Liste, mit einer Bestätigung. Vorher blieb das Formular stehen, obwohl der Eintrag schon angelegt war.",
-    "en": "After saving a piece of equipment or an exercise the app returns to the list and confirms it. Before, the form stayed open even though the entry had been created."
+    "de": "Der Blick nach einer neuen Fassung passiert jetzt bei jedem Hereinschauen — beim Start und jedes Mal, wenn die App aus dem Hintergrund zurückkommt. Vorher wartete sie nach einem erfolglosen Blick sechs Stunden bis zum nächsten.",
+    "en": "The check for a newer version now happens every time you come back — at start and whenever the app returns from the background. Before, it waited six hours after an unsuccessful look."
   }
 }

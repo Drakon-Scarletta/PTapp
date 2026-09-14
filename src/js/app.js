@@ -90,8 +90,13 @@ async function wireNative() {
   await CapApp.addListener('appStateChange', ({ isActive }) => {
     if (!isActive) return;
     if (st.refreshDay()) render();
-    // Kommt die App nach Stunden wieder nach vorn, lohnt der Blick erneut.
+    // Jedes Mal, wenn die App wieder nach vorn kommt.
     nachUpdateSehen();
+  });
+  // Zweiter Weg zum selben Zweck: manche Geräte melden das Zurückkommen nur
+  // hierüber. Doppelt ist unschädlich, checkQuietly lässt es nicht zweimal zu.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') nachUpdateSehen();
   });
   try {
     await StatusBar.setBackgroundColor({ color: '#16140F' });
@@ -111,7 +116,11 @@ function wireServiceWorker() {
 // nebenher: erst wenn wirklich etwas da ist, wird neu gezeichnet.
 function nachUpdateSehen() {
   const vorher = updateHint();
-  checkQuietly().then(neuere => { if (neuere !== vorher) render(); });
+  checkQuietly().then(jetzt => {
+    const alt = vorher ? vorher.versionCode : 0;
+    const neu = jetzt ? jetzt.versionCode : 0;
+    if (alt !== neu) render();
+  });
 }
 
 // Falls die App über Mitternacht offen bleibt.

@@ -39,9 +39,9 @@ export async function check() {
 // ---- Stiller Blick beim Öffnen der App ----
 // Ergebnis liegt hier; die Kopfzeile zeigt daraufhin ein Zeichen an.
 let neuere = null;
-let naechster = 0;                     // frühester Zeitpunkt für den nächsten Blick
-const ABSTAND = 6 * 60 * 60 * 1000;    // öfter als alle sechs Stunden lohnt nicht
-const NACHFASSEN = 15 * 60 * 1000;     // war kein Netz da, bald nochmal
+let naechster = 0;              // frühester Zeitpunkt für den nächsten Blick
+let laeuft = false;             // eine Abfrage ist unterwegs
+const ABSTAND = 60 * 1000;      // jedes Hereinschauen, aber nicht öfter als einmal je Minute
 
 export function updateHint() { return neuere; }
 
@@ -50,16 +50,23 @@ function merken(res) {
   naechster = Date.now() + ABSTAND;
 }
 
-// Läuft im Hintergrund und schweigt bei Fehlern: ohne Netz, ohne erreichbare
-// Seite oder in der Web-Fassung gibt es eben keinen Hinweis.
+// Wird bei jedem Öffnen der App aufgerufen - beim Start und jedes Mal, wenn
+// sie aus dem Hintergrund zurückkommt. Läuft nebenher und schweigt bei
+// Fehlern: ohne Netz, ohne erreichbare Seite oder in der Web-Fassung gibt es
+// eben keinen Hinweis. Die Minutensperre fängt nur doppelte Meldungen des
+// Systems ab, sonst wird wirklich jedes Mal nachgesehen.
 export async function checkQuietly(force) {
   if (!canUpdate()) return null;
   if (!navigator.onLine) return null;
+  if (laeuft) return neuere;
   if (!force && Date.now() < naechster) return neuere;
+  laeuft = true;
   try {
     await check();
   } catch (e) {
-    naechster = Date.now() + NACHFASSEN;
+    naechster = Date.now() + ABSTAND;
+  } finally {
+    laeuft = false;
   }
   return neuere;
 }

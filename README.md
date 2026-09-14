@@ -45,9 +45,10 @@ installierbare APK.
   - **Daten**: sichern, wiederherstellen, als CSV ausgeben, alles löschen.
   - **Hinweis und Verantwortung**: wofür die App gedacht ist und was an die KI geht.
   - **Aktualisierung**: neue Fassung suchen, laden und installieren. Beim
-    Öffnen sieht die App von sich aus einmal nach (nur mit Verbindung, höchstens
-    alle sechs Stunden); liegt etwas Neueres bereit, erscheint oben neben dem
-    Datum ein Pfeil, der hierher führt.
+    Öffnen sieht die App von sich aus nach — beim Start und jedes Mal, wenn sie
+    aus dem Hintergrund zurückkommt (nur mit Verbindung, nicht öfter als einmal
+    je Minute); liegt etwas Neueres bereit, erscheint oben neben dem Datum ein
+    Pfeil, der hierher führt.
 - Läuft vollständig offline, auch die Schriften liegen in der App. Nur KI und
   Aktualisierung brauchen eine Verbindung.
 
