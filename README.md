@@ -29,6 +29,9 @@ installierbare APK.
   - **Übungen** aus einem Katalog von 113 bekannten Übungen wählen, nach
     Muskelgruppe geordnet und auf die eigenen Geräte filterbar — fehlt das
     passende Gerät, wird es auf Wunsch gleich mit angelegt. Oder frei benennen.
+  - **Übungen** lassen sich einzeln löschen oder über *Mehrere auswählen*
+    anhaken und in einem Zug entfernen — ein Rückgängig holt die ganze
+    Auswahl zurück.
   - **Pläne** selbst zusammenstellen: Übungen, Sätze, Wiederholungen,
     Reihenfolge, „je Bein / je Arm / im Wechsel", Kürzel für den Kalender —
     oder von der KI erstellen lassen.

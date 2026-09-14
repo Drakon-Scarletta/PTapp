@@ -372,6 +372,12 @@ select.in { appearance: none; background-image: none; }
 .two { display: flex; gap: 8px; }
 .two > * { flex: 1; min-width: 0; }
 .chk { display: flex; align-items: center; gap: 9px; font-size: 14px; margin-bottom: 6px; }
+
+/* Mehrfachauswahl in der Übungsliste: Kästchen links, Text daneben. */
+.lst.pick { justify-content: flex-start; gap: 12px; cursor: pointer; }
+.lst.pick input { width: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--signal); }
+.lst.pick .lst-m { flex: 1; }
+.pick-bar { margin-bottom: 10px; }
 .chk input { width: 20px; height: 20px; accent-color: var(--signal); }
 
 /* ---- Übungen innerhalb eines Plans ---- */

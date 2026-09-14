@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-PRN6P7BJ.js";
+} from "./part-JLAQOZ7I.js";
 import {
   Directory,
   Encoding
@@ -195,7 +195,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "2.2";
+var APP_VERSION = "2.3";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -800,6 +800,16 @@ function usedInLog(id) {
   return Object.values(S.log).some((e) => e && e.t && e.t[id] != null);
 }
 function deleteExercise(id) {
+  const snap = entferneUebung(id);
+  persist();
+  return snap;
+}
+function deleteExercises(ids) {
+  const snaps = ids.map((id) => entferneUebung(id)).filter((s2) => s2 && s2.eintrag);
+  persist();
+  return snaps;
+}
+function entferneUebung(id) {
   const ausPlaenen = [];
   S.plans.forEach((p) => {
     const i2 = p.items.findIndex((x) => x.ex === id);
@@ -819,7 +829,6 @@ function deleteExercise(id) {
     S.exercises.splice(i, 1);
     delete S.kg[id];
   }
-  persist();
   return { art: "exercise", index: i, eintrag: ex, versteckt, gewicht, ausPlaenen };
 }
 function addPlan(data2) {
@@ -883,6 +892,14 @@ function deletePlan(id) {
   return { art: "plan", index: i, eintrag: p };
 }
 function restore(snap) {
+  zurueck(snap);
+  persist();
+}
+function restoreMany(snaps) {
+  (snaps || []).slice().reverse().forEach(zurueck);
+  persist();
+}
+function zurueck(snap) {
   if (!snap || !snap.eintrag) return;
   if (snap.art === "equipment") {
     S.equipment.splice(snap.index, 0, snap.eintrag);
@@ -897,7 +914,6 @@ function restore(snap) {
       if (p && !p.items.some((x) => x.ex === snap.eintrag.id)) p.items.splice(v.index, 0, v.item);
     });
   }
-  persist();
 }
 function addPlanItem(planId, exId) {
   const p = planOf(planId);
@@ -1640,11 +1656,15 @@ var picked = null;
 var bundle = null;
 var pickedEx = null;
 var onlyMine = true;
+var picking = false;
+var chosen = /* @__PURE__ */ new Set();
 function resetEditing() {
   editing = null;
   picked = null;
   bundle = null;
   pickedEx = null;
+  picking = false;
+  chosen.clear();
 }
 function muscleOptions() {
   return [{ id: "", label: t("ex.muscleNone") }].concat(EX_CATEGORIES.map((c) => ({ id: c.id, label: exName(c) })));
@@ -1836,6 +1856,16 @@ function equipmentForm(mount2, head2, goHub) {
     picked = null;
   });
 }
+function undoableMany(snaps) {
+  if (!snaps || !snaps.length) return;
+  toast(t("undo.doneMany", { n: snaps.length }), false, {
+    label: t("undo.action"),
+    run: () => {
+      restoreMany(snaps);
+      toast(t("undo.back"));
+    }
+  });
+}
 function undoable(snap) {
   if (!snap) return;
   toast(t("undo.done"), false, {
@@ -1852,14 +1882,28 @@ function aiMark(obj) {
 function exercises(mount2, head2, goHub) {
   if (editing) return exerciseForm(mount2, head2, goHub);
   const liste = visibleExercises();
+  chosen.forEach((id) => {
+    if (!liste.some((e) => e.id === id)) chosen.delete(id);
+  });
   const vonKi = liste.some((e) => e.src === "ai");
   const rows = liste.map((ex) => {
     const eq = equipOf(ex.equip);
     const inPlans = exerciseUsage(ex.id);
-    return '<div class="lst"><div class="lst-m"><div class="lst-n">' + esc(nameOf(ex)) + aiMark(ex) + '</div><div class="lst-s">' + esc(nameOf(eq)) + " \xB7 " + esc(inPlans ? t(inPlans === 1 ? "ex.inPlans1" : "ex.inPlans", { n: inPlans }) : t("ex.notInPlan")) + '</div></div><div class="row-act"><button class="mini" data-edit="' + ex.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + ex.id + '">' + esc(t("common.delete")) + "</button></div></div>";
+    const mitte = '<div class="lst-m"><div class="lst-n">' + esc(nameOf(ex)) + aiMark(ex) + '</div><div class="lst-s">' + esc(nameOf(eq)) + " \xB7 " + esc(inPlans ? t(inPlans === 1 ? "ex.inPlans1" : "ex.inPlans", { n: inPlans }) : t("ex.notInPlan")) + "</div></div>";
+    if (picking) {
+      return '<label class="lst pick"><input type="checkbox" data-pick="' + ex.id + '"' + (chosen.has(ex.id) ? " checked" : "") + ">" + mitte + "</label>";
+    }
+    return '<div class="lst">' + mitte + '<div class="row-act"><button class="mini" data-edit="' + ex.id + '">' + esc(t("common.edit")) + '</button><button class="mini warn" data-del="' + ex.id + '">' + esc(t("common.delete")) + "</button></div></div>";
   }).join("");
-  mount2.innerHTML = head2() + backBar(t("ex.title")) + '<p class="intro">' + esc(t("ex.intro")) + "</p>" + rows + (vonKi ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + '<button class="set-btn" id="add">+ ' + esc(t("ex.add")) + "</button>";
+  mount2.innerHTML = head2() + backBar(t("ex.title")) + '<p class="intro">' + esc(picking ? t("ex.multiHint") : t("ex.intro")) + "</p>" + (picking && liste.length ? pickBar() : "") + rows + (vonKi ? '<p class="fld-h">\u2726 ' + esc(t("ex.legend")) + "</p>" : "") + (liste.length ? '<button class="set-btn" id="multi">' + esc(t(picking ? "ex.multiEnd" : "ex.multi")) + "</button>" : "") + (picking ? "" : '<button class="set-btn" id="add">+ ' + esc(t("ex.add")) + "</button>");
   wireBack(goHub);
+  const multi = byId("multi");
+  if (multi) multi.addEventListener("click", () => {
+    picking = !picking;
+    chosen.clear();
+    rerender2();
+  });
+  if (picking) return wirePicking(liste);
   byId("add").addEventListener("click", () => {
     editing = "new";
     rerender2();
@@ -1873,6 +1917,44 @@ function exercises(mount2, head2, goHub) {
     if (!ex) return;
     if (!confirmBox(t("common.deleteAsk", { name: nameOf(ex) }) + "\n" + t("ex.keepForHistory"))) return;
     undoable(deleteExercise(ex.id));
+  });
+}
+function pickBar() {
+  return '<div class="row-act pick-bar"><button class="mini" id="all">' + esc(t("ex.selAll")) + '</button><button class="mini" id="none">' + esc(t("ex.selNone")) + '</button><button class="mini warn" id="delsel"' + (chosen.size ? "" : " disabled") + ">" + esc(t("ex.delSel", { n: chosen.size })) + "</button></div>";
+}
+function wirePicking(liste) {
+  const knopf = byId("delsel");
+  const nachfuehren = () => {
+    knopf.textContent = t("ex.delSel", { n: chosen.size });
+    knopf.disabled = !chosen.size;
+  };
+  on("[data-pick]", (ev) => {
+    const box = ev.currentTarget;
+    if (box.checked) chosen.add(box.dataset.pick);
+    else chosen.delete(box.dataset.pick);
+    nachfuehren();
+  }, "change");
+  byId("all").addEventListener("click", () => {
+    liste.forEach((ex) => chosen.add(ex.id));
+    document.querySelectorAll("[data-pick]").forEach((b) => {
+      b.checked = true;
+    });
+    nachfuehren();
+  });
+  byId("none").addEventListener("click", () => {
+    chosen.clear();
+    document.querySelectorAll("[data-pick]").forEach((b) => {
+      b.checked = false;
+    });
+    nachfuehren();
+  });
+  knopf.addEventListener("click", () => {
+    const ids = [...chosen];
+    if (!ids.length) return;
+    if (!confirmBox(t("ex.delSelAsk", { n: ids.length }) + "\n" + t("ex.keepForHistory"))) return;
+    const snaps = deleteExercises(ids);
+    chosen.clear();
+    undoableMany(snaps);
   });
 }
 function exercisePicker(mount2, head2, goHub) {
@@ -2122,7 +2204,7 @@ async function send() {
   busy = true;
   await addChat("me", text);
   try {
-    const mod = await import("./part-TA5OGIY5.js");
+    const mod = await import("./part-UPYRCQPA.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2523,7 +2605,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-TA5OGIY5.js");
+    const mod = await import("./part-UPYRCQPA.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -2828,7 +2910,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-TA5OGIY5.js");
+      const mod = await import("./part-UPYRCQPA.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),

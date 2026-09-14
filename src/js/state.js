@@ -407,6 +407,22 @@ export function usedInLog(id) {
 // Aus allen Plänen nehmen. Was im Verlauf steht, bleibt unsichtbar erhalten,
 // damit alte Einträge weiterhin einen Namen haben.
 export function deleteExercise(id) {
+  const snap = entferneUebung(id);
+  persist();
+  return snap;
+}
+
+// Mehrere auf einmal - beim Aufräumen nach einem KI-Plan kommt das vor.
+// Einmal speichern statt einmal je Übung, und ein Schnappschuss je Eintrag,
+// damit das Rückgängig alles zusammen zurückholt.
+export function deleteExercises(ids) {
+  const snaps = ids.map(id => entferneUebung(id)).filter(s => s && s.eintrag);
+  persist();
+  return snaps;
+}
+
+// Der eigentliche Vorgang, ohne zu speichern - das macht der Aufrufer.
+function entferneUebung(id) {
   const ausPlaenen = [];
   S.plans.forEach(p => {
     const i = p.items.findIndex(x => x.ex === id);
@@ -423,7 +439,6 @@ export function deleteExercise(id) {
     S.exercises.splice(i, 1);
     delete S.kg[id];
   }
-  persist();
   return { art: 'exercise', index: i, eintrag: ex, versteckt, gewicht, ausPlaenen };
 }
 
@@ -493,6 +508,18 @@ export function deletePlan(id) {
 
 // Macht das letzte Löschen rückgängig.
 export function restore(snap) {
+  zurueck(snap);
+  persist();
+}
+
+// In umgekehrter Reihenfolge: jeder Schnappschuss kennt die Stelle, an der er
+// zum Zeitpunkt seines Löschens stand.
+export function restoreMany(snaps) {
+  (snaps || []).slice().reverse().forEach(zurueck);
+  persist();
+}
+
+function zurueck(snap) {
   if (!snap || !snap.eintrag) return;
   if (snap.art === 'equipment') {
     S.equipment.splice(snap.index, 0, snap.eintrag);
@@ -507,7 +534,6 @@ export function restore(snap) {
       if (p && !p.items.some(x => x.ex === snap.eintrag.id)) p.items.splice(v.index, 0, v.item);
     });
   }
-  persist();
 }
 export function addPlanItem(planId, exId) {
   const p = planOf(planId);

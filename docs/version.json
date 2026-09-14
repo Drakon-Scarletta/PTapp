@@ -1,10 +1,10 @@
 {
-  "versionCode": 13,
-  "versionName": "2.2",
-  "apk": "PTapp-2.2.apk",
-  "size": 6700582,
+  "versionCode": 14,
+  "versionName": "2.3",
+  "apk": "PTapp-2.3.apk",
+  "size": 6701468,
   "notes": {
-    "de": "Pläne gehen jetzt auch ohne eigenen KI-Zugang: Die App schreibt den Auftrag samt Geräten als Text zum Kopieren, du fügst ihn in ein beliebiges KI-Chatfenster ein und die Antwort zurück in die App.",
-    "en": "Plans now work without an AI account of your own: the app writes the request and your equipment as text to copy, you paste it into any AI chat and paste the answer back into the app."
+    "de": "Übungen aufräumen geht jetzt in einem Rutsch: „Mehrere auswählen“, anhaken, alles auf einmal löschen — mit einem Rückgängig für die ganze Auswahl.",
+    "en": "Tidying up exercises now works in one go: “Select several”, tick them, delete them all at once — with a single undo for the whole selection."
   }
 }

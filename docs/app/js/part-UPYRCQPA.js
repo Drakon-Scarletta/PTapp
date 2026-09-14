@@ -6,7 +6,7 @@ import {
   providerOf,
   schema,
   userPrompt
-} from "./part-PRN6P7BJ.js";
+} from "./part-JLAQOZ7I.js";
 import {
   APIConnectionError,
   APIConnectionTimeoutError,

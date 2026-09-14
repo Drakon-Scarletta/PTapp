@@ -14,7 +14,12 @@ let picked = null;           // Katalogschluessel, 'custom' oder null
 let bundle = null;           // gewaehltes Kombigeraet
 let pickedEx = null;         // Uebungskatalog: Schluessel, 'custom' oder null
 let onlyMine = true;         // Uebungen auf die eigenen Geraete beschraenken
-export function resetEditing() { editing = null; picked = null; bundle = null; pickedEx = null; }
+let picking = false;         // Mehrfachauswahl in der Uebungsliste
+const chosen = new Set();    // was darin angehakt ist
+export function resetEditing() {
+  editing = null; picked = null; bundle = null; pickedEx = null;
+  picking = false; chosen.clear();
+}
 
 // Die Kategorie des Katalogs ist zugleich die Muskelgruppe.
 function muscleOptions() {
@@ -250,6 +255,15 @@ function equipmentForm(mount, head, goHub) {
 }
 
 // Nach dem Löschen bleibt eine Meldung mit Rückgängig stehen.
+// Mehrere auf einmal: ein Schnappschuss je Eintrag, ein Rückgängig für alle.
+function undoableMany(snaps) {
+  if (!snaps || !snaps.length) return;
+  toast(t('undo.doneMany', { n: snaps.length }), false, {
+    label: t('undo.action'),
+    run: () => { st.restoreMany(snaps); toast(t('undo.back')); }
+  });
+}
+
 function undoable(snap) {
   if (!snap) return;
   toast(t('undo.done'), false, {
@@ -270,26 +284,50 @@ export function exercises(mount, head, goHub) {
   if (editing) return exerciseForm(mount, head, goHub);
 
   const liste = st.visibleExercises();
+  // Was inzwischen weg ist, kann auch nicht mehr angehakt sein.
+  chosen.forEach(id => { if (!liste.some(e => e.id === id)) chosen.delete(id); });
   const vonKi = liste.some(e => e.src === 'ai');
+
   const rows = liste.map(ex => {
     const eq = st.equipOf(ex.equip);
     const inPlans = st.exerciseUsage(ex.id);
-    return '<div class="lst"><div class="lst-m">' +
+    const mitte = '<div class="lst-m">' +
       '<div class="lst-n">' + esc(st.nameOf(ex)) + aiMark(ex) + '</div>' +
       '<div class="lst-s">' + esc(st.nameOf(eq)) + ' · ' +
-      esc(inPlans ? t(inPlans === 1 ? 'ex.inPlans1' : 'ex.inPlans', { n: inPlans }) : t('ex.notInPlan')) + '</div></div>' +
-      '<div class="row-act">' +
+      esc(inPlans ? t(inPlans === 1 ? 'ex.inPlans1' : 'ex.inPlans', { n: inPlans }) : t('ex.notInPlan')) +
+      '</div></div>';
+
+    if (picking) {
+      return '<label class="lst pick"><input type="checkbox" data-pick="' + ex.id + '"' +
+        (chosen.has(ex.id) ? ' checked' : '') + '>' + mitte + '</label>';
+    }
+    return '<div class="lst">' + mitte + '<div class="row-act">' +
       '<button class="mini" data-edit="' + ex.id + '">' + esc(t('common.edit')) + '</button>' +
       '<button class="mini warn" data-del="' + ex.id + '">' + esc(t('common.delete')) + '</button>' +
       '</div></div>';
   }).join('');
 
   mount.innerHTML = head() + backBar(t('ex.title')) +
-    '<p class="intro">' + esc(t('ex.intro')) + '</p>' + rows +
+    '<p class="intro">' + esc(picking ? t('ex.multiHint') : t('ex.intro')) + '</p>' +
+    (picking && liste.length ? pickBar() : '') +
+    rows +
     (vonKi ? '<p class="fld-h">✦ ' + esc(t('ex.legend')) + '</p>' : '') +
-    '<button class="set-btn" id="add">+ ' + esc(t('ex.add')) + '</button>';
+    (liste.length
+      ? '<button class="set-btn" id="multi">' + esc(t(picking ? 'ex.multiEnd' : 'ex.multi')) + '</button>'
+      : '') +
+    (picking ? '' : '<button class="set-btn" id="add">+ ' + esc(t('ex.add')) + '</button>');
 
   wireBack(goHub);
+
+  const multi = byId('multi');
+  if (multi) multi.addEventListener('click', () => {
+    picking = !picking;
+    chosen.clear();
+    rerender();
+  });
+
+  if (picking) return wirePicking(liste);
+
   byId('add').addEventListener('click', () => { editing = 'new'; rerender(); });
   on('[data-edit]', ev => { editing = ev.currentTarget.dataset.edit; rerender(); });
   on('[data-del]', ev => {
@@ -297,6 +335,52 @@ export function exercises(mount, head, goHub) {
     if (!ex) return;
     if (!confirmBox(t('common.deleteAsk', { name: st.nameOf(ex) }) + '\n' + t('ex.keepForHistory'))) return;
     undoable(st.deleteExercise(ex.id));
+  });
+}
+
+function pickBar() {
+  return '<div class="row-act pick-bar">' +
+    '<button class="mini" id="all">' + esc(t('ex.selAll')) + '</button>' +
+    '<button class="mini" id="none">' + esc(t('ex.selNone')) + '</button>' +
+    '<button class="mini warn" id="delsel"' + (chosen.size ? '' : ' disabled') + '>' +
+      esc(t('ex.delSel', { n: chosen.size })) + '</button>' +
+    '</div>';
+}
+
+// Beim Anhaken wird nur der Knopf nachgeführt - die Liste neu zu zeichnen
+// würde bei jedem Häkchen nach oben springen.
+function wirePicking(liste) {
+  const knopf = byId('delsel');
+  const nachfuehren = () => {
+    knopf.textContent = t('ex.delSel', { n: chosen.size });
+    knopf.disabled = !chosen.size;
+  };
+
+  on('[data-pick]', ev => {
+    const box = ev.currentTarget;
+    if (box.checked) chosen.add(box.dataset.pick);
+    else chosen.delete(box.dataset.pick);
+    nachfuehren();
+  }, 'change');
+
+  byId('all').addEventListener('click', () => {
+    liste.forEach(ex => chosen.add(ex.id));
+    document.querySelectorAll('[data-pick]').forEach(b => { b.checked = true; });
+    nachfuehren();
+  });
+  byId('none').addEventListener('click', () => {
+    chosen.clear();
+    document.querySelectorAll('[data-pick]').forEach(b => { b.checked = false; });
+    nachfuehren();
+  });
+
+  knopf.addEventListener('click', () => {
+    const ids = [...chosen];
+    if (!ids.length) return;
+    if (!confirmBox(t('ex.delSelAsk', { n: ids.length }) + '\n' + t('ex.keepForHistory'))) return;
+    const snaps = st.deleteExercises(ids);
+    chosen.clear();
+    undoableMany(snaps);
   });
 }
 

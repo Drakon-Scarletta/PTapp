@@ -140,6 +140,13 @@ const DE = {
   'ex.inPlans1': 'In einem Plan',
   'ex.notInPlan': 'In keinem Plan',
   'ex.keepForHistory': 'Bleibt für den Verlauf erhalten, verschwindet aber aus allen Plänen.',
+  'ex.multi': 'Mehrere auswählen',
+  'ex.multiEnd': 'Auswahl beenden',
+  'ex.multiHint': 'Hake an, was weg soll, und lösche alles auf einmal.',
+  'ex.selAll': 'Alle',
+  'ex.selNone': 'Keine',
+  'ex.delSel': '{n} löschen',
+  'ex.delSelAsk': '{n} Übungen löschen?',
 
   'pl.title': 'Pläne',
   'pl.intro': 'Ein Plan ist eine Liste von Übungen mit Sätzen und Wiederholungen.',
@@ -309,6 +316,7 @@ const DE = {
   'csv.done': 'Tabelle erstellt: {name}',
 
   'undo.done': 'Gelöscht.',
+  'undo.doneMany': '{n} gelöscht.',
   'undo.action': 'Rückgängig',
   'undo.back': 'Wiederhergestellt.',
 
@@ -534,6 +542,13 @@ const EN = {
   'ex.inPlans1': 'In one plan',
   'ex.notInPlan': 'In no plan',
   'ex.keepForHistory': 'Kept for the history, but removed from every plan.',
+  'ex.multi': 'Select several',
+  'ex.multiEnd': 'End selection',
+  'ex.multiHint': 'Tick what should go and delete it all at once.',
+  'ex.selAll': 'All',
+  'ex.selNone': 'None',
+  'ex.delSel': 'Delete {n}',
+  'ex.delSelAsk': 'Delete {n} exercises?',
 
   'pl.title': 'Plans',
   'pl.intro': 'A plan is a list of exercises with sets and reps.',
@@ -703,6 +718,7 @@ const EN = {
   'csv.done': 'Table created: {name}',
 
   'undo.done': 'Deleted.',
+  'undo.doneMany': '{n} deleted.',
   'undo.action': 'Undo',
   'undo.back': 'Restored.',
 
