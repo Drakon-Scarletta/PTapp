@@ -1,6 +1,6 @@
 import * as st from '../state.js';
 import { t, weekdayShort } from '../i18n.js';
-import { esc, on, byId, haptic, toast, dialog, field } from '../ui.js';
+import { esc, on, byId, haptic, toast, confirmBox, dialog, field } from '../ui.js';
 import * as rest from '../rest.js';
 import { openSets, performanceText } from './sets.js';
 
@@ -139,6 +139,9 @@ export function render(head, mount) {
         (!st.hasAnySet() && !e.done ? ' disabled' : '') + '>' +
         esc(e.done ? t('plan.undo') : t('plan.finish')) + '</button>' +
       (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + '</p>' : '') +
+      (st.hasAnySet() || e.done
+        ? '<button class="mini warn" id="disc">' + esc(t('plan.discard')) + '</button>'
+        : '') +
     '</div></div>' +
 
     '<label class="fld"><span class="fld-l">' + esc(t('note.title')) + '</span>' +
@@ -170,6 +173,20 @@ export function render(head, mount) {
     st.finish();
   });
   byId('f-note').addEventListener('change', ev => st.setNote(ev.target.value));
+
+  // Aus Versehen gestartet: der heutige Eintrag verschwindet wieder aus dem
+  // Kalender. Rückgängig steht in der Meldung.
+  const disc = byId('disc');
+  if (disc) disc.addEventListener('click', () => {
+    if (!confirmBox(t('plan.discardAsk'))) return;
+    rest.stop();
+    const snap = st.deleteEntry(st.tk);
+    if (!snap) return;
+    toast(t('plan.discarded'), false, {
+      label: t('undo.action'),
+      run: () => { st.restore(snap); toast(t('undo.back')); }
+    });
+  });
 
   on('[data-pick]', ev => st.selectPlan(ev.currentTarget.dataset.pick));
   on('[data-sets]', ev => {

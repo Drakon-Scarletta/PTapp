@@ -1,6 +1,6 @@
 import * as st from '../state.js';
 import { t, monthName, weekdayShort, longDate } from '../i18n.js';
-import { esc, on } from '../ui.js';
+import { esc, on, byId, toast, confirmBox } from '../ui.js';
 
 let month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDay = null;
@@ -39,7 +39,8 @@ function dayDetail() {
       '<div><div class="nm">' + esc(longDate(dd)) + '</div>' +
       '<div class="fo">' + esc(st.nameOf(plan)) + ' · ' +
       esc(de.done ? t('log.done') : t('log.notDone')) + '</div></div></div>' +
-    lines + '</div></div>';
+    lines + '</div></div>' +
+    '<button class="set-btn warn" id="delday">' + esc(t('log.delete')) + '</button>';
 }
 
 export function render(head, mount) {
@@ -88,5 +89,21 @@ export function render(head, mount) {
     const d = ev.currentTarget.dataset.day;
     selectedDay = selectedDay === d ? null : d;
     document.dispatchEvent(new CustomEvent('rerender'));
+  });
+
+  // Versehentlich gestartet oder doppelt eingetragen: der Tag lässt sich wieder
+  // aus dem Kalender nehmen, mit Rückgängig in der Meldung.
+  const del = byId('delday');
+  if (del) del.addEventListener('click', () => {
+    const [jy, jm, jd] = selectedDay.split('-').map(Number);
+    const datum = longDate(new Date(jy, jm - 1, jd));
+    if (!confirmBox(t('log.deleteAsk', { date: datum }))) return;
+    const snap = st.deleteEntry(selectedDay);
+    selectedDay = null;
+    if (!snap) return;
+    toast(t('log.deleted'), false, {
+      label: t('undo.action'),
+      run: () => { st.restore(snap); toast(t('undo.back')); }
+    });
   });
 }

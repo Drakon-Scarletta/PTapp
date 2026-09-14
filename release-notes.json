@@ -1,4 +1,8 @@
 {
+  "3.2": {
+    "de": "Versehentlich gestartete Einheiten lassen sich wieder löschen: im Training über „Einheit verwerfen“, im Verlauf über den gewählten Tag. Beides fragt nach und bietet Rückgängig an.",
+    "en": "Sessions started by accident can be removed again: in training via “Discard session”, in the history via the selected day. Both ask first and offer undo."
+  },
   "3.1": {
     "de": "Im Training sitzt oben rechts am Plan ein kleiner Knopf für die Intensität: leicht → mittel → schwer. Er stellt die Sätze je Übung mit um (3 / 5 / 8) und damit auch Pausenlänge und empfohlene Erholung. Rückgängig holt eigene Satzzahlen zurück.",
     "en": "In training there is a small intensity button at the top right of the plan: light → medium → hard. It switches the sets per exercise along (3 / 5 / 8), and with them the rest length and the recommended recovery. Undo brings custom set counts back."

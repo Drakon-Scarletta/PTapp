@@ -12,7 +12,7 @@ import {
   setLang,
   t,
   weekdayShort
-} from "./part-OR2YK2AJ.js";
+} from "./part-QPDNOSAO.js";
 import {
   Directory,
   Encoding
@@ -198,7 +198,7 @@ var Share = registerPlugin("Share", {
 var KEY = "training:v2";
 var FOLDER = "PTapp";
 var APP_NAME = "PTapp";
-var APP_VERSION = "3.1";
+var APP_VERSION = "3.2";
 var STATE_VERSION = 5;
 var isNative = () => Capacitor.isNativePlatform();
 function freshState() {
@@ -973,6 +973,15 @@ function deletePlan(id) {
   persist();
   return { art: "plan", index: i, eintrag: p };
 }
+function deleteEntry(datum2) {
+  const e = S.log[datum2];
+  if (!e) return null;
+  const snap = { art: "entry", date: datum2, eintrag: e };
+  delete S.log[datum2];
+  if (datum2 === tk) sel = null;
+  persist();
+  return snap;
+}
 function restore(snap) {
   zurueck(snap);
   persist();
@@ -983,7 +992,9 @@ function restoreMany(snaps) {
 }
 function zurueck(snap) {
   if (!snap || !snap.eintrag) return;
-  if (snap.art === "equipment") {
+  if (snap.art === "entry") {
+    S.log[snap.date] = snap.eintrag;
+  } else if (snap.art === "equipment") {
     S.equipment.splice(snap.index, 0, snap.eintrag);
   } else if (snap.art === "plan") {
     S.plans.splice(snap.index, 0, snap.eintrag);
@@ -2345,7 +2356,7 @@ async function send() {
   busy = true;
   await addChat("me", text2);
   try {
-    const mod = await import("./part-SC7OD2OI.js");
+    const mod = await import("./part-KCGWSL4M.js");
     const antwort = await mod.chat({
       provider: S.ai.provider,
       key: (S.ai.keys[S.ai.provider] || "").trim(),
@@ -2518,7 +2529,7 @@ function render2(head2, mount2) {
   const pick = S.plans.map((p) => '<button data-pick="' + p.id + '" class="' + (p.id === planId ? "sel" : "") + (p.id === sug && p.id !== planId ? " sug" : "") + '"><span class="k">' + esc(p.short || "?") + "</span>" + esc(nameOf(p)) + "</button>").join("");
   const rows = plan.items.length ? plan.items.map((i) => exerciseRow(i, e)).join("") : '<div class="tp-ex"><div></div><div class="rp">' + esc(t("plan.emptyPlan")) + "</div><div></div></div>";
   const dauer = e.done ? durationMinutes(e) : e.start ? Math.max(1, Math.round((Date.now() - e.start) / 6e4)) : null;
-  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + '</div></div><button class="mini int" id="int" title="' + esc(t("plan.intSwitch")) + '">' + esc(stufenText(plan)) + "</button></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + "</button>" + (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + "</p>" : "") + '</div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
+  mount2.innerHTML = head2() + weekStrip() + '<div class="tp-count"><b>' + esc(t("plan.weekCount", { done: weekCount(), target: weekTarget() })) + "</b>" + esc(t("plan.weekCountRest")) + (night ? esc(t("plan.nightHint")) : "") + '</div><div class="tp-shift' + (night ? " on" : "") + '"><div><div class="lbl">' + esc(t("plan.nightTitle")) + '</div><div class="sub">' + esc(t("plan.nightSub")) + '</div></div><button class="tp-toggle" id="nt" role="switch" aria-checked="' + night + '" aria-label="' + esc(t("plan.nightTitle")) + '"><span></span></button></div><div class="tp-pick">' + pick + '</div><div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan.short || "") + '</div><div><div class="nm">' + esc(nameOf(plan)) + '</div><div class="fo">' + esc(focusOf(plan)) + (dauer ? " \xB7 " + esc(e.done ? t("dur.minutes", { n: dauer }) : t("dur.running", { n: dauer })) : "") + '</div></div><button class="mini int" id="int" title="' + esc(t("plan.intSwitch")) + '">' + esc(stufenText(plan)) + "</button></div>" + rows + '<div class="tp-key"><span><i class="dot g"></i>' + esc(t("plan.light")) + '</span><span><i class="dot y"></i>' + esc(t("plan.medium")) + '</span><span><i class="dot r"></i>' + esc(t("plan.heavy")) + '</span></div><button class="tp-finish' + (e.done ? " undo" : "") + '" id="fin"' + (!hasAnySet() && !e.done ? " disabled" : "") + ">" + esc(e.done ? t("plan.undo") : t("plan.finish")) + "</button>" + (e.done ? '<p class="tp-rec">' + esc(erholungText(plan)) + "</p>" : "") + (hasAnySet() || e.done ? '<button class="mini warn" id="disc">' + esc(t("plan.discard")) + "</button>" : "") + '</div></div><label class="fld"><span class="fld-l">' + esc(t("note.title")) + '</span><textarea class="in" id="f-note" rows="2" placeholder="' + esc(t("note.hint")) + '">' + esc(e.n || "") + "</textarea></label>" + (lastError() ? '<div class="tp-err">' + esc(lastError()) + "</div>" : "") + '<div class="tp-note">' + esc(t("plan.note")) + "</div>";
   byId("nt").addEventListener("click", () => toggleNight());
   byId("int").addEventListener("click", () => {
     const naechste = nextIntensity(intensityOf(plan));
@@ -2541,6 +2552,20 @@ function render2(head2, mount2) {
     finish();
   });
   byId("f-note").addEventListener("change", (ev) => setNote(ev.target.value));
+  const disc = byId("disc");
+  if (disc) disc.addEventListener("click", () => {
+    if (!confirmBox(t("plan.discardAsk"))) return;
+    stop();
+    const snap = deleteEntry(tk);
+    if (!snap) return;
+    toast(t("plan.discarded"), false, {
+      label: t("undo.action"),
+      run: () => {
+        restore(snap);
+        toast(t("undo.back"));
+      }
+    });
+  });
   on("[data-pick]", (ev) => selectPlan(ev.currentTarget.dataset.pick));
   on("[data-sets]", (ev) => {
     const id = ev.currentTarget.dataset.sets;
@@ -2635,7 +2660,7 @@ function dayDetail() {
     const label = w.body ? w.sub : stored == null ? "\u2014" : w.main + " " + w.unit + (w.sub ? " \xB7 " + w.sub : "");
     return '<div class="dt-row' + (n >= goal ? "" : " skip") + '"><span class="dt-m">' + n + "/" + goal + '</span><span class="dt-n">' + esc(nameOf(ex)) + '</span><span class="dt-w">' + esc(label) + "</span></div>";
   }).join("");
-  return '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan ? plan.short : "?") + '</div><div><div class="nm">' + esc(longDate(dd)) + '</div><div class="fo">' + esc(nameOf(plan)) + " \xB7 " + esc(de.done ? t("log.done") : t("log.notDone")) + "</div></div></div>" + lines + "</div></div>";
+  return '<div class="tp-card"><div class="tp-card-in"><div class="tp-title"><div class="big">' + esc(plan ? plan.short : "?") + '</div><div><div class="nm">' + esc(longDate(dd)) + '</div><div class="fo">' + esc(nameOf(plan)) + " \xB7 " + esc(de.done ? t("log.done") : t("log.notDone")) + "</div></div></div>" + lines + '</div></div><button class="set-btn warn" id="delday">' + esc(t("log.delete")) + "</button>";
 }
 function render3(head2, mount2) {
   const y = month.getFullYear(), m = month.getMonth();
@@ -2669,6 +2694,22 @@ function render3(head2, mount2) {
     const d = ev.currentTarget.dataset.day;
     selectedDay = selectedDay === d ? null : d;
     document.dispatchEvent(new CustomEvent("rerender"));
+  });
+  const del = byId("delday");
+  if (del) del.addEventListener("click", () => {
+    const [jy, jm, jd] = selectedDay.split("-").map(Number);
+    const datum2 = longDate(new Date(jy, jm - 1, jd));
+    if (!confirmBox(t("log.deleteAsk", { date: datum2 }))) return;
+    const snap = deleteEntry(selectedDay);
+    selectedDay = null;
+    if (!snap) return;
+    toast(t("log.deleted"), false, {
+      label: t("undo.action"),
+      run: () => {
+        restore(snap);
+        toast(t("undo.back"));
+      }
+    });
   });
 }
 
@@ -2817,7 +2858,7 @@ async function runVerify() {
   verifying = true;
   rerender4();
   try {
-    const mod = await import("./part-SC7OD2OI.js");
+    const mod = await import("./part-KCGWSL4M.js");
     models = await mod.listModels(S.ai.provider, key);
     S.ai.verified = S.ai.verified || {};
     S.ai.verified[S.ai.provider] = Date.now();
@@ -3163,7 +3204,7 @@ function render6(mount2, head2, backBar3, goBack, goManual) {
     result = null;
     rerender6();
     try {
-      const mod = await import("./part-SC7OD2OI.js");
+      const mod = await import("./part-KCGWSL4M.js");
       result = await mod.generatePlan(Object.assign({
         provider: S.ai.provider,
         key: (S.ai.keys[S.ai.provider] || "").trim(),

@@ -609,6 +609,18 @@ export function deletePlan(id) {
   return { art: 'plan', index: i, eintrag: p };
 }
 
+// Einen Tag aus dem Kalender nehmen - etwa, wenn eine Einheit versehentlich
+// gestartet wurde. Der Schnappschuss holt sie zurück.
+export function deleteEntry(datum) {
+  const e = S.log[datum];
+  if (!e) return null;
+  const snap = { art: 'entry', date: datum, eintrag: e };
+  delete S.log[datum];
+  if (datum === tk) sel = null;
+  persist();
+  return snap;
+}
+
 // Macht das letzte Löschen rückgängig.
 export function restore(snap) {
   zurueck(snap);
@@ -624,7 +636,9 @@ export function restoreMany(snaps) {
 
 function zurueck(snap) {
   if (!snap || !snap.eintrag) return;
-  if (snap.art === 'equipment') {
+  if (snap.art === 'entry') {
+    S.log[snap.date] = snap.eintrag;
+  } else if (snap.art === 'equipment') {
     S.equipment.splice(snap.index, 0, snap.eintrag);
   } else if (snap.art === 'plan') {
     S.plans.splice(snap.index, 0, snap.eintrag);

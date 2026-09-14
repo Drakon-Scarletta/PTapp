@@ -45,6 +45,9 @@ installierbare APK.
   - **Intensität im Training**: kleiner Knopf am Plan, der zwischen leicht,
     mittel und schwer wechselt und die Sätze je Übung mitzieht (3 / 5 / 8).
     Rückgängig stellt eigene Satzzahlen wieder her.
+  - **Einheit löschen**: versehentlich gestartet oder doppelt eingetragen —
+    im Training über *Einheit verwerfen*, im Verlauf über den gewählten Tag,
+    jeweils mit Rückfrage und Rückgängig.
   - **Erholung**: Nach einer Einheit zeigt die App, wie viele Tage Pause
     sinnvoll sind (leicht 1, mittel 1–2, schwer 2–3 Tage — je nach Intensität
     des Plans), auf der Startseite und im Training nach dem Abschließen.
